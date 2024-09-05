@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_my_body"
+        android:icon="@drawable/ic_body"
+        android:title="Mi cuerpo" />
+
+    <item
+        android:id="@+id/navigation_messages"
+        android:icon="@drawable/ic_body"
+        android:title="Mensajes" />
+
+    <item
+        android:id="@+id/camera_capture_button"
+        android:icon="@drawable/ic_camera"
+        android:title="Camera" />
+
+    <item
+        android:id="@+id/navigation_uv_index"
+        android:icon="@drawable/ic_body"
+        android:title="Índice UV" />
+
+    <item
+        android:id="@+id/navigation_account"
+        android:icon="@drawable/ic_settings"
+        android:title="Cuenta" />
+</menu>
