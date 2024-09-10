@@ -5,20 +5,20 @@
         android:icon="@drawable/ic_body"
         android:title="Mi cuerpo" />
 
-    <item
+    <!-- <item
         android:id="@+id/navigation_messages"
         android:icon="@drawable/ic_body"
-        android:title="Mensajes" />
+        android:title="Mensajes" /> -->
 
     <item
         android:id="@+id/camera_capture_button"
         android:icon="@drawable/ic_camera"
         android:title="Camera" />
 
-    <item
+    <!-- <item
         android:id="@+id/navigation_uv_index"
         android:icon="@drawable/ic_body"
-        android:title="Índice UV" />
+        android:title="Índice UV" /> -->
 
     <item
         android:id="@+id/navigation_account"
