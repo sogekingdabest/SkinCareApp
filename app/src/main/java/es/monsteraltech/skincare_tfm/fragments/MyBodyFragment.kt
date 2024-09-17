@@ -19,6 +19,7 @@ class MyBodyFragment : Fragment() {
     private lateinit var frontBodyImageAreas: ImageView
     private lateinit var bitmap: Bitmap
 
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -34,17 +35,38 @@ class MyBodyFragment : Fragment() {
 
             frontBodyImageAreas.setOnTouchListener { _, event ->
                 if (event.action == MotionEvent.ACTION_DOWN) {
+
                     val imageViewWidth = frontBodyImageAreas.width
                     val imageViewHeight = frontBodyImageAreas.height
 
-                    val x = (event.x * bitmap.width / imageViewWidth).toInt()
-                    val y = (event.y * bitmap.height / imageViewHeight).toInt()
+                    val bitmapWidth = bitmap.width
+                    val bitmapHeight = bitmap.height
+
+                    val imageViewAspect = imageViewWidth.toFloat() / imageViewHeight.toFloat()
+                    val bitmapAspect = bitmapWidth.toFloat() / bitmapHeight.toFloat()
+
+                    val x: Float
+                    val y: Float
+
+                    if (imageViewAspect > bitmapAspect) {
+                        val scaledWidth = (bitmapAspect * imageViewHeight).toInt()
+                        val horizontalPadding = (imageViewWidth - scaledWidth) / 2
+
+                        x = ((event.x - horizontalPadding) * bitmapWidth / scaledWidth).toInt().toFloat()
+                        y = (event.y * bitmapHeight / imageViewHeight).toInt().toFloat()
+                    } else {
+                        val scaledHeight = (imageViewWidth / bitmapAspect).toInt()
+                        val verticalPadding = (imageViewHeight - scaledHeight) / 2
+
+                        x = (event.x * bitmapWidth / imageViewWidth).toInt().toFloat()
+                        y = ((event.y - verticalPadding) * bitmapHeight / scaledHeight).toInt().toFloat()
+                    }
 
                     Log.d("MyBodyFragment", "Touch at: x=$x, y=$y")
 
                     if (x >= 0 && y >= 0 && x < bitmap.width && y < bitmap.height) {
-                        val pixelColor = bitmap.getPixel(x, y)
-                        //Log.d("MyBodyFragment", String.format("Pixel color: #%08X", pixelColor))
+                        val pixelColor = bitmap.getPixel(x.toInt(), y.toInt())
+                        Log.d("MyBodyFragment", String.format("Pixel color: #%08X", pixelColor))
                         val hexColor = String.format("#%08X", pixelColor)
                         handleColorClick(hexColor)
                     }
