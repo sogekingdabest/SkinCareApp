@@ -1,6 +1,7 @@
 package es.monsteraltech.skincare_tfm.fragments
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
@@ -13,6 +14,7 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import es.monsteraltech.skincare_tfm.R
+import es.monsteraltech.skincare_tfm.body.BodyPartActivity
 
 class MyBodyFragment : Fragment() {
 
@@ -81,28 +83,8 @@ class MyBodyFragment : Fragment() {
     private fun handleColorClick(color: String) {
         Log.d("MyBodyFragment", "Color clicado: $color")
 
-        when (color) {
-            "#FF000000" -> {
-                Toast.makeText(context, "Área Negra", Toast.LENGTH_SHORT).show()
-            }
-            "#FFED1C24" -> {
-                Toast.makeText(context, "Área Roja", Toast.LENGTH_SHORT).show()
-            }
-            "#FFFFC90E" -> {
-                Toast.makeText(context, "Área Amarilla", Toast.LENGTH_SHORT).show()
-            }
-            "#FF22B14C" -> {
-                Toast.makeText(context, "Área Verde", Toast.LENGTH_SHORT).show()
-            }
-            "#FF3F48CC" -> {
-                Toast.makeText(context, "Área Azul", Toast.LENGTH_SHORT).show()
-            }
-            "#FFED00FF" -> {
-                Toast.makeText(context, "Área Morada", Toast.LENGTH_SHORT).show()
-            }
-            else -> {
-                Toast.makeText(context, "Área Desconocida", Toast.LENGTH_SHORT).show()
-            }
-        }
+        val intent = Intent(requireContext(), BodyPartActivity::class.java)
+        intent.putExtra("COLOR_VALUE", color)  // Pasamos el color como extra
+        startActivity(intent)
     }
 }
