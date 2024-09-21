@@ -1,13 +1,18 @@
 package es.monsteraltech.skincare_tfm.body
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.SearchView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import es.monsteraltech.skincare_tfm.R
+import es.monsteraltech.skincare_tfm.body.mole.Mole
+import es.monsteraltech.skincare_tfm.body.mole.MoleAdapter
+import es.monsteraltech.skincare_tfm.body.mole.MoleDetailActivity
 
 
 class BodyPartActivity : ComponentActivity() {
@@ -16,6 +21,7 @@ class BodyPartActivity : ComponentActivity() {
     private lateinit var moleAdapter: MoleAdapter
     private lateinit var addButton: FloatingActionButton
     private lateinit var bodyPart: String
+    private lateinit var bodyPartTitleTextView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,33 +33,36 @@ class BodyPartActivity : ComponentActivity() {
         when (color) {
             "#FF000000" -> {
                 Toast.makeText(this, "Área Negra", Toast.LENGTH_SHORT).show()
-                bodyPart = "head"
+                bodyPart = "Cabeza"
 
             }
             "#FFED1C24" -> {
                 Toast.makeText(this, "Área Roja", Toast.LENGTH_SHORT).show()
-                bodyPart = "right_arm"
+                bodyPart = "Brazo derecho"
             }
             "#FFFFC90E" -> {
                 Toast.makeText(this, "Área Amarilla", Toast.LENGTH_SHORT).show()
-                bodyPart = "torso"
+                bodyPart = "Torso"
             }
             "#FF22B14C" -> {
                 Toast.makeText(this, "Área Verde", Toast.LENGTH_SHORT).show()
-                bodyPart = "left_arm"
+                bodyPart = "Brazo izquierdo"
             }
             "#FF3F48CC" -> {
                 Toast.makeText(this, "Área Azul", Toast.LENGTH_SHORT).show()
-                bodyPart = "right_leg"
+                bodyPart = "Pierna derecha"
             }
             "#FFED00FF" -> {
                 Toast.makeText(this, "Área Morada", Toast.LENGTH_SHORT).show()
-                bodyPart = "left_leg"
+                bodyPart = "Pierna izquierda"
             }
             else -> {
                 Toast.makeText(this, "Área Desconocida", Toast.LENGTH_SHORT).show()
             }
         }
+
+        bodyPartTitleTextView = findViewById(R.id.bodyPartTitle)
+        bodyPartTitleTextView.text = bodyPart
 
         // Mostrar el valor del color en un TextView (o personalizar la UI según tus necesidades)
         //val colorTextView: TextView = findViewById(R.id.colorTextView)
@@ -64,17 +73,19 @@ class BodyPartActivity : ComponentActivity() {
 
         // Lista de ejemplo
         val moleLists = listOf(
-            Mole("Lunar 1", "Descripción 1", R.drawable.cat),
-            Mole("Lunar 2", "Descripción 2", R.drawable.cat),
-            Mole("Lunar 3", "Descripción 3", R.drawable.cat)
+            Mole("Lunar 1", "Descripción 1", listOf(R.drawable.cat, R.drawable.cat)),
+            Mole("Lunar 2", "Descripción 2",listOf(R.drawable.cat)),
+            Mole("Lunaar 3", "Descripción 3", listOf(R.drawable.cat))
         )
 
         lunarRecyclerView.layoutManager = GridLayoutManager(this, 1)
         moleAdapter = MoleAdapter(moleLists) { lunar ->
             // Aquí puedes abrir una nueva actividad con más detalles del lunar
-            /*val intent = Intent(this, LunarDetailActivity::class.java)
-            intent.putExtra("lunar", lunar)
-            startActivity(intent)*/
+            val intent = Intent(this, MoleDetailActivity::class.java)
+            intent.putExtra("LUNAR_TITLE", lunar.title)
+            intent.putExtra("LUNAR_DESCRIPTION", lunar.description)
+            intent.putIntegerArrayListExtra("LUNAR_IMAGE_LIST", ArrayList(lunar.imageList))
+            startActivity(intent)
         }
         lunarRecyclerView.adapter = moleAdapter
 

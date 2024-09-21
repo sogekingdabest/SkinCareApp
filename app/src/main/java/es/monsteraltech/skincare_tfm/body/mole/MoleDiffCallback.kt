@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body
+package es.monsteraltech.skincare_tfm.body.mole
 
 import androidx.recyclerview.widget.DiffUtil
 

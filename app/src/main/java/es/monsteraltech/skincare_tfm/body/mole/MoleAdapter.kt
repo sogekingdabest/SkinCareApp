@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body
+package es.monsteraltech.skincare_tfm.body.mole
 
 import android.view.LayoutInflater
 import android.view.View
@@ -32,7 +32,7 @@ class MoleAdapter(private val moleList: List<Mole>, private val onClick: (Mole) 
         val mole = filteredMoleList[position]
         holder.titleTextView.text = mole.title
         holder.descriptionTextView.text = mole.description
-        holder.imageView.setImageResource(mole.imageRes)
+        holder.imageView.setImageResource(mole.imageList.get(0))
 
         holder.itemView.setOnClickListener { onClick(mole) }
     }
