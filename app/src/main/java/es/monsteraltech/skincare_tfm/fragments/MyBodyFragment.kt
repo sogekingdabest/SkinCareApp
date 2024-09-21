@@ -85,6 +85,9 @@ class MyBodyFragment : Fragment() {
 
         val intent = Intent(requireContext(), BodyPartActivity::class.java)
         intent.putExtra("COLOR_VALUE", color)  // Pasamos el color como extra
-        startActivity(intent)
+        if (color != "#00000000") {
+            startActivity(intent)
+        }
+
     }
 }
