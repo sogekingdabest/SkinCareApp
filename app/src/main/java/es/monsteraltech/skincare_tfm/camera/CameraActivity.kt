@@ -1,14 +1,13 @@
 package es.monsteraltech.skincare_tfm.camera
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
-import android.util.Log
-import android.widget.*
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
@@ -17,189 +16,160 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import es.monsteraltech.skincare_tfm.R
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class CameraActivity : AppCompatActivity() {
 
-    private var imageCapture: ImageCapture? = null
-    private lateinit var outputDirectory: File
+    private lateinit var cameraProvider: ProcessCameraProvider
     private lateinit var cameraExecutor: ExecutorService
-    private lateinit var selectedImages: ArrayList<Uri>
-    private val returnIntent = Intent()
+    private lateinit var previewView: PreviewView
+    private var imageCapture: ImageCapture? = null
+    private var currentCameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    private var isFlashEnabled: Boolean = false
 
+    private lateinit var previewLauncher: ActivityResultLauncher<Intent>
 
-    private val openGalleryForImages = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val data = result.data
-            if (data?.clipData != null) {
-                val imageUri = data.clipData!!.getItemAt(0).uri
-                selectedImages.add(imageUri)
-            } else if (data?.data != null) {
-                val imageUri = data.data!!
-                selectedImages.add(imageUri)
-            }
-            Log.d("CameraActivity", "Imagenes seleccionadas: ${selectedImages[0]}")
-        }
-    }
-
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<String>, grantResults:
-        IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (allCameraPermissionsGranted()) {
-                startCamera()
-            } else {
-                Toast.makeText(this,
-                    "Permiso non concedido polo usuario.",
-                    Toast.LENGTH_SHORT).show()
-                finish()
-            }
-        }
-    }
-    companion object {
-        private const val TAG = "CameraXBasic"
-        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
-        private const val REQUEST_CODE_PERMISSIONS = 10
-        private const val READ_STORAGE_PERMISSION_REQUEST_CODE = 41
-        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE)
-    }
-
-    @Throws(java.lang.Exception::class)
-    fun requestPermissionForReadExtertalStorage() {
-        try {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                READ_STORAGE_PERMISSION_REQUEST_CODE
-            )
-        } catch (e: java.lang.Exception) {
-            e.printStackTrace()
-            throw e
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
 
-        // Inicializa el adaptador de imágenes
-        selectedImages = ArrayList()
-
-
-        // Solicitude dos permisos da cámara
-        if (allCameraPermissionsGranted() && allStoragePermissionsGranted()) {
-            startCamera()
-        } else {
-            ActivityCompat.requestPermissions(
-                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
-            )
-        }
-        // Listener para a realización de fotos a través do botón (non usado neste exemplo)
-        findViewById<Button>(R.id.camera_capture_button).setOnClickListener {
-                takePhoto()
+        previewLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val confirmedPath = result.data?.getStringExtra("CONFIRMED_PATH")
+                Toast.makeText(this, "Foto confirmada: $confirmedPath", Toast.LENGTH_LONG).show()
+                // Aquí puedes guardar la foto confirmada en tu lógica
+            } else if (result.resultCode == RESULT_CANCELED) {
+                Toast.makeText(this, "Foto descartada", Toast.LENGTH_SHORT).show()
+            }
         }
 
-        findViewById<Button>(R.id.storage_image_button).setOnClickListener {
-                val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*"))
-                openGalleryForImages.launch(intent)
-                Log.d("AddFragment", "Imagenes seleccionadas: ${selectedImages.size}")
-        }
-
-        findViewById<Button>(R.id.ok_button).setOnClickListener {
-            //Devolver los valores de selectedimages a addfragment
-            Log.d("CameraActivity", "Imagenes seleccionadas: ${selectedImages.size}")
-
-            returnIntent.putExtra("selectedImages", selectedImages)
-            setResult(Activity.RESULT_OK, returnIntent)
-            finish()
-        }
-
-        outputDirectory = getOutputDirectory()
+        previewView = findViewById(R.id.preview_view)
+        val captureButton: FloatingActionButton = findViewById(R.id.capture_button)
+        val switchCameraButton: FloatingActionButton = findViewById(R.id.switch_camera_button)
+        val flashButton: FloatingActionButton = findViewById(R.id.flash_button)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-    }
+        // Solicitar permisos y configurar cámara
+        val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                startCamera()
+            } else {
+                Toast.makeText(this, "Permiso de cámara requerido", Toast.LENGTH_LONG).show()
+            }
+        }
 
-    private fun takePhoto() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            startCamera()
+        } else {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
 
-        val imageCapture = imageCapture ?: return
-        val photoFile = File(
-            outputDirectory,
-            SimpleDateFormat(
-                FILENAME_FORMAT, Locale.US
-            ).format(System.currentTimeMillis()) + ".jpg")
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-        imageCapture.takePicture(
-            outputOptions, ContextCompat.getMainExecutor(this), object : ImageCapture.OnImageSavedCallback {
-                override fun onError(exc: ImageCaptureException) {
-                    Log.e(TAG, "Erro na captura: ${exc.message}", exc)
-                }
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val savedUri = Uri.fromFile(photoFile)
-                    selectedImages.add(savedUri)
-                    Log.d("CameraActivity", "Imagenes seleccionadas: ${selectedImages.size}")
-                    val msg = "Tomada foto: $savedUri"
-                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                    Log.d(TAG, msg)
-                }
-            })
+        // Botón para capturar imagen
+        captureButton.setOnClickListener { takePhoto() }
+
+        // Botón para cambiar de cámara
+        switchCameraButton.setOnClickListener {
+            currentCameraSelector = if (currentCameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
+                CameraSelector.DEFAULT_FRONT_CAMERA
+            } else {
+                CameraSelector.DEFAULT_BACK_CAMERA
+            }
+            startCamera()
+        }
+
+        // Botón para alternar el flash
+        flashButton.setOnClickListener {
+            isFlashEnabled = !isFlashEnabled
+            Toast.makeText(this, if (isFlashEnabled) "Flash Activado" else "Flash Desactivado", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            cameraProvider = cameraProviderFuture.get()
+
             val preview = Preview.Builder()
                 .build()
                 .also {
-                    it.setSurfaceProvider(findViewById<PreviewView>(R.id.viewFinder)?.surfaceProvider)
+                    it.surfaceProvider = previewView.surfaceProvider
                 }
-// Engádese o caso de uso da captura
+
             imageCapture = ImageCapture.Builder()
+                .setFlashMode(if (isFlashEnabled) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF)
+                .setTargetRotation(previewView.display.rotation)
                 .build()
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
             try {
                 cameraProvider.unbindAll()
-// Engásese o caso de uso da captura
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
-            } catch(exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
+                cameraProvider.bindToLifecycle(this, currentCameraSelector, preview, imageCapture)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Error iniciando cámara: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun allCameraPermissionsGranted(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-    }
-    private fun allStoragePermissionsGranted(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+    private fun takePhoto() {
+        val imageCapture = imageCapture ?: return
+        val photoFile = File(
+            externalMediaDirs.firstOrNull(),
+            "photo-${System.currentTimeMillis()}.jpg"
+        )
+
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        imageCapture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                    if (photoFile.exists()) {
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            navigateToPreview(photoFile.absolutePath)
+                        }, 200)
+                    } else {
+                        Toast.makeText(this@CameraActivity, "Error: Archivo no encontrado", Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    Toast.makeText(this@CameraActivity, "Error al capturar foto: ${exception.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        )
     }
 
-    private fun getOutputDirectory(): File {
-        val mediaDir = this.externalMediaDirs.firstOrNull()?.let {
-            File(it, resources.getString(R.string.app_name)).apply { mkdirs() } }
-        return if (mediaDir != null && mediaDir.exists())
-            mediaDir else this.filesDir
+    fun navigateToPreview(photoPath: String) {
+        val intent = Intent(this, PreviewActivity::class.java)
+        intent.putExtra("PHOTO_PATH", photoPath)
+        previewLauncher.launch(intent)
     }
+
+    override fun onResume() {
+        super.onResume()
+        startCamera()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        releaseCamera()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        cameraExecutor.shutdown()
+        releaseCamera()
+    }
+
+    private fun releaseCamera() {
+        cameraProvider.unbindAll()
     }
 
 }
