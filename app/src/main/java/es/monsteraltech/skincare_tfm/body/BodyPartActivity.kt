@@ -1,11 +1,14 @@
 package es.monsteraltech.skincare_tfm.body
 
+import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.SearchView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -13,6 +16,7 @@ import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.body.mole.Mole
 import es.monsteraltech.skincare_tfm.body.mole.MoleAdapter
 import es.monsteraltech.skincare_tfm.body.mole.MoleDetailActivity
+import es.monsteraltech.skincare_tfm.camera.CameraActivity
 
 
 class BodyPartActivity : ComponentActivity() {
@@ -22,6 +26,18 @@ class BodyPartActivity : ComponentActivity() {
     private lateinit var addButton: FloatingActionButton
     private lateinit var bodyPart: String
     private lateinit var bodyPartTitleTextView: TextView
+
+    private val imageAnalysisLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val imageUri = result.data?.getParcelableExtra<Uri>("selectedImage")
+            if (imageUri != null) {
+                // analyzeImage(imageUri)
+            }
+        }
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,6 +116,11 @@ class BodyPartActivity : ComponentActivity() {
             // Puedes abrir una nueva actividad para capturar una imagen y añadir un nuevo lunar
             /*val intent = Intent(this, AddLunarActivity::class.java)
             startActivity(intent)*/
+        }
+
+        addButton.setOnClickListener {
+            val intent = Intent(this, CameraActivity::class.java)
+            imageAnalysisLauncher.launch(intent)
         }
 
         val searchView: SearchView = findViewById(R.id.moleSearch)
