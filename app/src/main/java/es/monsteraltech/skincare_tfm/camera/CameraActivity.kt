@@ -34,10 +34,13 @@ class CameraActivity : AppCompatActivity() {
 
     private lateinit var previewLauncher: ActivityResultLauncher<Intent>
 
+    private var bodyPartColor: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
+
+        bodyPartColor = intent.getStringExtra("BODY_PART_COLOR")
 
         previewLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
@@ -133,7 +136,9 @@ class CameraActivity : AppCompatActivity() {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     if (photoFile.exists()) {
                         Handler(Looper.getMainLooper()).postDelayed({
-                            navigateToPreview(photoFile.absolutePath)
+                            // Guardar información sobre la orientación de la cámara
+                            val isFrontCamera = currentCameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA
+                            navigateToPreview(photoFile.absolutePath, isFrontCamera)
                         }, 200)
                     } else {
                         Toast.makeText(this@CameraActivity, "Error: Archivo no encontrado", Toast.LENGTH_LONG).show()
@@ -147,9 +152,11 @@ class CameraActivity : AppCompatActivity() {
         )
     }
 
-    fun navigateToPreview(photoPath: String) {
+    fun navigateToPreview(photoPath: String, isFrontCamera: Boolean) {
         val intent = Intent(this, PreviewActivity::class.java)
         intent.putExtra("PHOTO_PATH", photoPath)
+        intent.putExtra("IS_FRONT_CAMERA", isFrontCamera)
+        intent.putExtra("BODY_PART_COLOR", bodyPartColor)
         previewLauncher.launch(intent)
     }
 

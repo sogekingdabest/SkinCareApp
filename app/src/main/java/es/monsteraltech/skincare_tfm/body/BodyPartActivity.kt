@@ -120,6 +120,8 @@ class BodyPartActivity : ComponentActivity() {
 
         addButton.setOnClickListener {
             val intent = Intent(this, CameraActivity::class.java)
+            // Pasamos el código de color para que se pueda usar luego en el flujo
+            intent.putExtra("BODY_PART_COLOR", color)
             imageAnalysisLauncher.launch(intent)
         }
 
