@@ -35,6 +35,10 @@
             android:name=".camera.CameraActivity"
             android:exported="false" />
         <activity
+            android:name=".analysis.AnalysisResultActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SkinCare_TFM" />
+        <activity
             android:name=".body.BodyPartActivity"
             android:exported="false" />
         <activity

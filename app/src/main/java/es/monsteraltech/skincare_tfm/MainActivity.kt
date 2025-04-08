@@ -2,16 +2,7 @@ package es.monsteraltech.skincare_tfm
 
 import android.content.Intent
 import android.os.Bundle
-import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
-import android.view.Menu
-import android.view.MenuItem
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import es.monsteraltech.skincare_tfm.camera.CameraActivity
@@ -93,18 +84,10 @@ class MainActivity : AppCompatActivity() {
                     startActivity(intent)
                     true
                 }
-                /*R.id.navigation_messages -> {
-                    openFragment(MessagesFragment())
-                    true
-                }
-                R.id.navigation_uv_index -> {
-                    openFragment(UVIndexFragment())
-                    true
-                }
                 R.id.navigation_account -> {
-                    openFragment(AccountFragment())
+
                     true
-                }*/
+                }
                 else -> false
             }
         }
