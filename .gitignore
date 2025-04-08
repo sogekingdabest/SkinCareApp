@@ -1,6 +1,8 @@
-
 # Created by https://www.gitignore.io/api/java,linux,macos,windows,android,intellij,androidstudio
 # Edit at https://www.gitignore.io/?templates=java,linux,macos,windows,android,intellij,androidstudio
+
+### Firebase ###
+app/google-services.json
 
 ### Android ###
 # Built application files
