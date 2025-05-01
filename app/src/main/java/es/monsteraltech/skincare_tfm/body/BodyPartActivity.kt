@@ -9,6 +9,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -17,7 +18,8 @@ import es.monsteraltech.skincare_tfm.body.mole.Mole
 import es.monsteraltech.skincare_tfm.body.mole.MoleAdapter
 import es.monsteraltech.skincare_tfm.body.mole.MoleDetailActivity
 import es.monsteraltech.skincare_tfm.camera.CameraActivity
-
+import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
+import kotlinx.coroutines.launch
 
 class BodyPartActivity : ComponentActivity() {
 
@@ -26,6 +28,9 @@ class BodyPartActivity : ComponentActivity() {
     private lateinit var addButton: FloatingActionButton
     private lateinit var bodyPart: String
     private lateinit var bodyPartTitleTextView: TextView
+    private lateinit var searchView: SearchView
+    private val firebaseDataManager = FirebaseDataManager()
+    private val moleList = ArrayList<Mole>()
 
     private val imageAnalysisLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -33,11 +38,10 @@ class BodyPartActivity : ComponentActivity() {
         if (result.resultCode == Activity.RESULT_OK) {
             val imageUri = result.data?.getParcelableExtra<Uri>("selectedImage")
             if (imageUri != null) {
-                // analyzeImage(imageUri)
+                // Aquí podríamos procesar la imagen si fuera necesario
             }
         }
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,31 +52,25 @@ class BodyPartActivity : ComponentActivity() {
 
         when (color) {
             "#FF000000" -> {
-                Toast.makeText(this, "Área Negra", Toast.LENGTH_SHORT).show()
                 bodyPart = "Cabeza"
-
             }
             "#FFED1C24" -> {
-                Toast.makeText(this, "Área Roja", Toast.LENGTH_SHORT).show()
                 bodyPart = "Brazo derecho"
             }
             "#FFFFC90E" -> {
-                Toast.makeText(this, "Área Amarilla", Toast.LENGTH_SHORT).show()
                 bodyPart = "Torso"
             }
             "#FF22B14C" -> {
-                Toast.makeText(this, "Área Verde", Toast.LENGTH_SHORT).show()
                 bodyPart = "Brazo izquierdo"
             }
             "#FF3F48CC" -> {
-                Toast.makeText(this, "Área Azul", Toast.LENGTH_SHORT).show()
                 bodyPart = "Pierna derecha"
             }
             "#FFED00FF" -> {
-                Toast.makeText(this, "Área Morada", Toast.LENGTH_SHORT).show()
                 bodyPart = "Pierna izquierda"
             }
             else -> {
+                bodyPart = "Parte desconocida"
                 Toast.makeText(this, "Área Desconocida", Toast.LENGTH_SHORT).show()
             }
         }
@@ -80,43 +78,12 @@ class BodyPartActivity : ComponentActivity() {
         bodyPartTitleTextView = findViewById(R.id.bodyPartTitle)
         bodyPartTitleTextView.text = bodyPart
 
-        // Mostrar el valor del color en un TextView (o personalizar la UI según tus necesidades)
-        //val colorTextView: TextView = findViewById(R.id.colorTextView)
-        // colorTextView.text = String.format("Color seleccionado: $color ")
-
         lunarRecyclerView = findViewById(R.id.lunarRecyclerView)
         addButton = findViewById(R.id.addButton)
+        searchView = findViewById(R.id.moleSearch)
 
-        // Lista de ejemplo
-        val moleLists = listOf(
-            Mole("Lunar 1", "Descripción 1", listOf(R.drawable.cat, R.drawable.cat)),
-            Mole("Lunar 2", "Descripción 2",listOf(R.drawable.cat)),
-            Mole("Lunaar 3", "Descripción 3", listOf(R.drawable.cat))
-        )
-
-        lunarRecyclerView.layoutManager = GridLayoutManager(this, 1)
-        moleAdapter = MoleAdapter(moleLists) { lunar ->
-            // Aquí puedes abrir una nueva actividad con más detalles del lunar
-            val intent = Intent(this, MoleDetailActivity::class.java)
-            intent.putExtra("LUNAR_TITLE", lunar.title)
-            intent.putExtra("LUNAR_DESCRIPTION", lunar.description)
-            intent.putIntegerArrayListExtra("LUNAR_IMAGE_LIST", ArrayList(lunar.imageList))
-            startActivity(intent)
-        }
-        lunarRecyclerView.adapter = moleAdapter
-
-        lunarRecyclerView.itemAnimator?.apply {
-            addDuration = 250L   // Duración de la animación de adición
-            removeDuration = 250L // Duración de la animación de eliminación
-            changeDuration = 250L // Duración de la animación de cambio
-        }
-
-        addButton.setOnClickListener {
-            // Lógica para agregar un nuevo lunar
-            // Puedes abrir una nueva actividad para capturar una imagen y añadir un nuevo lunar
-            /*val intent = Intent(this, AddLunarActivity::class.java)
-            startActivity(intent)*/
-        }
+        setupRecyclerView()
+        loadMolesFromFirebase(color)
 
         addButton.setOnClickListener {
             val intent = Intent(this, CameraActivity::class.java)
@@ -125,7 +92,65 @@ class BodyPartActivity : ComponentActivity() {
             imageAnalysisLauncher.launch(intent)
         }
 
-        val searchView: SearchView = findViewById(R.id.moleSearch)
+        setupSearchView()
+    }
+
+    private fun setupRecyclerView() {
+        lunarRecyclerView.layoutManager = GridLayoutManager(this, 1)
+        moleAdapter = MoleAdapter(moleList) { mole ->
+            val intent = Intent(this, MoleDetailActivity::class.java)
+            intent.putExtra("MOLE_ID", mole.id)
+            intent.putExtra("LUNAR_TITLE", mole.title)
+            intent.putExtra("LUNAR_DESCRIPTION", mole.description)
+            intent.putExtra("LUNAR_ANALYSIS_RESULT", mole.analysisResult)
+            intent.putExtra("LUNAR_IMAGE_URL", mole.imageUrl)
+            startActivity(intent)
+        }
+        lunarRecyclerView.adapter = moleAdapter
+
+        lunarRecyclerView.itemAnimator?.apply {
+            addDuration = 250L
+            removeDuration = 250L
+            changeDuration = 250L
+        }
+    }
+
+    private fun loadMolesFromFirebase(colorCode: String?) {
+        if (colorCode == null) return
+
+        lifecycleScope.launch {
+            try {
+                val firebaseMoles = firebaseDataManager.getMolesForBodyPart(colorCode)
+
+                moleList.clear()
+
+                for (fbMole in firebaseMoles) {
+                    moleList.add(
+                        Mole(
+                            id = fbMole.id,
+                            title = fbMole.title,
+                            description = fbMole.description,
+                            imageUrl = fbMole.imageUrl,
+                            analysisResult = fbMole.analysisResult
+                        )
+                    )
+                }
+
+                runOnUiThread {
+                    if (moleList.isEmpty()) {
+                        Toast.makeText(this@BodyPartActivity, "No hay lunares registrados en esta parte del cuerpo", Toast.LENGTH_SHORT).show()
+                    }
+                    moleAdapter.notifyDataSetChanged()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this@BodyPartActivity, "Error al cargar lunares: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun setupSearchView() {
         searchView.isIconified = false
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
@@ -133,11 +158,18 @@ class BodyPartActivity : ComponentActivity() {
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                moleAdapter.filter.filter(newText) // Aplicar el filtro
+                moleAdapter.filter.filter(newText)
                 return false
             }
         })
-
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Recargar datos cuando volvamos a esta actividad
+        val color = intent.getStringExtra("COLOR_VALUE")
+        if (color != null) {
+            loadMolesFromFirebase(color)
+        }
+    }
 }
