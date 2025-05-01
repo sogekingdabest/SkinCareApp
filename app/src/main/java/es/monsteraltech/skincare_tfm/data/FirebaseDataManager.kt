@@ -1,5 +1,6 @@
 package es.monsteraltech.skincare_tfm.data
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
@@ -7,6 +8,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.Date
 import java.util.UUID
 import kotlin.coroutines.resume
@@ -38,6 +40,38 @@ class FirebaseDataManager {
         val createdAt: Date = Date(),
         val updatedAt: Date = Date()
     )
+
+    suspend fun saveImageLocally(context: Context, imagePath: String): String = suspendCoroutine { continuation ->
+        try {
+            val userId = auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado")
+            val timestamp = Date().time
+            val imageId = UUID.randomUUID().toString()
+            val imageName = "mole_${imageId}_$timestamp.jpg"
+
+            // Crear directorio para imágenes si no existe
+            val directory = File(context.filesDir, "mole_images/$userId")
+            if (!directory.exists()) {
+                directory.mkdirs()
+            }
+
+            // Copiar el archivo a almacenamiento interno
+            val sourceFile = File(imagePath)
+            val destinationFile = File(directory, imageName)
+            sourceFile.copyTo(destinationFile, true)
+
+            // Devolver la ruta relativa para guardar en Firestore
+            val relativePath = "mole_images/$userId/$imageName"
+            continuation.resume(relativePath)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al guardar imagen localmente: ${e.message}")
+            continuation.resumeWithException(e)
+        }
+    }
+
+    // Función para obtener la ruta completa a partir de la relativa
+    fun getFullImagePath(context: Context, relativePath: String): String {
+        return File(context.filesDir, relativePath).absolutePath
+    }
 
     // Función para subir imagen a Firebase Storage
     suspend fun uploadImage(imagePath: String, isMoleThumbnail: Boolean = true): String = suspendCoroutine { continuation ->

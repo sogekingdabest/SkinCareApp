@@ -2,13 +2,13 @@ package es.monsteraltech.skincare_tfm.body.mole.repository
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
 import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
+import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import id.zelory.compressor.Compressor
 import id.zelory.compressor.constraint.format
 import id.zelory.compressor.constraint.quality
@@ -18,7 +18,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.UUID
 
 class MoleRepository {
     private val firestore = FirebaseFirestore.getInstance()
@@ -26,55 +25,6 @@ class MoleRepository {
     private val auth = FirebaseAuth.getInstance()
 
     private val molesCollection = firestore.collection("moles")
-    private val imagesRef = storage.reference.child("mole_images")
-
-    // Función para guardar un lunar con imagen
-    suspend fun saveMole(
-        context: Context,
-        imageFile: File,
-        title: String,
-        description: String,
-        bodyPart: String,
-        bodyPartColorCode: String,
-        aiResult: String
-    ): Result<MoleData> = withContext(Dispatchers.IO) {
-        try {
-            // 1. Obtener el usuario actual
-            val currentUser = auth.currentUser ?: return@withContext Result.failure(
-                Exception("Usuario no autenticado")
-            )
-
-            // 2. Comprimir la imagen
-            val compressedImageFile = compressImage(context, imageFile)
-
-            // 3. Subir la imagen a Storage
-            val imageUrl = uploadImage(compressedImageFile)
-
-            // 4. Crear el objeto MoleData
-            val moleData = MoleData(
-                title = title,
-                description = description,
-                bodyPart = bodyPart,
-                bodyPartColorCode = bodyPartColorCode,
-                imageUrl = imageUrl,
-                aiResult = aiResult,
-                userId = currentUser.uid,
-                createdAt = Timestamp.now(),
-                updatedAt = Timestamp.now()
-            )
-
-            // 5. Guardar en Firestore
-            val documentRef = molesCollection.add(moleData.toMap()).await()
-
-            // 6. Devolver el objeto con el ID asignado
-            val savedMole = moleData.copy(id = documentRef.id)
-            Result.success(savedMole)
-
-        } catch (e: Exception) {
-            Log.e("MoleRepository", "Error al guardar el lunar", e)
-            Result.failure(e)
-        }
-    }
 
     // Función para obtener todos los lunares de un usuario
     suspend fun getMolesByUser(userId: String): Result<List<MoleData>> = withContext(Dispatchers.IO) {
@@ -171,13 +121,58 @@ class MoleRepository {
         }
     }
 
-    // Función auxiliar para subir imágenes a Firebase Storage
-    private suspend fun uploadImage(imageFile: File): String {
-        val fileName = "mole_${UUID.randomUUID()}.jpg"
-        val imageRef = imagesRef.child(fileName)
+    // Modificar esta función para usar almacenamiento local
+    private suspend fun uploadImage(context: Context, imageFile: File): String {
+        val firebaseDataManager = FirebaseDataManager()
+        return firebaseDataManager.saveImageLocally(context, imageFile.absolutePath)
+    }
 
-        val uploadTask = imageRef.putFile(Uri.fromFile(imageFile)).await()
-        return uploadTask.storage.downloadUrl.await().toString()
+    // Y también modificar la función saveMole
+    suspend fun saveMole(
+        context: Context,
+        imageFile: File,
+        title: String,
+        description: String,
+        bodyPart: String,
+        bodyPartColorCode: String,
+        aiResult: String
+    ): Result<MoleData> = withContext(Dispatchers.IO) {
+        try {
+            // 1. Obtener el usuario actual
+            val currentUser = auth.currentUser ?: return@withContext Result.failure(
+                Exception("Usuario no autenticado")
+            )
+
+            // 2. Comprimir la imagen
+            val compressedImageFile = compressImage(context, imageFile)
+
+            // 3. Guardar la imagen localmente
+            val imagePath = uploadImage(context, compressedImageFile)
+
+            // 4. Crear el objeto MoleData
+            val moleData = MoleData(
+                title = title,
+                description = description,
+                bodyPart = bodyPart,
+                bodyPartColorCode = bodyPartColorCode,
+                imageUrl = imagePath, // Ahora es una ruta local
+                aiResult = aiResult,
+                userId = currentUser.uid,
+                createdAt = Timestamp.now(),
+                updatedAt = Timestamp.now()
+            )
+
+            // 5. Guardar en Firestore
+            val documentRef = molesCollection.add(moleData.toMap()).await()
+
+            // 6. Devolver el objeto con el ID asignado
+            val savedMole = moleData.copy(id = documentRef.id)
+            Result.success(savedMole)
+
+        } catch (e: Exception) {
+            Log.e("MoleRepository", "Error al guardar el lunar", e)
+            Result.failure(e)
+        }
     }
 
     /**
