@@ -1,5 +1,6 @@
 package es.monsteraltech.skincare_tfm.analysis
 
+import android.app.ProgressDialog
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -10,9 +11,13 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.google.firebase.auth.FirebaseAuth
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.body.BodyPartActivity
+import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisResultBinding
+import kotlinx.coroutines.launch
 import java.io.File
 
 class AnalysisResultActivity : AppCompatActivity() {
@@ -21,6 +26,10 @@ class AnalysisResultActivity : AppCompatActivity() {
     private var photoFile: File? = null
     private var bodyPartColorCode: String? = null
     private var selectedBodyPart: String = "" // Para almacenar la parte del cuerpo seleccionada
+    private var analysisResult: String = "" // Para almacenar el resultado del análisis IA
+
+    private val moleRepository = MoleRepository()
+    private val auth = FirebaseAuth.getInstance()
 
     // Mapeo entre nombres de partes del cuerpo y códigos de color
     private val bodyPartToColorMap = mapOf(
@@ -126,15 +135,22 @@ class AnalysisResultActivity : AppCompatActivity() {
 
         binding.root.postDelayed({
             // Resultado de ejemplo
-            val resultText = "Análisis completado. La imagen muestra características de un lunar " +
+            analysisResult = "Análisis completado. La imagen muestra características de un lunar " +
                     "de tipo benigno con bordes regulares y coloración uniforme. " +
                     "Recomendación: Seguir monitorizando regularmente."
 
-            binding.analysisResultText.text = resultText
+            binding.analysisResultText.text = analysisResult
         }, 1500)
     }
 
     private fun saveImageWithDetails() {
+        // Verificar que el usuario está autenticado
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            Toast.makeText(this, "Por favor, inicia sesión para guardar", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val title = binding.titleEditText.text.toString()
         val description = binding.descriptionEditText.text.toString()
 
@@ -151,24 +167,71 @@ class AnalysisResultActivity : AppCompatActivity() {
             return
         }
 
-        // Aquí implementarías la lógica para guardar la imagen con su título y descripción
-        // Por ejemplo, podrías guardar estos datos en una base de datos local o remota
-
-        // Simulamos que se ha guardado correctamente
-        Toast.makeText(this, "Imagen guardada correctamente", Toast.LENGTH_SHORT).show()
-
-        // Volvemos a la actividad de la parte del cuerpo correspondiente
-        if (bodyPartColorCode != null) {
-            val intent = Intent(this, BodyPartActivity::class.java)
-            intent.putExtra("COLOR_VALUE", bodyPartColorCode)
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            startActivity(intent)
-        } else {
-            // Si no hay parte del cuerpo, volvemos a la actividad principal
-            val intent = Intent(this, es.monsteraltech.skincare_tfm.MainActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            startActivity(intent)
+        // Verificar que tenemos un archivo de imagen
+        if (photoFile == null || !photoFile!!.exists()) {
+            Toast.makeText(this, "Error: No se encontró la imagen", Toast.LENGTH_SHORT).show()
+            return
         }
-        finish()
+
+        // Mostrar diálogo de progreso
+        val progressDialog = ProgressDialog(this).apply {
+            setMessage("Guardando información...")
+            setCancelable(false)
+            show()
+        }
+
+        // Guardar en Firebase usando coroutines
+        lifecycleScope.launch {
+            try {
+                val result = moleRepository.saveMole(
+                    context = applicationContext,
+                    imageFile = photoFile!!,
+                    title = title,
+                    description = description,
+                    bodyPart = selectedBodyPart,
+                    bodyPartColorCode = bodyPartColorCode ?: "",
+                    aiResult = analysisResult
+                )
+
+                // Ocultar el diálogo de progreso
+                progressDialog.dismiss()
+
+                if (result.isSuccess) {
+                    Toast.makeText(this@AnalysisResultActivity,
+                        "Imagen guardada correctamente",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    // Volvemos a la actividad de la parte del cuerpo correspondiente
+                    if (bodyPartColorCode != null) {
+                        val intent = Intent(this@AnalysisResultActivity, BodyPartActivity::class.java)
+                        intent.putExtra("COLOR_VALUE", bodyPartColorCode)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        startActivity(intent)
+                    } else {
+                        // Si no hay parte del cuerpo, volvemos a la actividad principal
+                        val intent = Intent(this@AnalysisResultActivity, es.monsteraltech.skincare_tfm.MainActivity::class.java)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        startActivity(intent)
+                    }
+                    finish()
+                } else {
+                    // Mostrar error
+                    Toast.makeText(this@AnalysisResultActivity,
+                        "Error al guardar: ${result.exceptionOrNull()?.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } catch (e: Exception) {
+                // Ocultar el diálogo de progreso
+                progressDialog.dismiss()
+
+                // Mostrar error
+                Toast.makeText(this@AnalysisResultActivity,
+                    "Error al guardar: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 }
