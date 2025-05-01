@@ -42,7 +42,7 @@ class MoleDetailActivity : AppCompatActivity() {
 
         // Configurar ViewPager con las imágenes
         if (imageUrl != null && imageUrl.isNotEmpty()) {
-            // Si tenemos una URL, usar el adaptador para URL
+            // Si tenemos una URL o ruta local, usar el adaptador para URL
             val urlList = listOf(imageUrl)
             val urlPagerAdapter = UrlImagePagerAdapter(urlList)
             viewPager.adapter = urlPagerAdapter

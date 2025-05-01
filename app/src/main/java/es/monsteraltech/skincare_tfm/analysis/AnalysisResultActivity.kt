@@ -66,7 +66,8 @@ class AnalysisResultActivity : AppCompatActivity() {
                 if (isFrontCamera) {
                     val matrix = Matrix()
                     matrix.preScale(-1.0f, 1.0f) // Voltea horizontalmente para cámara frontal
-                    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                    bitmap =
+                        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
                 }
 
                 binding.resultImageView.setImageBitmap(bitmap)
@@ -86,7 +87,8 @@ class AnalysisResultActivity : AppCompatActivity() {
 
     private fun setupBodyPartSpinner() {
         // Crear el adaptador para el spinner con la lista de partes del cuerpo
-        val bodyPartsList = arrayListOf("Seleccionar parte del cuerpo") + bodyPartToColorMap.keys.toList()
+        val bodyPartsList =
+            arrayListOf("Seleccionar parte del cuerpo") + bodyPartToColorMap.keys.toList()
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, bodyPartsList)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.bodyPartSpinner.adapter = adapter
@@ -107,22 +109,28 @@ class AnalysisResultActivity : AppCompatActivity() {
             binding.bodyPartTextView.visibility = View.GONE
 
             // Escuchar cambios en el spinner
-            binding.bodyPartSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                    if (position > 0) { // Ignoramos la primera opción que es "Seleccionar parte del cuerpo"
-                        selectedBodyPart = bodyPartsList[position]
-                        bodyPartColorCode = bodyPartToColorMap[selectedBodyPart]
-                    } else {
+            binding.bodyPartSpinner.onItemSelectedListener =
+                object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(
+                        parent: AdapterView<*>?,
+                        view: View?,
+                        position: Int,
+                        id: Long
+                    ) {
+                        if (position > 0) { // Ignoramos la primera opción que es "Seleccionar parte del cuerpo"
+                            selectedBodyPart = bodyPartsList[position]
+                            bodyPartColorCode = bodyPartToColorMap[selectedBodyPart]
+                        } else {
+                            selectedBodyPart = ""
+                            bodyPartColorCode = null
+                        }
+                    }
+
+                    override fun onNothingSelected(parent: AdapterView<*>?) {
                         selectedBodyPart = ""
                         bodyPartColorCode = null
                     }
                 }
-
-                override fun onNothingSelected(parent: AdapterView<*>?) {
-                    selectedBodyPart = ""
-                    bodyPartColorCode = null
-                }
-            }
         }
     }
 
@@ -163,7 +171,8 @@ class AnalysisResultActivity : AppCompatActivity() {
         // Validar la selección de parte del cuerpo solo si no venía predefinida
         // y el usuario necesita seleccionar una
         if (bodyPartColorCode == null && selectedBodyPart.isEmpty()) {
-            Toast.makeText(this, "Por favor, selecciona una parte del cuerpo", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Por favor, selecciona una parte del cuerpo", Toast.LENGTH_SHORT)
+                .show()
             return
         }
 
@@ -197,27 +206,33 @@ class AnalysisResultActivity : AppCompatActivity() {
                 progressDialog.dismiss()
 
                 if (result.isSuccess) {
-                    Toast.makeText(this@AnalysisResultActivity,
+                    Toast.makeText(
+                        this@AnalysisResultActivity,
                         "Imagen guardada correctamente",
                         Toast.LENGTH_SHORT
                     ).show()
 
                     // Volvemos a la actividad de la parte del cuerpo correspondiente
                     if (bodyPartColorCode != null) {
-                        val intent = Intent(this@AnalysisResultActivity, BodyPartActivity::class.java)
+                        val intent =
+                            Intent(this@AnalysisResultActivity, BodyPartActivity::class.java)
                         intent.putExtra("COLOR_VALUE", bodyPartColorCode)
                         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                         startActivity(intent)
                     } else {
                         // Si no hay parte del cuerpo, volvemos a la actividad principal
-                        val intent = Intent(this@AnalysisResultActivity, es.monsteraltech.skincare_tfm.MainActivity::class.java)
+                        val intent = Intent(
+                            this@AnalysisResultActivity,
+                            es.monsteraltech.skincare_tfm.MainActivity::class.java
+                        )
                         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                         startActivity(intent)
                     }
                     finish()
                 } else {
                     // Mostrar error
-                    Toast.makeText(this@AnalysisResultActivity,
+                    Toast.makeText(
+                        this@AnalysisResultActivity,
                         "Error al guardar: ${result.exceptionOrNull()?.message}",
                         Toast.LENGTH_LONG
                     ).show()
@@ -227,7 +242,8 @@ class AnalysisResultActivity : AppCompatActivity() {
                 progressDialog.dismiss()
 
                 // Mostrar error
-                Toast.makeText(this@AnalysisResultActivity,
+                Toast.makeText(
+                    this@AnalysisResultActivity,
                     "Error al guardar: ${e.message}",
                     Toast.LENGTH_LONG
                 ).show()

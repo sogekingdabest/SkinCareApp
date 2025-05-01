@@ -130,7 +130,7 @@ class BodyPartActivity : ComponentActivity() {
                             id = fbMole.id,
                             title = fbMole.title,
                             description = fbMole.description,
-                            imageUrl = fbMole.imageUrl,
+                            imageUrl = fbMole.imageUrl,  // Ahora es una ruta local
                             analysisResult = fbMole.analysisResult
                         )
                     )

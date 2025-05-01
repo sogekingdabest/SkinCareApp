@@ -11,11 +11,14 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import es.monsteraltech.skincare_tfm.R
+import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
+import java.io.File
 
 class MoleAdapter(private val moleList: List<Mole>, private val onClick: (Mole) -> Unit) :
     RecyclerView.Adapter<MoleAdapter.MoleViewHolder>(), Filterable {
 
     private var filteredMoleList: List<Mole> = moleList
+    private val firebaseDataManager = FirebaseDataManager()
 
     class MoleViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val titleTextView: TextView = itemView.findViewById(R.id.moleTitle)
@@ -34,14 +37,29 @@ class MoleAdapter(private val moleList: List<Mole>, private val onClick: (Mole) 
         holder.titleTextView.text = mole.title
         holder.descriptionTextView.text = mole.description
 
-        // Cargar imagen desde URL con Glide si tenemos URL
+        // Cargar imagen según la forma en que está almacenada
         if (mole.imageUrl.isNotEmpty()) {
-            Glide.with(holder.imageView.context)
-                .load(mole.imageUrl)
-                .placeholder(R.drawable.cat) // Imagen de placeholder mientras carga
-                .error(R.drawable.cat) // Imagen si hay error
-                .centerCrop()
-                .into(holder.imageView)
+            if (mole.imageUrl.startsWith("http")) {
+                // Es una URL remota (posible caso antiguo/legacy)
+                Glide.with(holder.imageView.context)
+                    .load(mole.imageUrl)
+                    .placeholder(R.drawable.cat)
+                    .error(R.drawable.cat)
+                    .centerCrop()
+                    .into(holder.imageView)
+            } else {
+                // Es una ruta local
+                val fullPath = firebaseDataManager.getFullImagePath(
+                    holder.imageView.context,
+                    mole.imageUrl
+                )
+                Glide.with(holder.imageView.context)
+                    .load(File(fullPath))
+                    .placeholder(R.drawable.cat)
+                    .error(R.drawable.cat)
+                    .centerCrop()
+                    .into(holder.imageView)
+            }
         } else if (mole.imageList.isNotEmpty()) {
             // Soporte para el método anterior (recursos locales)
             holder.imageView.setImageResource(mole.imageList[0])
