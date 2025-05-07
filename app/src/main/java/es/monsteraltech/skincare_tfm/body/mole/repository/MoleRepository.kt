@@ -6,7 +6,6 @@ import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import id.zelory.compressor.Compressor
@@ -18,116 +17,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
 
 class MoleRepository {
     private val firestore = FirebaseFirestore.getInstance()
-    private val storage = FirebaseStorage.getInstance()
     private val auth = FirebaseAuth.getInstance()
+    private val firebaseDataManager = FirebaseDataManager()
 
-    private val molesCollection = firestore.collection("moles")
+    private val USERS_COLLECTION = "users"
+    private val MOLES_SUBCOLLECTION = "moles"
+    private val ANALYSIS_SUBCOLLECTION = "mole_analysis"
 
-    // Función para obtener todos los lunares de un usuario
-    suspend fun getMolesByUser(userId: String): Result<List<MoleData>> = withContext(Dispatchers.IO) {
-        try {
-            val querySnapshot = molesCollection
-                .whereEqualTo("userId", userId)
-                .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                .get()
-                .await()
-
-            val moles = querySnapshot.documents.mapNotNull { doc ->
-                val mole = doc.toObject(MoleData::class.java)
-                mole?.copy(id = doc.id)
-            }
-
-            Result.success(moles)
-        } catch (e: Exception) {
-            Log.e("MoleRepository", "Error al obtener los lunares", e)
-            Result.failure(e)
-        }
-    }
-
-    // Función para obtener lunares por parte del cuerpo
-    suspend fun getMolesByBodyPart(userId: String, bodyPartColorCode: String): Result<List<MoleData>> =
-        withContext(Dispatchers.IO) {
-            try {
-                val querySnapshot = molesCollection
-                    .whereEqualTo("userId", userId)
-                    .whereEqualTo("bodyPartColorCode", bodyPartColorCode)
-                    .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                    .get()
-                    .await()
-
-                val moles = querySnapshot.documents.mapNotNull { doc ->
-                    val mole = doc.toObject(MoleData::class.java)
-                    mole?.copy(id = doc.id)
-                }
-
-                Result.success(moles)
-            } catch (e: Exception) {
-                Log.e("MoleRepository", "Error al obtener los lunares por parte del cuerpo", e)
-                Result.failure(e)
-            }
-        }
-
-    // Función para actualizar un lunar existente
-    suspend fun updateMole(moleData: MoleData): Result<MoleData> = withContext(Dispatchers.IO) {
-        try {
-            val updateData = moleData.copy(updatedAt = Timestamp.now())
-            molesCollection.document(moleData.id).update(updateData.toMap()).await()
-            Result.success(updateData)
-        } catch (e: Exception) {
-            Log.e("MoleRepository", "Error al actualizar el lunar", e)
-            Result.failure(e)
-        }
-    }
-
-    // Función para eliminar un lunar
-    suspend fun deleteMole(moleId: String): Result<Boolean> = withContext(Dispatchers.IO) {
-        try {
-            // Obtener datos del lunar para eliminar la imagen también
-            val moleDoc = molesCollection.document(moleId).get().await()
-            val mole = moleDoc.toObject(MoleData::class.java)
-
-            // Eliminar documento de Firestore
-            molesCollection.document(moleId).delete().await()
-
-            // Eliminar imagen de Storage si existe
-            mole?.imageUrl?.let { url ->
-                if (url.isNotEmpty()) {
-                    try {
-                        val storageRef = storage.getReferenceFromUrl(url)
-                        storageRef.delete().await()
-                    } catch (e: Exception) {
-                        Log.w("MoleRepository", "Error al eliminar imagen", e)
-                    }
-                }
-            }
-
-            Result.success(true)
-        } catch (e: Exception) {
-            Log.e("MoleRepository", "Error al eliminar el lunar", e)
-            Result.failure(e)
-        }
-    }
-
-    // Función auxiliar para comprimir imágenes
-    private suspend fun compressImage(context: Context, imageFile: File): File {
-        return Compressor.compress(context, imageFile) {
-            resolution(1024, 1024)
-            quality(80)
-            format(Bitmap.CompressFormat.JPEG)
-            size(512_000) // 500 KB máximo
-        }
-    }
-
-    // Modificar esta función para usar almacenamiento local
-    private suspend fun uploadImage(context: Context, imageFile: File): String {
-        val firebaseDataManager = FirebaseDataManager()
-        return firebaseDataManager.saveImageLocally(context, imageFile.absolutePath)
-    }
-
-    // Y también modificar la función saveMole
+    // Función para guardar un lunar con imagen
     suspend fun saveMole(
         context: Context,
         imageFile: File,
@@ -146,28 +47,37 @@ class MoleRepository {
             // 2. Comprimir la imagen
             val compressedImageFile = compressImage(context, imageFile)
 
-            // 3. Guardar la imagen localmente
-            val imagePath = uploadImage(context, compressedImageFile)
+            // 3. Guardar la imagen localmente y obtener la ruta
+            val localImagePath = firebaseDataManager.saveImageLocally(
+                context,
+                compressedImageFile.absolutePath
+            )
 
             // 4. Crear el objeto MoleData
+            val moleId = UUID.randomUUID().toString()
             val moleData = MoleData(
+                id = moleId,
                 title = title,
                 description = description,
                 bodyPart = bodyPart,
                 bodyPartColorCode = bodyPartColorCode,
-                imageUrl = imagePath, // Ahora es una ruta local
+                imageUrl = localImagePath,
                 aiResult = aiResult,
                 userId = currentUser.uid,
                 createdAt = Timestamp.now(),
                 updatedAt = Timestamp.now()
             )
 
-            // 5. Guardar en Firestore
-            val documentRef = molesCollection.add(moleData.toMap()).await()
+            // 5. Guardar en Firestore como subcolección del usuario
+            firestore.collection(USERS_COLLECTION)
+                .document(currentUser.uid)
+                .collection(MOLES_SUBCOLLECTION)
+                .document(moleId)
+                .set(moleData.toMap())
+                .await()
 
             // 6. Devolver el objeto con el ID asignado
-            val savedMole = moleData.copy(id = documentRef.id)
-            Result.success(savedMole)
+            Result.success(moleData)
 
         } catch (e: Exception) {
             Log.e("MoleRepository", "Error al guardar el lunar", e)
@@ -175,12 +85,50 @@ class MoleRepository {
         }
     }
 
+    // Función para obtener lunares por parte del cuerpo
+    suspend fun getMolesByBodyPart(userId: String, bodyPartColorCode: String): Result<List<MoleData>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val querySnapshot = firestore.collection(USERS_COLLECTION)
+                    .document(userId)
+                    .collection(MOLES_SUBCOLLECTION)
+                    .whereEqualTo("bodyPartColorCode", bodyPartColorCode)
+                    .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                    .get()
+                    .await()
+
+                val moles = querySnapshot.documents.mapNotNull { doc ->
+                    val mole = doc.toObject(MoleData::class.java)
+                    mole?.copy(id = doc.id)
+                }
+
+                Result.success(moles)
+            } catch (e: Exception) {
+                Log.e("MoleRepository", "Error al obtener los lunares por parte del cuerpo", e)
+                Result.failure(e)
+            }
+        }
+
+    // Función auxiliar para comprimir imágenes
+    private suspend fun compressImage(context: Context, imageFile: File): File {
+        return Compressor.compress(context, imageFile) {
+            resolution(1024, 1024)
+            quality(80)
+            format(Bitmap.CompressFormat.JPEG)
+            size(512_000) // 500 KB máximo
+        }
+    }
     /**
      * Obtiene un lunar específico por su ID
      */
-    suspend fun getMoleById(moleId: String): Result<MoleData> = withContext(Dispatchers.IO) {
+    suspend fun getMoleById(userId: String, moleId: String): Result<MoleData> = withContext(Dispatchers.IO) {
         try {
-            val docSnapshot = molesCollection.document(moleId).get().await()
+            val docSnapshot = firestore.collection(USERS_COLLECTION)
+                .document(userId)
+                .collection(MOLES_SUBCOLLECTION)
+                .document(moleId)
+                .get()
+                .await()
 
             if (docSnapshot.exists()) {
                 val mole = docSnapshot.toObject(MoleData::class.java)

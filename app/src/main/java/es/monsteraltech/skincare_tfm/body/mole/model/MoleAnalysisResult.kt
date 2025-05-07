@@ -6,7 +6,7 @@ import com.google.firebase.Timestamp
  * Modelo para los resultados del análisis de IA de un lunar
  */
 data class MoleAnalysisResult(
-    val moleId: String = "",                   // ID del lunar al que corresponde el análisis
+    val id: String = "",                   // ID del analisis
     val analysisText: String = "",             // Texto completo del resultado del análisis
     val riskLevel: String = "",                // Nivel de riesgo estimado (bajo, medio, alto)
     val confidence: Double = 0.0,              // Nivel de confianza del análisis (0-1)
@@ -20,7 +20,7 @@ data class MoleAnalysisResult(
     // Método para convertir a Map para Firestore
     fun toMap(): Map<String, Any> {
         return mapOf(
-            "moleId" to moleId,
+            "id" to id,
             "analysisText" to analysisText,
             "riskLevel" to riskLevel,
             "confidence" to confidence,

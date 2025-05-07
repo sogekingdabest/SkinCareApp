@@ -8,13 +8,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
+import com.google.firebase.auth.FirebaseAuth
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.body.mole.adapter.AnalysisAdapter
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
 import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
+import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisHistoryBinding
 import kotlinx.coroutines.launch
+import java.io.File
 
 class MoleAnalysisHistoryActivity : AppCompatActivity() {
 
@@ -23,6 +26,8 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
 
     private val moleRepository = MoleRepository()
     private val analysisService = MoleAnalysisService()
+    private val firebaseDataManager = FirebaseDataManager()
+    private val auth = FirebaseAuth.getInstance()
 
     private var moleId: String = ""
     private var moleData: MoleData? = null
@@ -67,10 +72,19 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
     private fun loadMoleData() {
         binding.progressBar.visibility = View.VISIBLE
 
+        // Verificar que el usuario está autenticado
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            binding.progressBar.visibility = View.GONE
+            Toast.makeText(this, "Error: Usuario no autenticado", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
         lifecycleScope.launch {
             try {
-                // Obtener datos del lunar
-                val mole = moleRepository.getMoleById(moleId)
+                // Obtener datos del lunar usando la nueva estructura
+                val mole = moleRepository.getMoleById(currentUser.uid, moleId)
 
                 if (mole.isSuccess) {
                     moleData = mole.getOrNull()
@@ -79,12 +93,25 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
                         // Mostrar título
                         binding.moleTitleText.text = mole.title
 
-                        // Cargar imagen
+                        // Cargar imagen - ahora considerando que puede ser una ruta local
                         if (mole.imageUrl.isNotEmpty()) {
-                            Glide.with(this@MoleAnalysisHistoryActivity)
-                                .load(mole.imageUrl)
-                                .placeholder(R.drawable.ic_launcher_background)
-                                .into(binding.moleImageView)
+                            if (mole.imageUrl.startsWith("http")) {
+                                // Es una URL remota (caso legacy)
+                                Glide.with(this@MoleAnalysisHistoryActivity)
+                                    .load(mole.imageUrl)
+                                    .placeholder(R.drawable.ic_launcher_background)
+                                    .into(binding.moleImageView)
+                            } else {
+                                // Es una ruta local
+                                val fullPath = firebaseDataManager.getFullImagePath(
+                                    this@MoleAnalysisHistoryActivity,
+                                    mole.imageUrl
+                                )
+                                Glide.with(this@MoleAnalysisHistoryActivity)
+                                    .load(File(fullPath))
+                                    .placeholder(R.drawable.ic_launcher_background)
+                                    .into(binding.moleImageView)
+                            }
                         }
                     }
                 } else {
@@ -106,9 +133,18 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
     }
 
     private fun loadAnalysisHistory() {
+        // Verificar que el usuario está autenticado
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            binding.progressBar.visibility = View.GONE
+            Toast.makeText(this, "Error: Usuario no autenticado", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
         lifecycleScope.launch {
             try {
-                // Obtener historial de análisis
+                // Obtener historial de análisis usando la nueva estructura anidada
                 val result = analysisService.getMoleAnalysisHistory(moleId)
 
                 binding.progressBar.visibility = View.GONE

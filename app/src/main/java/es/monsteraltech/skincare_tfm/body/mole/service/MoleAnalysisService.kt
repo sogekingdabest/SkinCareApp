@@ -17,28 +17,30 @@ class MoleAnalysisService {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
-    private val analysisCollection = firestore.collection("mole_analysis")
+    private val USERS_COLLECTION = "users"
+    private val MOLES_SUBCOLLECTION = "moles"
+    private val ANALYSIS_SUBCOLLECTION = "analysis"
 
-    /**
-     * Analiza la imagen de un lunar y guarda los resultados en Firestore
-     * @param bitmap La imagen del lunar a analizar
-     * @param moleId El ID del lunar (si ya está guardado en Firestore)
-     * @return El resultado del análisis
-     */
-    suspend fun analyzeMoleImage(bitmap: Bitmap, moleId: String = ""): Result<MoleAnalysisResult> =
+    // Analiza la imagen de un lunar y guarda los resultados en Firestore
+    suspend fun analyzeMoleImage(bitmap: Bitmap, moleId: String): Result<MoleAnalysisResult> =
         withContext(Dispatchers.IO) {
             try {
-                // 1. Verificar usuario autenticado
+                // Verificar usuario autenticado
                 val currentUser = auth.currentUser ?: return@withContext Result.failure(
                     Exception("Usuario no autenticado")
                 )
 
-                // 2. Realizar el análisis de la imagen (simulado)
+                if (moleId.isEmpty()) {
+                    return@withContext Result.failure(Exception("ID de lunar requerido"))
+                }
+
+                // Realizar el análisis de la imagen
                 val analysisResult = performImageAnalysis(bitmap)
 
-                // 3. Crear el objeto MoleAnalysisResult con el ID del lunar si existe
+                // Crear el objeto MoleAnalysisResult
+                val analysisId = UUID.randomUUID().toString()
                 val moleAnalysis = MoleAnalysisResult(
-                    moleId = moleId,
+                    id = analysisId,
                     analysisText = analysisResult.analysisDescription,
                     riskLevel = analysisResult.riskLevel,
                     confidence = analysisResult.confidence,
@@ -46,20 +48,16 @@ class MoleAnalysisService {
                     recommendedAction = analysisResult.recommendation
                 )
 
-                // 4. Guardar en Firestore
-                val docRef = if (moleId.isNotEmpty()) {
-                    // Si ya existe el lunar, usamos su ID como parte del ID del análisis
-                    val analysisId = "analysis_${moleId}_${UUID.randomUUID()}"
-                    analysisCollection.document(analysisId).set(moleAnalysis.toMap()).await()
-                    analysisCollection.document(analysisId)
-                } else {
-                    // Si es un nuevo lunar, creamos un documento con ID automático
-                    analysisCollection.add(moleAnalysis.toMap()).await()
-                }
+                // Guardar en Firestore como subcolección del lunar
+                firestore.collection(USERS_COLLECTION)
+                    .document(currentUser.uid)
+                    .collection(MOLES_SUBCOLLECTION)
+                    .document(moleId)
+                    .collection(ANALYSIS_SUBCOLLECTION)
+                    .document(analysisId)
+                    .set(moleAnalysis.toMap())
+                    .await()
 
-                Log.d("MoleAnalysisService", "Análisis guardado con ID: ${docRef.id}")
-
-                // 5. Devolver el resultado
                 Result.success(moleAnalysis)
 
             } catch (e: Exception) {
@@ -68,22 +66,25 @@ class MoleAnalysisService {
             }
         }
 
-    /**
-     * Obtiene todos los análisis de un lunar específico
-     * @param moleId El ID del lunar
-     * @return Lista de análisis ordenados por fecha (más reciente primero)
-     */
+    // Obtiene todos los análisis de un lunar específico
     suspend fun getMoleAnalysisHistory(moleId: String): Result<List<MoleAnalysisResult>> =
         withContext(Dispatchers.IO) {
             try {
-                val querySnapshot = analysisCollection
-                    .whereEqualTo("moleId", moleId)
+                val currentUser = auth.currentUser ?: return@withContext Result.failure(
+                    Exception("Usuario no autenticado")
+                )
+
+                val querySnapshot = firestore.collection(USERS_COLLECTION)
+                    .document(currentUser.uid)
+                    .collection(MOLES_SUBCOLLECTION)
+                    .document(moleId)
+                    .collection(ANALYSIS_SUBCOLLECTION)
                     .orderBy("analysisDate", com.google.firebase.firestore.Query.Direction.DESCENDING)
                     .get()
                     .await()
 
                 val analysisList = querySnapshot.documents.mapNotNull { doc ->
-                    doc.toObject(MoleAnalysisResult::class.java)
+                    doc.toObject(MoleAnalysisResult::class.java)?.copy(id = doc.id)
                 }
 
                 Result.success(analysisList)
@@ -93,7 +94,6 @@ class MoleAnalysisService {
                 Result.failure(e)
             }
         }
-
     /**
      * Clase para los resultados simulados del análisis
      */
