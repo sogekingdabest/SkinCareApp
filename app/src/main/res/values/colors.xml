@@ -2,4 +2,24 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Colores para niveles de riesgo -->
+    <color name="risk_very_low">#4CAF50</color>
+    <color name="risk_low">#8BC34A</color>
+    <color name="risk_moderate">#FFC107</color>
+    <color name="risk_high">#FF5722</color>
+    <color name="risk_very_high">#D32F2F</color>
+
+    <!-- Colores para tarjetas según urgencia -->
+    <color name="card_routine">#FFFFFF</color>
+    <color name="card_monitor">#FFF3E0</color>
+    <color name="card_consult">#FFE0B2</color>
+    <color name="card_urgent">#FFCCBC</color>
+
+    <!-- Otros colores de la app -->
+    <color name="background_light">#F5F5F5</color>
+    <color name="colorPrimary">#1976D2</color>
+    <color name="colorPrimaryDark">#0D47A1</color>
+    <color name="colorAccent">#FF5722</color>
+
 </resources>
