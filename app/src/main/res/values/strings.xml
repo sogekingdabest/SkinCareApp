@@ -8,6 +8,21 @@
     <string name="previous">Previous</string>
     <string name="search">Buscar</string>
 
+    <!-- Strings para análisis ABCDE -->
+    <string name="abcde_info_title">Criterios ABCDE</string>
+    <string name="abcde_info_content">La regla ABCDE evalúa:\n\nA - Asimetría: Si una mitad no coincide con la otra\nB - Bordes: Irregulares, desiguales o poco definidos\nC - Color: Múltiples colores o distribución desigual\nD - Diámetro: Mayor a 6mm (tamaño de un borrador de lápiz)\nE - Evolución: Cambios en tamaño, forma o color\n\nEste análisis combina estos criterios tradicionales con inteligencia artificial para una evaluación más precisa.</string>
+
+    <string name="save_analysis">Guardar Análisis</string>
+    <string name="view_evolution">Ver Evolución</string>
+    <string name="analyzing">Analizando imagen con IA y criterios ABCDE...</string>
+
+    <!-- Mensajes de riesgo -->
+    <string name="risk_very_low_message">✅ Aspecto normal. Continúe con autoexámenes regulares cada 3 meses.</string>
+    <string name="risk_low_message">👀 Lunar de bajo riesgo. Fotografíe mensualmente para detectar cambios.</string>
+    <string name="risk_moderate_message">⚠️ Riesgo moderado detectado. Recomendamos evaluación dermatológica en los próximos 1-2 meses.</string>
+    <string name="risk_high_message">🔶 Riesgo alto identificado. Consulte con un dermatólogo en las próximas 2-4 semanas.</string>
+    <string name="risk_very_high_message">🔴 Riesgo muy alto. Múltiples características de alarma detectadas. Solicite cita con dermatólogo lo antes posible (urgente).</string>
+
     <string name="lorem_ipsum">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam in scelerisque sem. Mauris
         volutpat, dolor id interdum ullamcorper, risus dolor egestas lectus, sit amet mattis purus

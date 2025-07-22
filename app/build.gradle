@@ -78,6 +78,20 @@ dependencies {
     // Para la compresión de imágenes
     implementation 'id.zelory:compressor:3.0.1'
 
+    // TensorFlow Lite Support - Compatible con TensorFlow 2.18.0
+    implementation('org.tensorflow:tensorflow-lite:2.17.0') {
+        exclude group: 'com.google.ai.edge.litert', module: 'litert-api'
+    }
+    implementation('org.tensorflow:tensorflow-lite-support:0.4.4') {
+        exclude group: 'com.google.ai.edge.litert', module: 'litert-api'
+    }
+    implementation('org.tensorflow:tensorflow-lite-gpu:2.17.0') {
+        exclude group: 'com.google.ai.edge.litert', module: 'litert-api'
+    }
+
+    // Para procesamiento de imágenes mejorado
+//    implementation 'com.github.opencv:opencv:4.5.5'
+
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
