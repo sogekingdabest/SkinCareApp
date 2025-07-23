@@ -4,9 +4,25 @@ package es.monsteraltech.skincare_tfm.analysis
 import android.graphics.Bitmap
 import android.util.Log
 import org.opencv.android.Utils
-import org.opencv.core.*
+import org.opencv.core.Core
+import org.opencv.core.CvType
+import org.opencv.core.Mat
+import org.opencv.core.MatOfFloat
+import org.opencv.core.MatOfInt
+import org.opencv.core.MatOfInt4
+import org.opencv.core.MatOfPoint
+import org.opencv.core.MatOfPoint2f
+import org.opencv.core.Point
+import org.opencv.core.Rect
+import org.opencv.core.Scalar
+import org.opencv.core.Size
+import org.opencv.core.TermCriteria
 import org.opencv.imgproc.Imgproc
-import kotlin.math.*
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.ln
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * Analizador ABCDE implementado con OpenCV para análisis preciso
@@ -881,10 +897,22 @@ class ABCDEAnalyzerOpenCV {
     private fun Mat.toList(): List<DoubleArray> {
         val list = mutableListOf<DoubleArray>()
         for (i in 0 until this.rows()) {
-            val row = DoubleArray(this.cols())
-            this.get(i, 0, row)
+            val row = when (this.type()) {
+                CvType.CV_64F -> {
+                    val temp = DoubleArray(this.cols())
+                    this.get(i, 0, temp)
+                    temp
+                }
+                CvType.CV_32F -> {
+                    val temp = FloatArray(this.cols())
+                    this.get(i, 0, temp)
+                    temp.map { it.toDouble() }.toDoubleArray()
+                }
+                else -> throw UnsupportedOperationException("Mat data type is not compatible: ${this.type()}")
+            }
             list.add(row)
         }
         return list
     }
+
 }
