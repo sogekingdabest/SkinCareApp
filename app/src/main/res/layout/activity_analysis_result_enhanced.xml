@@ -36,7 +36,119 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- Processing Overlay -->
+    <FrameLayout
+        android:id="@+id/processingOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/processing_overlay_background"
+        android:visibility="gone"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp">
+
+            <!-- Processing Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <!-- Processing Title -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/processing_title"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:textAlignment="center"
+                        android:layout_marginBottom="16dp" />
+
+                    <!-- Progress Bar -->
+                    <ProgressBar
+                        android:id="@+id/processingProgressBar"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="12dp"
+                        android:layout_marginBottom="16dp"
+                        android:max="100"
+                        android:progress="0"
+                        android:progressDrawable="@drawable/progress_processing_stage"
+                        android:contentDescription="Progreso del análisis de imagen"
+                        android:importantForAccessibility="yes"
+                        android:accessibilityLiveRegion="polite"
+                        android:focusable="true" />
+
+                    <!-- Status Message -->
+                    <TextView
+                        android:id="@+id/processingStatusText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/processing_initializing"
+                        android:textSize="16sp"
+                        android:textAlignment="center"
+                        android:layout_marginBottom="8dp"
+                        android:minHeight="24dp"
+                        android:gravity="center"
+                        android:importantForAccessibility="yes"
+                        android:accessibilityLiveRegion="polite"
+                        android:focusable="true"
+                        android:contentDescription="Estado actual del procesamiento" />
+
+                    <!-- Stage Indicator -->
+                    <TextView
+                        android:id="@+id/processingStageText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/processing_stage_format"
+                        android:textSize="14sp"
+                        android:textColor="@android:color/darker_gray"
+                        android:textAlignment="center"
+                        android:layout_marginBottom="20dp"
+                        android:minHeight="20dp"
+                        android:gravity="center"
+                        android:importantForAccessibility="yes"
+                        android:accessibilityLiveRegion="polite"
+                        android:focusable="true"
+                        android:contentDescription="Etapa actual del análisis" />
+
+                    <!-- Cancel Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/cancelProcessingButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:layout_gravity="center_horizontal"
+                        android:text="@string/processing_cancel"
+                        android:textSize="16sp"
+                        android:minWidth="120dp"
+                        android:contentDescription="@string/processing_cancel_description"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        app:strokeColor="@color/colorPrimary"
+                        app:strokeWidth="1dp"
+                        android:focusable="true"
+                        android:clickable="true" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+
+    </FrameLayout>
+
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/mainContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
@@ -199,7 +311,8 @@
                             android:layout_width="120dp"
                             android:layout_height="wrap_content"
                             android:text="A - Asimetría:"
-                            android:textStyle="bold" />
+                            android:textStyle="bold"
+                            android:contentDescription="Criterio A: Asimetría del lunar" />
 
                         <ProgressBar
                             android:id="@+id/asymmetryProgress"
@@ -208,14 +321,17 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_gravity="center_vertical"
-                            android:max="100" />
+                            android:max="100"
+                            android:contentDescription="Progreso de evaluación de asimetría"
+                            android:importantForAccessibility="yes" />
 
                         <TextView
                             android:id="@+id/asymmetryScore"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:text="0/2" />
+                            android:text="0/2"
+                            android:contentDescription="Puntuación de asimetría sobre 2 puntos" />
 
                     </LinearLayout>
 
@@ -230,7 +346,8 @@
                             android:layout_width="120dp"
                             android:layout_height="wrap_content"
                             android:text="B - Bordes:"
-                            android:textStyle="bold" />
+                            android:textStyle="bold"
+                            android:contentDescription="Criterio B: Irregularidad de bordes del lunar" />
 
                         <ProgressBar
                             android:id="@+id/borderProgress"
@@ -239,14 +356,17 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_gravity="center_vertical"
-                            android:max="100" />
+                            android:max="100"
+                            android:contentDescription="Progreso de evaluación de bordes"
+                            android:importantForAccessibility="yes" />
 
                         <TextView
                             android:id="@+id/borderScore"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:text="0/8" />
+                            android:text="0/8"
+                            android:contentDescription="Puntuación de bordes sobre 8 puntos" />
 
                     </LinearLayout>
 
@@ -261,7 +381,8 @@
                             android:layout_width="120dp"
                             android:layout_height="wrap_content"
                             android:text="C - Color:"
-                            android:textStyle="bold" />
+                            android:textStyle="bold"
+                            android:contentDescription="Criterio C: Variación de color del lunar" />
 
                         <ProgressBar
                             android:id="@+id/colorProgress"
@@ -270,14 +391,17 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_gravity="center_vertical"
-                            android:max="100" />
+                            android:max="100"
+                            android:contentDescription="Progreso de evaluación de color"
+                            android:importantForAccessibility="yes" />
 
                         <TextView
                             android:id="@+id/colorScore"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:text="0/6" />
+                            android:text="0/6"
+                            android:contentDescription="Puntuación de color sobre 6 puntos" />
 
                     </LinearLayout>
 
@@ -292,7 +416,8 @@
                             android:layout_width="120dp"
                             android:layout_height="wrap_content"
                             android:text="D - Diámetro:"
-                            android:textStyle="bold" />
+                            android:textStyle="bold"
+                            android:contentDescription="Criterio D: Tamaño del diámetro del lunar" />
 
                         <ProgressBar
                             android:id="@+id/diameterProgress"
@@ -301,14 +426,17 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_gravity="center_vertical"
-                            android:max="100" />
+                            android:max="100"
+                            android:contentDescription="Progreso de evaluación de diámetro"
+                            android:importantForAccessibility="yes" />
 
                         <TextView
                             android:id="@+id/diameterScore"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:text="0/5" />
+                            android:text="0/5"
+                            android:contentDescription="Puntuación de diámetro sobre 5 puntos" />
 
                     </LinearLayout>
 
@@ -325,7 +453,8 @@
                             android:layout_width="120dp"
                             android:layout_height="wrap_content"
                             android:text="E - Evolución:"
-                            android:textStyle="bold" />
+                            android:textStyle="bold"
+                            android:contentDescription="Criterio E: Evolución temporal del lunar" />
 
                         <ProgressBar
                             android:id="@+id/evolutionProgress"
@@ -334,14 +463,17 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_gravity="center_vertical"
-                            android:max="100" />
+                            android:max="100"
+                            android:contentDescription="Progreso de evaluación de evolución"
+                            android:importantForAccessibility="yes" />
 
                         <TextView
                             android:id="@+id/evolutionScore"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:text="0/3" />
+                            android:text="0/3"
+                            android:contentDescription="Puntuación de evolución sobre 3 puntos" />
 
                     </LinearLayout>
 

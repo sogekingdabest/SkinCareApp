@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Colores para modo nocturno/alto contraste -->
+    <color name="black">#FFFFFFFF</color>
+    <color name="white">#FF000000</color>
+
+    <!-- Colores para niveles de riesgo en alto contraste -->
+    <color name="risk_very_low">#FFFFFF</color>
+    <color name="risk_low">#FFFFFF</color>
+    <color name="risk_moderate">#FFFF00</color>
+    <color name="risk_high">#FFFF00</color>
+    <color name="risk_very_high">#FFFFFF</color>
+
+    <!-- Colores para tarjetas según urgencia en alto contraste -->
+    <color name="card_routine">#000000</color>
+    <color name="card_monitor">#000000</color>
+    <color name="card_consult">#000000</color>
+    <color name="card_urgent">#000000</color>
+
+    <!-- Otros colores de la app en alto contraste -->
+    <color name="background_light">#000000</color>
+    <color name="colorPrimary">#FFFFFF</color>
+    <color name="colorPrimaryDark">#FFFFFF</color>
+    <color name="colorAccent">#FFFF00</color>
+
+    <!-- Colores para procesamiento en alto contraste -->
+    <color name="processing_overlay_background">#CC000000</color>
+    <color name="progress_background">#333333</color>
+    <color name="processing_stage_initializing">#FFFFFF</color>
+    <color name="processing_stage_preprocessing">#FFFFFF</color>
+    <color name="processing_stage_ai_analysis">#FFFF00</color>
+    <color name="processing_stage_abcde_analysis">#FFFF00</color>
+    <color name="processing_stage_finalizing">#FFFFFF</color>
+
+    <!-- Colores específicos para modo de alto contraste -->
+    <color name="high_contrast_foreground">#FFFFFF</color>
+    <color name="high_contrast_background">#000000</color>
+    <color name="high_contrast_accent">#FFFF00</color>
+    <color name="high_contrast_border">#FFFFFF</color>
+    <color name="high_contrast_text">#FFFFFF</color>
+    <color name="high_contrast_progress">#FFFF00</color>
+</resources>
