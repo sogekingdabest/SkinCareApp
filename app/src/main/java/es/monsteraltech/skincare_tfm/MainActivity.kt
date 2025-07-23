@@ -2,12 +2,14 @@ package es.monsteraltech.skincare_tfm
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import es.monsteraltech.skincare_tfm.camera.CameraActivity
 import es.monsteraltech.skincare_tfm.databinding.ActivityMainBinding
 import es.monsteraltech.skincare_tfm.fragments.MyBodyFragment
+import org.opencv.android.OpenCVLoader
 
 /*
 class MainActivity : AppCompatActivity() {
@@ -71,6 +73,12 @@ class MainActivity : AppCompatActivity() {
 
         val bottomNavigationView: BottomNavigationView = binding.navigation
         bottomNavigationView.inflateMenu(R.menu.bottom_navigation_menu)
+
+        if (!OpenCVLoader.initLocal()) {
+            Log.d("OpenCV", "Unable to load OpenCV!")
+        } else {
+            Log.d("OpenCV", "OpenCV loaded successfully")
+        }
 
         // Configurar la barra de navegación inferior
         binding.navigation.setOnNavigationItemSelectedListener { item ->

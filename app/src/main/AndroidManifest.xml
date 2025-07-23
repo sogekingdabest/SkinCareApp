@@ -17,6 +17,7 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:required="true"
         tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="true"

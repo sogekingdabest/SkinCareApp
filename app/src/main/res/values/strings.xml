@@ -16,6 +16,31 @@
     <string name="view_evolution">Ver Evolución</string>
     <string name="analyzing">Analizando imagen con IA y criterios ABCDE...</string>
 
+    <!-- Strings para procesamiento asíncrono -->
+    <string name="processing_title">Procesando Imagen</string>
+    <string name="processing_initializing">Preparando análisis...</string>
+    <string name="processing_preprocessing">Procesando imagen...</string>
+    <string name="processing_ai_analysis">Analizando con IA...</string>
+    <string name="processing_abcde_analysis">Aplicando criterios ABCDE...</string>
+    <string name="processing_finalizing">Finalizando resultados...</string>
+    <string name="processing_cancel">Cancelar</string>
+    <string name="processing_cancel_description">Cancelar procesamiento de imagen</string>
+    <string name="processing_progress_description">Progreso del análisis de imagen</string>
+    <string name="processing_stage_format">Etapa %1$d de %2$d</string>
+    
+    <!-- Strings para accesibilidad -->
+    <string name="accessibility_progress_announcement">Progreso del análisis: %1$d por ciento completado</string>
+    <string name="accessibility_stage_announcement">Nueva etapa: %1$s</string>
+    <string name="accessibility_analysis_started">Análisis de imagen iniciado</string>
+    <string name="accessibility_analysis_completed">Análisis de imagen completado exitosamente</string>
+    <string name="accessibility_analysis_error">Error en el análisis: %1$s</string>
+    <string name="accessibility_analysis_cancelled">Análisis cancelado por el usuario</string>
+    
+    <!-- Strings para estimación de tiempo -->
+    <string name="time_remaining_format">%1$s (≈%2$ds restantes)</string>
+    <string name="time_remaining_seconds">segundos restantes</string>
+    <string name="time_remaining_minutes">minutos restantes</string>
+
     <!-- Mensajes de riesgo -->
     <string name="risk_very_low_message">✅ Aspecto normal. Continúe con autoexámenes regulares cada 3 meses.</string>
     <string name="risk_low_message">👀 Lunar de bajo riesgo. Fotografíe mensualmente para detectar cambios.</string>

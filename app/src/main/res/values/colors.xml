@@ -22,4 +22,21 @@
     <color name="colorPrimaryDark">#0D47A1</color>
     <color name="colorAccent">#FF5722</color>
 
+    <!-- Colores para procesamiento -->
+    <color name="processing_overlay_background">#80000000</color>
+    <color name="progress_background">#E0E0E0</color>
+    <color name="processing_stage_initializing">#2196F3</color>
+    <color name="processing_stage_preprocessing">#4CAF50</color>
+    <color name="processing_stage_ai_analysis">#FF9800</color>
+    <color name="processing_stage_abcde_analysis">#9C27B0</color>
+    <color name="processing_stage_finalizing">#607D8B</color>
+
+    <!-- Colores para modo de alto contraste -->
+    <color name="high_contrast_foreground">#FFFFFF</color>
+    <color name="high_contrast_background">#000000</color>
+    <color name="high_contrast_accent">#FFFF00</color>
+    <color name="high_contrast_border">#FFFFFF</color>
+    <color name="high_contrast_text">#FFFFFF</color>
+    <color name="high_contrast_progress">#FFFF00</color>
+
 </resources>

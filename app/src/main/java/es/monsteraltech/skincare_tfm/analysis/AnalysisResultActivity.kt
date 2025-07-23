@@ -28,6 +28,10 @@ class AnalysisResultActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAnalysisResultEnhancedBinding
     private lateinit var melanomaDetector: MelanomaAIDetector
     private lateinit var explanationAdapter: ExplanationAdapter
+    
+    // Componentes para procesamiento asíncrono
+    private lateinit var asyncImageProcessor: AsyncImageProcessor
+    private lateinit var progressManager: ProgressManager
 
     private var photoFile: File? = null
     private var bodyPartColorCode: String? = null
@@ -89,6 +93,9 @@ class AnalysisResultActivity : AppCompatActivity() {
             adapter = explanationAdapter
         }
 
+        // Inicializar componentes de procesamiento asíncrono
+        setupAsyncProcessing()
+
         // Configurar listeners
         binding.saveButton.setOnClickListener {
             saveAnalysis()
@@ -104,6 +111,81 @@ class AnalysisResultActivity : AppCompatActivity() {
 
         // Configurar spinner de partes del cuerpo
         setupBodyPartSpinner()
+    }
+
+    private fun setupAsyncProcessing() {
+        // Inicializar ProgressManager con los componentes del layout
+        progressManager = ProgressManager(
+            context = this,
+            progressBar = binding.processingProgressBar,
+            statusText = binding.processingStatusText,
+            cancelButton = binding.cancelProcessingButton
+        )
+
+        // Crear callback para recibir actualizaciones de progreso con mejoras de accesibilidad
+        val progressCallback = object : ProgressCallback {
+            override fun onProgressUpdate(progress: Int, message: String) {
+                progressManager.updateProgressWithAccessibility(progress, message)
+            }
+            
+            override fun onProgressUpdateWithTimeEstimate(progress: Int, message: String, estimatedTotalTimeMs: Long) {
+                progressManager.updateProgressWithTimeEstimate(progress, message, estimatedTotalTimeMs)
+            }
+
+            override fun onStageChanged(stage: ProcessingStage) {
+                progressManager.showStageWithAccessibility(stage)
+                // Actualizar texto de etapa con información más detallada
+                val stageText = "Etapa ${stage.ordinal + 1}/5: ${stage.message}"
+                binding.processingStageText.text = stageText
+                binding.processingStageText.contentDescription = "Progreso del análisis: $stageText"
+            }
+
+            override fun onError(error: String) {
+                progressManager.showErrorWithAccessibility(error)
+                // Ocultar overlay después de mostrar error
+                hideProcessingOverlay()
+                showError("Error en análisis: $error")
+            }
+
+            override fun onCompleted(result: MelanomaAIDetector.CombinedAnalysisResult) {
+                progressManager.completeProcessingWithAccessibility()
+                analysisResult = result
+                
+                // Actualizar UI con resultados
+                displayResults(result)
+                
+                // Ocultar overlay después de un breve delay
+                binding.processingOverlay.postDelayed({
+                    hideProcessingOverlay()
+                }, 1500)
+            }
+
+            override fun onCancelled() {
+                progressManager.showCancelledWithAccessibility()
+                hideProcessingOverlay()
+                Toast.makeText(this@AnalysisResultActivity, "Análisis cancelado", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Inicializar AsyncImageProcessor
+        asyncImageProcessor = AsyncImageProcessor(this, progressCallback)
+
+        // Configurar botón de cancelar
+        progressManager.setCancelListener {
+            asyncImageProcessor.cancelProcessing()
+        }
+    }
+
+    private fun showProcessingOverlay() {
+        binding.processingOverlay.visibility = View.VISIBLE
+        binding.mainContent.visibility = View.GONE
+        progressManager.show()
+    }
+
+    private fun hideProcessingOverlay() {
+        binding.processingOverlay.visibility = View.GONE
+        binding.mainContent.visibility = View.VISIBLE
+        progressManager.hide()
     }
 
     private fun setupBodyPart() {
@@ -140,14 +222,13 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun processImage(photoPath: String, isFrontCamera: Boolean) {
-        android.util.Log.d("AnalysisResultActivity", "Iniciando processImage - photoPath: $photoPath")
+        android.util.Log.d("AnalysisResultActivity", "Iniciando processImage asíncrono - photoPath: $photoPath")
         
-        // Mostrar progreso
-        val progressDialog = ProgressDialog(this).apply {
-            setMessage("Analizando imagen con IA y criterios ABCDE...")
-            setCancelable(false)
-            show()
-        }
+        // Mostrar overlay de procesamiento
+        showProcessingOverlay()
+        
+        // Inicializar procesamiento con mejoras de accesibilidad
+        progressManager.startProcessing()
 
         lifecycleScope.launch {
             try {
@@ -157,6 +238,7 @@ class AnalysisResultActivity : AppCompatActivity() {
                 
                 if (bitmap == null) {
                     android.util.Log.e("AnalysisResultActivity", "Error: bitmap es null después de decodificar")
+                    hideProcessingOverlay()
                     showError("Error: No se pudo cargar la imagen")
                     return@launch
                 }
@@ -170,7 +252,7 @@ class AnalysisResultActivity : AppCompatActivity() {
                     bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
                 }
 
-                // Mostrar imagen
+                // Mostrar imagen inmediatamente
                 android.util.Log.d("AnalysisResultActivity", "Mostrando imagen en UI")
                 binding.resultImageView.setImageBitmap(bitmap)
 
@@ -178,25 +260,25 @@ class AnalysisResultActivity : AppCompatActivity() {
                 android.util.Log.d("AnalysisResultActivity", "Buscando imagen previa...")
                 val previousBitmap = loadPreviousImageIfExists()
 
-                // Realizar análisis combinado
-                android.util.Log.d("AnalysisResultActivity", "Iniciando análisis con MelanomaAIDetector...")
-                analysisResult = melanomaDetector.analyzeMole(
+                // Crear configuración de análisis
+                val config = AnalysisConfiguration.default()
+
+                // Realizar análisis asíncrono usando AsyncImageProcessor
+                android.util.Log.d("AnalysisResultActivity", "Iniciando análisis asíncrono...")
+                val result = asyncImageProcessor.processImage(
                     bitmap = bitmap,
                     previousBitmap = previousBitmap,
-                    pixelDensity = resources.displayMetrics.density
+                    pixelDensity = resources.displayMetrics.density,
+                    config = config
                 )
-                android.util.Log.d("AnalysisResultActivity", "Análisis completado exitosamente")
-
-                // Actualizar UI con resultados
-                android.util.Log.d("AnalysisResultActivity", "Actualizando UI con resultados...")
-                displayResults(analysisResult!!)
-                android.util.Log.d("AnalysisResultActivity", "UI actualizada correctamente")
+                
+                android.util.Log.d("AnalysisResultActivity", "Análisis asíncrono completado exitosamente")
+                // El resultado se maneja en el callback onCompleted
 
             } catch (e: Exception) {
-                android.util.Log.e("AnalysisResultActivity", "Error durante el análisis", e)
+                android.util.Log.e("AnalysisResultActivity", "Error durante el análisis asíncrono", e)
+                hideProcessingOverlay()
                 showError("Error en análisis: ${e.message}")
-            } finally {
-                progressDialog.dismiss()
             }
         }
     }
@@ -259,7 +341,7 @@ class AnalysisResultActivity : AppCompatActivity() {
         binding.analysisCard.setCardBackgroundColor(color)
     }
 
-    private fun displayABCDEScores(abcdeResult: ABCDEAnalyzer.ABCDEResult) {
+    private fun displayABCDEScores(abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult) {
         // A - Asimetría
         binding.asymmetryScore.text = String.format("%.1f/2", abcdeResult.asymmetryScore)
         binding.asymmetryProgress.progress = (abcdeResult.asymmetryScore / 2f * 100).toInt()
@@ -430,7 +512,28 @@ class AnalysisResultActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Cancelar procesamiento si está en curso
+        if (::asyncImageProcessor.isInitialized) {
+            asyncImageProcessor.cancelProcessing()
+        }
         melanomaDetector.close()
+    }
+
+    override fun onBackPressed() {
+        // Si hay procesamiento en curso, preguntar al usuario si quiere cancelar
+        if (::asyncImageProcessor.isInitialized && asyncImageProcessor.isProcessing()) {
+            AlertDialog.Builder(this)
+                .setTitle("Cancelar análisis")
+                .setMessage("¿Deseas cancelar el análisis en curso?")
+                .setPositiveButton("Sí") { _, _ ->
+                    asyncImageProcessor.cancelProcessing()
+                    super.onBackPressed()
+                }
+                .setNegativeButton("No", null)
+                .show()
+        } else {
+            super.onBackPressed()
+        }
     }
 }
 
