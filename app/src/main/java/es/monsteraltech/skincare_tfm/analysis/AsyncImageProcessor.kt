@@ -503,14 +503,14 @@ class AsyncImageProcessor(
             } catch (e: TimeoutCancellationException) {
                 Log.w(TAG, "Timeout en análisis ABCDE")
                 updateProgress(ProcessingStage.ABCDE_ANALYSIS, 100, "ABCDE timeout")
-                throw AnalysisError.ABCDEAnalysisError("Timeout en análisis ABCDE")
+                abcdeResult = createDefaultABCDEResult("Timeout en análisis ABCDE")
             } catch (e: OutOfMemoryError) {
                 Log.e(TAG, "Error de memoria en análisis ABCDE")
-                throw AnalysisError.OutOfMemory
+                abcdeResult = createDefaultABCDEResult("Error de memoria en análisis ABCDE")
             } catch (e: Exception) {
                 Log.w(TAG, "Error en análisis ABCDE: ${e.message}")
                 updateProgress(ProcessingStage.ABCDE_ANALYSIS, 100, "ABCDE falló")
-                abcdeResult = createDefaultABCDEResult()
+                abcdeResult = createDefaultABCDEResult("Error en análisis ABCDE: ${e.message}")
             }
             
             ensureActive()
@@ -561,15 +561,14 @@ class AsyncImageProcessor(
                     } catch (e: Exception) {
                         Log.w(TAG, "Error en análisis ABCDE: ${e.message}")
                         updateProgress(ProcessingStage.ABCDE_ANALYSIS, 100, "ABCDE falló, usando valores por defecto")
-                        createDefaultABCDEResult()
+                        createDefaultABCDEResult("Error en análisis ABCDE: ${e.message}")
                     }
                 }
             }
         } else null
-        
         // Esperar resultados
         val aiResult = aiJob?.await()
-        val abcdeResult = abcdeJob?.await() ?: createDefaultABCDEResult()
+        val abcdeResult = abcdeJob?.await() ?: createDefaultABCDEResult("Análisis ABCDE no ejecutado")
         
         // Combinar resultados usando el detector principal
         combineResults(aiResult, abcdeResult, bitmap, previousBitmap, pixelDensity)
@@ -676,17 +675,21 @@ class AsyncImageProcessor(
         pixelDensity: Float
     ): ABCDEAnalyzerOpenCV.ABCDEResult = withContext(Dispatchers.Default) {
         try {
+            // Forzar GC antes del análisis pesado
+            System.gc()
             // Verificar memoria disponible antes del análisis
             val runtime = Runtime.getRuntime()
             val freeMemory = runtime.freeMemory()
             val totalMemory = runtime.totalMemory()
+            val maxMemory = runtime.maxMemory()
             val usedMemory = totalMemory - freeMemory
-            
-            if (usedMemory > totalMemory * 0.8) {
-                Log.w(TAG, "Memoria baja detectada durante análisis ABCDE")
+            val availableMemory = maxMemory - usedMemory
+
+            // Si queda menos de 16MB libres, lanzar error
+            if (availableMemory < 16 * 1024 * 1024) {
+                Log.w(TAG, "Memoria baja detectada durante análisis ABCDE (menos de 16MB libres)")
                 throw AnalysisError.OutOfMemory
             }
-            
             // Ejecutar análisis ABCDE
             abcdeAnalyzer.analyzeMole(bitmap, previousBitmap, pixelDensity)
             
@@ -782,8 +785,13 @@ class AsyncImageProcessor(
      * Preprocesa la imagen si es necesario
      */
     private fun preprocessImageIfNeeded(bitmap: Bitmap): Bitmap {
-        // Por ahora, devolver la imagen sin cambios
-        // En una implementación completa, aquí se aplicarían filtros y optimizaciones
+        val maxDim = 1024
+        if (bitmap.width > maxDim || bitmap.height > maxDim) {
+            val scale = maxDim.toFloat() / maxOf(bitmap.width, bitmap.height)
+            val newWidth = (bitmap.width * scale).toInt()
+            val newHeight = (bitmap.height * scale).toInt()
+            return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+        }
         return bitmap
     }
 
@@ -824,7 +832,7 @@ class AsyncImageProcessor(
     /**
      * Crea un resultado ABCDE por defecto para casos de error
      */
-    private fun createDefaultABCDEResult(): ABCDEAnalyzerOpenCV.ABCDEResult {
+    private fun createDefaultABCDEResult(reason: String = "Análisis no disponible"): ABCDEAnalyzerOpenCV.ABCDEResult {
         return ABCDEAnalyzerOpenCV.ABCDEResult(
             asymmetryScore = 0f,
             borderScore = 0f,
@@ -835,16 +843,16 @@ class AsyncImageProcessor(
             riskLevel = ABCDEAnalyzerOpenCV.RiskLevel.LOW,
             details = ABCDEAnalyzerOpenCV.ABCDEDetails(
                 asymmetryDetails = ABCDEAnalyzerOpenCV.AsymmetryDetails(
-                    0f, 0f, "Análisis no disponible"
+                    0f, 0f, reason
                 ),
                 borderDetails = ABCDEAnalyzerOpenCV.BorderDetails(
-                    0f, 0, "Análisis no disponible"
+                    0f, 0, reason
                 ),
                 colorDetails = ABCDEAnalyzerOpenCV.ColorDetails(
-                    emptyList(), 1, false, false, "Análisis no disponible"
+                    emptyList(), 1, false, false, reason
                 ),
                 diameterDetails = ABCDEAnalyzerOpenCV.DiameterDetails(
-                    0f, 0, "Análisis no disponible"
+                    0f, 0, reason
                 ),
                 evolutionDetails = null
             )
@@ -884,241 +892,3 @@ class AsyncImageProcessor(
      */
     class AnalysisTimeoutException(message: String) : Exception(message)
 }
-/*ay(1000) // Simular tiempo de procesamiento
-        
-        // Por ahora, usar el detector existente de forma síncrona
-        // En una implementación completa, esto se haría completamente asíncrono
-        val result = melanomaDetector.analyzeMole(bitmap)
-        
-        AIAnalysisResult(
-            probability = result.aiProbability,
-            riskLevel = result.aiRiskLevel,
-            confidence = result.aiConfidence
-        )
-    }
-
-    *//**
-     * Ejecuta el análisis ABCDE de forma aislada
-     *//*
-    private suspend fun executeABCDEAnalysis(
-        bitmap: Bitmap,
-        previousBitmap: Bitmap?,
-        pixelDensity: Float
-    ): ABCDEAnalyzerOpenCV.ABCDEResult = withContext(Dispatchers.Default) {
-        
-        // Ejecutar análisis ABCDE
-        abcdeAnalyzer.analyzeMole(bitmap, previousBitmap, pixelDensity)
-    }
-
-
-
-    *//**
-     * Crea un resultado combinado basado solo en ABCDE
-     *//*
-    private fun createCombinedResultFromABCDE(
-        abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult
-    ): MelanomaAIDetector.CombinedAnalysisResult {
-        
-        val normalizedScore = minOf(1f, abcdeResult.totalScore / 11.9f)
-        val aiRiskLevel = when {
-            normalizedScore < 0.2f -> MelanomaAIDetector.RiskLevel.LOW
-            normalizedScore < 0.4f -> MelanomaAIDetector.RiskLevel.MODERATE
-            else -> MelanomaAIDetector.RiskLevel.HIGH
-        }
-        
-        return MelanomaAIDetector.CombinedAnalysisResult(
-            aiProbability = normalizedScore,
-            aiRiskLevel = aiRiskLevel,
-            aiConfidence = 0.5f, // Confianza media sin IA
-            abcdeResult = abcdeResult,
-            combinedScore = normalizedScore,
-            combinedRiskLevel = aiRiskLevel,
-            recommendation = "Análisis basado únicamente en criterios ABCDE",
-            shouldMonitor = normalizedScore > 0.2f,
-            urgencyLevel = when (aiRiskLevel) {
-                MelanomaAIDetector.RiskLevel.LOW, MelanomaAIDetector.RiskLevel.VERY_LOW -> 
-                    MelanomaAIDetector.UrgencyLevel.ROUTINE
-                MelanomaAIDetector.RiskLevel.MODERATE -> 
-                    MelanomaAIDetector.UrgencyLevel.MONITOR
-                MelanomaAIDetector.RiskLevel.HIGH, MelanomaAIDetector.RiskLevel.VERY_HIGH -> 
-                    MelanomaAIDetector.UrgencyLevel.CONSULT
-            },
-            explanations = listOf("Análisis realizado solo con criterios ABCDE")
-        )
-    }
-
-    *//**
-     * Preprocesa la imagen si es necesario según la configuración
-     *//*
-    private fun preprocessImageIfNeeded(bitmap: Bitmap): Bitmap {
-        if (!configuration.enableAutoImageReduction) {
-            return bitmap
-        }
-        
-        val totalPixels = bitmap.width * bitmap.height
-        if (totalPixels <= configuration.maxImageResolution) {
-            return bitmap
-        }
-        
-        // Calcular nueva resolución manteniendo aspect ratio
-        val ratio = kotlin.math.sqrt(configuration.maxImageResolution.toDouble() / totalPixels)
-        val newWidth = (bitmap.width * ratio).toInt()
-        val newHeight = (bitmap.height * ratio).toInt()
-        
-        Log.d(TAG, "Redimensionando imagen de ${bitmap.width}x${bitmap.height} a ${newWidth}x${newHeight}")
-        
-        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-    }
-
-    *//**
-     * Actualiza el progreso y notifica al callback
-     *//*
-    private fun updateProgress(stage: ProcessingStage, stageProgress: Int, message: String) {
-        val totalProgress = stage.getProgressUpToStage() + 
-                           (stageProgress * stage.weight / 100)
-        
-        progressCallback.onStageChanged(stage)
-        progressCallback.onProgressUpdate(totalProgress, message)
-    }
-
-    *//**
-     * Verifica si el procesamiento debe continuar o ha sido cancelado
-     *//*
-    private fun ensureActive() {
-        if (isCancelled.get()) {
-            throw CancellationException("Procesamiento cancelado por el usuario")
-        }
-    }
-
-    *//**
-     * Cancela el procesamiento actual
-     *//*
-    fun cancelProcessing() {
-        Log.d(TAG, "Cancelando procesamiento...")
-        isCancelled.set(true)
-        currentJob?.cancel()
-    }
-
-    *//**
-     * Verifica si hay un procesamiento en curso
-     *//*
-    fun isProcessing(): Boolean {
-        return currentJob?.isActive == true
-    }
-
-    *//**
-     * Crea un resultado ABCDE por defecto para casos de error
-     *//*
-    private fun createDefaultABCDEResult(): ABCDEAnalyzerOpenCV.ABCDEResult {
-        return ABCDEAnalyzerOpenCV.ABCDEResult(
-            asymmetryScore = 0f,
-            borderScore = 0f,
-            colorScore = 1f,
-            diameterScore = 0f,
-            evolutionScore = null,
-            totalScore = 1f,
-            riskLevel = ABCDEAnalyzerOpenCV.RiskLevel.LOW,
-            details = ABCDEAnalyzerOpenCV.ABCDEDetails(
-                asymmetryDetails = ABCDEAnalyzerOpenCV.AsymmetryDetails(
-                    0f, 0f, "Análisis no disponible"
-                ),
-                borderDetails = ABCDEAnalyzerOpenCV.BorderDetails(
-                    0f, 0, "Análisis no disponible"
-                ),
-                colorDetails = ABCDEAnalyzerOpenCV.ColorDetails(
-                    emptyList(), 1, false, false, "Análisis no disponible"
-                ),
-                diameterDetails = ABCDEAnalyzerOpenCV.DiameterDetails(
-                    0f, 0, "Análisis no disponible"
-                ),
-                evolutionDetails = null
-            )
-        )
-    }
-
-    *//**
-     * Data class interna para resultados de IA
-     *//*
-    private data class AIAnalysisResult(
-        val probability: Float,
-        val riskLevel: MelanomaAIDetector.RiskLevel,
-        val confidence: Float
-    )
-
-    *//**
-     * Aplica optimizaciones de memoria y rendimiento según el contexto
-     *//*
-    private fun applyOptimizations(
-        config: AnalysisConfiguration,
-        bitmap: Bitmap,
-        attempt: Int
-    ): AnalysisConfiguration {
-        
-        Log.d(TAG, "Aplicando optimizaciones (intento: $attempt)")
-        
-        // Obtener configuración optimizada por memoria
-        var optimizedConfig = memoryManager.getOptimizedConfiguration(config)
-        
-        // Aplicar optimizaciones de rendimiento
-        optimizedConfig = performanceOptimizer.optimizeConfiguration(optimizedConfig, devicePerformance)
-        
-        // Aplicar timeouts adaptativos basados en historial
-        optimizedConfig = performanceOptimizer.getAdaptiveTimeouts(optimizedConfig)
-        
-        // En intentos posteriores, aplicar configuraciones más conservadoras
-        if (attempt > 1) {
-            Log.w(TAG, "Aplicando configuración conservadora para reintento $attempt")
-            optimizedConfig = optimizedConfig.copy(
-                enableParallelProcessing = false,
-                maxImageResolution = minOf(optimizedConfig.maxImageResolution, 512 * 512),
-                compressionQuality = maxOf(50, optimizedConfig.compressionQuality - 20),
-                timeoutMs = optimizedConfig.timeoutMs + (attempt * 10000L),
-                aiTimeoutMs = optimizedConfig.aiTimeoutMs + (attempt * 5000L),
-                abcdeTimeoutMs = optimizedConfig.abcdeTimeoutMs + (attempt * 3000L)
-            )
-        }
-        
-        // Verificar si debe usar modo de ahorro de energía
-        if (performanceOptimizer.shouldUsePowerSaveMode()) {
-            Log.i(TAG, "Aplicando modo de ahorro de energía")
-            optimizedConfig = performanceOptimizer.getPowerSaveConfiguration(optimizedConfig)
-        }
-        
-        // Log de las optimizaciones aplicadas
-        if (optimizedConfig != config) {
-            Log.i(TAG, "Configuración optimizada: " +
-                    "paralelo=${optimizedConfig.enableParallelProcessing}, " +
-                    "resolución=${optimizedConfig.maxImageResolution}, " +
-                    "calidad=${optimizedConfig.compressionQuality}, " +
-                    "timeout=${optimizedConfig.timeoutMs}ms")
-        }
-        
-        return optimizedConfig
-    }
-    
-    *//**
-     * Limpia todos los recursos del procesador
-     *//*
-    fun cleanup() {
-        Log.d(TAG, "Limpiando recursos del AsyncImageProcessor")
-        
-        // Cancelar procesamiento actual
-        cancelProcessing()
-        
-        // Limpiar memoria
-        memoryManager.cleanup()
-        
-        // Limpiar optimizador de rendimiento
-        performanceOptimizer.cleanup()
-        
-        // Detener monitor de memoria si está activo
-        memoryMonitor?.stop()
-    }
-
-
-
-    *//**
-     * Excepción personalizada para timeouts de análisis
-     *//*
-    class AnalysisTimeoutException(message: String) : Exception(message)
-}*/
