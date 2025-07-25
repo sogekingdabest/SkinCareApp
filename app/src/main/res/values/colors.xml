@@ -39,4 +39,16 @@
     <color name="high_contrast_text">#FFFFFF</color>
     <color name="high_contrast_progress">#FFFF00</color>
 
+    <!-- Colores para guías de captura -->
+    <color name="guidance_searching">#FFC107</color>
+    <color name="guidance_centering">#2196F3</color>
+    <color name="guidance_too_far">#FF9800</color>
+    <color name="guidance_too_close">#FF5722</color>
+    <color name="guidance_poor_lighting">#9C27B0</color>
+    <color name="guidance_blurry">#795548</color>
+    <color name="guidance_ready">#4CAF50</color>
+    <color name="guidance_overlay_background">#80000000</color>
+    <color name="guidance_message_background">#CC000000</color>
+    <color name="guidance_circle_stroke">#FFFFFF</color>
+
 </resources>

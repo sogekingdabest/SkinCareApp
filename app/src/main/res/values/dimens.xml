@@ -1,3 +1,17 @@
 <resources>
     <dimen name="fab_margin">16dp</dimen>
+
+    <!-- Dimensiones para guías de captura -->
+    <dimen name="guidance_circle_radius">150dp</dimen>
+    <dimen name="guidance_circle_stroke_width">3dp</dimen>
+    <dimen name="guidance_message_margin">16dp</dimen>
+    <dimen name="guidance_message_padding">16dp</dimen>
+    <dimen name="guidance_message_corner_radius">12dp</dimen>
+    <dimen name="guidance_indicator_size">32dp</dimen>
+    <dimen name="guidance_mini_indicator_size">16dp</dimen>
+    <dimen name="guidance_elevation">4dp</dimen>
+    <dimen name="guidance_fab_elevation">6dp</dimen>
+    <dimen name="guidance_progress_height">4dp</dimen>
+    <dimen name="guidance_quality_container_padding">8dp</dimen>
+
 </resources>
