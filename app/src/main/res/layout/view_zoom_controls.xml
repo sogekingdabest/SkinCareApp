@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/zoom_controls_background"
+    android:padding="8dp">
+
+    <!-- Botón de zoom out -->
+    <ImageButton
+        android:id="@+id/zoom_out_button"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/zoom_button_background"
+        android:src="@drawable/ic_zoom_out"
+        android:scaleType="centerInside"
+        android:contentDescription="Disminuir zoom"
+        android:layout_marginEnd="8dp" />
+
+    <!-- SeekBar de zoom -->
+    <SeekBar
+        android:id="@+id/zoom_seekbar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:progressTint="@color/risk_very_low"
+        android:thumbTint="@color/risk_very_low"
+        android:progressBackgroundTint="@color/guidance_overlay_background" />
+
+    <!-- Botón de zoom in -->
+    <ImageButton
+        android:id="@+id/zoom_in_button"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/zoom_button_background"
+        android:src="@drawable/ic_zoom_in"
+        android:scaleType="centerInside"
+        android:contentDescription="Aumentar zoom"
+        android:layout_marginStart="8dp" />
+
+    <!-- Texto del nivel de zoom -->
+    <TextView
+        android:id="@+id/zoom_level_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:text="1.0x"
+        android:textColor="@android:color/white"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:minWidth="40dp"
+        android:gravity="center" />
+
+    <!-- Botón de reset -->
+    <ImageButton
+        android:id="@+id/zoom_reset_button"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/zoom_button_small_background"
+        android:src="@drawable/ic_refresh"
+        android:scaleType="centerInside"
+        android:contentDescription="Resetear zoom" />
+
+    <!-- Botón de zoom óptimo -->
+    <ImageButton
+        android:id="@+id/zoom_optimal_button"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="4dp"
+        android:background="@drawable/zoom_button_small_background"
+        android:src="@drawable/ic_center_focus_strong"
+        android:scaleType="centerInside"
+        android:contentDescription="Zoom óptimo para lunares" />
+
+    <!-- Indicador de estabilización -->
+    <View
+        android:id="@+id/stabilization_indicator"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/stabilization_indicator"
+        android:visibility="gone" />
+
+</LinearLayout>

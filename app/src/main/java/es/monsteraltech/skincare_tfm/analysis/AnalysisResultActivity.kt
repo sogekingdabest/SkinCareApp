@@ -68,6 +68,15 @@ class AnalysisResultActivity : AppCompatActivity() {
         val photoPath = intent.getStringExtra("PHOTO_PATH")
         val isFrontCamera = intent.getBooleanExtra("IS_FRONT_CAMERA", false)
         bodyPartColorCode = intent.getStringExtra("BODY_PART_COLOR")
+        
+        // Obtener información de preprocesado (nueva funcionalidad)
+        val preprocessingApplied = intent.getBooleanExtra("PREPROCESSING_APPLIED", false)
+        val processingMetadata = intent.getStringExtra("PROCESSING_METADATA") ?: ""
+        
+        // Log información de preprocesado para debugging
+        if (preprocessingApplied) {
+            android.util.Log.d("AnalysisResultActivity", "Imagen preprocesada recibida: $processingMetadata")
+        }
 
         // Configurar parte del cuerpo
         setupBodyPart()

@@ -88,4 +88,38 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="default_web_client_id">442470848667-50q5co5qe1i5f7cdhde5hqb3k6fstb3c.apps.googleusercontent.com</string>
     <string name="title_activity_body">BodyActivity</string>
+
+    <!-- Strings para guías de captura -->
+    <string name="guidance_initializing">Inicializando análisis...</string>
+    <string name="guidance_searching">Buscando lunar en la imagen</string>
+    <string name="guidance_centering">Centra el lunar en el círculo</string>
+    <string name="guidance_too_far">Acércate más al lunar</string>
+    <string name="guidance_too_close">Aléjate un poco del lunar</string>
+    <string name="guidance_poor_lighting">Necesitas más luz</string>
+    <string name="guidance_too_bright">Demasiada luz - busca sombra</string>
+    <string name="guidance_blurry">Imagen borrosa - mantén firme la cámara</string>
+    <string name="guidance_ready">¡Listo para capturar!</string>
+    <string name="guidance_capturing">Capturando imagen...</string>
+
+    <!-- Descripciones de accesibilidad para guías -->
+    <string name="guidance_settings_description">Configuración de guías de captura</string>
+    <string name="capture_button_description">Capturar imagen del lunar</string>
+    <string name="switch_camera_description">Cambiar entre cámara frontal y trasera</string>
+    <string name="flash_button_description">Activar o desactivar flash</string>
+    <string name="guidance_status_description">Estado actual de las guías de captura</string>
+    <string name="quality_indicators_description">Indicadores de calidad de imagen</string>
+
+    <!-- Indicadores de calidad -->
+    <string name="quality_focus_good">Enfoque correcto</string>
+    <string name="quality_focus_poor">Enfoque insuficiente</string>
+    <string name="quality_lighting_good">Iluminación adecuada</string>
+    <string name="quality_lighting_poor">Iluminación insuficiente</string>
+    <string name="quality_centering_good">Lunar centrado</string>
+    <string name="quality_centering_poor">Lunar descentrado</string>
+
+    <!-- Mensajes de retroalimentación háptica -->
+    <string name="haptic_mole_detected">Lunar detectado</string>
+    <string name="haptic_ready_to_capture">Listo para capturar</string>
+    <string name="haptic_capture_complete">Captura completada</string>
+
 </resources>
