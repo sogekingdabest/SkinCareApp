@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import es.monsteraltech.skincare_tfm.camera.CameraActivity
 import es.monsteraltech.skincare_tfm.databinding.ActivityMainBinding
+import es.monsteraltech.skincare_tfm.fragments.AccountFragment
 import es.monsteraltech.skincare_tfm.fragments.MyBodyFragment
 import org.opencv.android.OpenCVLoader
 
@@ -93,7 +94,7 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.navigation_account -> {
-
+                    openFragment(AccountFragment())
                     true
                 }
                 else -> false

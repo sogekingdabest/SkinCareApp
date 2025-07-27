@@ -51,4 +51,26 @@
     <color name="guidance_message_background">#CC000000</color>
     <color name="guidance_circle_stroke">#FFFFFF</color>
 
+    <!-- Colores para feedback visual y animaciones -->
+    <color name="success_green">#4CAF50</color>
+    <color name="success_light">#C8E6C9</color>
+    <color name="error_red">#F44336</color>
+    <color name="error_light">#FFCDD2</color>
+    <color name="warning_orange">#FF9800</color>
+    <color name="warning_light">#FFE0B2</color>
+    <color name="info_blue">#2196F3</color>
+    <color name="info_light">#BBDEFB</color>
+    <color name="neutral_gray">#9E9E9E</color>
+    <color name="neutral_light">#F5F5F5</color>
+    
+    <!-- Colores para estados de UI -->
+    <color name="button_enabled">#1976D2</color>
+    <color name="button_disabled">#BDBDBD</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_hint">#BDBDBD</color>
+    <color name="divider">#E0E0E0</color>
+    <color name="ripple_effect">#1F000000</color>
+    <color name="card_shadow">#1F000000</color>
+
 </resources>

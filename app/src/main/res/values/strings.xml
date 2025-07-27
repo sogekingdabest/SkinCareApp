@@ -122,4 +122,80 @@
     <string name="haptic_ready_to_capture">Listo para capturar</string>
     <string name="haptic_capture_complete">Captura completada</string>
 
+    <!-- Strings para fragment de cuenta -->
+    <string name="account_title">Mi Cuenta</string>
+    <string name="account_user_info">Información del Usuario</string>
+    <string name="account_name_label">Nombre:</string>
+    <string name="account_email_label">Email:</string>
+    <string name="account_loading">Cargando información...</string>
+    <string name="account_error">Error al cargar información</string>
+    <string name="account_options">Opciones de Cuenta</string>
+    <string name="account_change_password">Cambiar Contraseña</string>
+    <string name="account_settings">Configuraciones</string>
+    <string name="account_logout">Cerrar Sesión</string>
+    <string name="account_logout_confirm">¿Estás seguro de que deseas cerrar sesión?</string>
+    <string name="account_logout_cancel">Cancelar</string>
+    <string name="account_logout_confirm_button">Cerrar Sesión</string>
+
+    <!-- Strings para cambio de contraseña -->
+    <string name="password_change_title">Cambiar Contraseña</string>
+    <string name="password_change_subtitle">Ingresa tu contraseña actual y la nueva contraseña</string>
+    <string name="password_current_hint">Contraseña actual</string>
+    <string name="password_new_hint">Nueva contraseña</string>
+    <string name="password_confirm_hint">Confirmar nueva contraseña</string>
+    <string name="password_requirements">La contraseña debe tener:\n• Mínimo 8 caracteres\n• Al menos una mayúscula\n• Al menos una minúscula\n• Al menos un número</string>
+    <string name="password_change_button">CAMBIAR CONTRASEÑA</string>
+    <string name="password_cancel_button">CANCELAR</string>
+    <string name="password_changing">Cambiando contraseña...</string>
+    
+    <!-- Mensajes de error para cambio de contraseña -->
+    <string name="password_error_current_empty">Ingresa tu contraseña actual</string>
+    <string name="password_error_new_empty">Ingresa la nueva contraseña</string>
+    <string name="password_error_confirm_empty">Confirma la nueva contraseña</string>
+    <string name="password_error_mismatch">Las contraseñas no coinciden</string>
+    <string name="password_error_too_short">La contraseña debe tener al menos 8 caracteres</string>
+    <string name="password_error_no_uppercase">La contraseña debe tener al menos una mayúscula</string>
+    <string name="password_error_no_lowercase">La contraseña debe tener al menos una minúscula</string>
+    <string name="password_error_no_number">La contraseña debe tener al menos un número</string>
+    <string name="password_error_current_incorrect">La contraseña actual es incorrecta</string>
+    <string name="password_error_same_as_current">La nueva contraseña debe ser diferente a la actual</string>
+    <string name="password_error_network">Error de conexión. Inténtalo de nuevo</string>
+    <string name="password_error_generic">Error al cambiar contraseña. Inténtalo de nuevo</string>
+    
+    <!-- Mensajes de éxito -->
+    <string name="password_change_success">Contraseña cambiada exitosamente</string>
+    <string name="password_change_success_message">Tu contraseña ha sido actualizada correctamente</string>
+
+    <!-- Strings para configuraciones de usuario -->
+    <string name="settings_title">Configuraciones</string>
+    <string name="settings_notifications">Notificaciones</string>
+    <string name="settings_notifications_description">Recibir notificaciones de la aplicación</string>
+    <string name="settings_dark_mode">Modo Oscuro</string>
+    <string name="settings_dark_mode_description">Usar tema oscuro en la aplicación</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_description">Idioma de la aplicación</string>
+    <string name="settings_auto_backup">Respaldo Automático</string>
+    <string name="settings_auto_backup_description">Respaldar datos automáticamente</string>
+    <string name="settings_saved">Configuraciones guardadas</string>
+    <string name="settings_error">Error al guardar configuraciones</string>
+
+    <!-- Strings para feedback visual y animaciones -->
+    <string name="ui_loading">Cargando...</string>
+    <string name="ui_success">Operación exitosa</string>
+    <string name="ui_error">Error en la operación</string>
+    <string name="ui_retry">Reintentar</string>
+    <string name="ui_cancel">Cancelar</string>
+    <string name="ui_confirm">Confirmar</string>
+    <string name="ui_processing">Procesando...</string>
+    <string name="ui_please_wait">Por favor espera...</string>
+    <string name="ui_operation_completed">Operación completada</string>
+    <string name="ui_operation_failed">Operación fallida</string>
+    <string name="ui_network_error">Error de conexión</string>
+    <string name="ui_try_again">Inténtalo de nuevo</string>
+    <string name="ui_validation_error">Error de validación</string>
+    <string name="ui_field_required">Este campo es obligatorio</string>
+    <string name="ui_invalid_input">Entrada inválida</string>
+    <string name="ui_changes_saved">Cambios guardados</string>
+    <string name="ui_changes_discarded">Cambios descartados</string>
+
 </resources>

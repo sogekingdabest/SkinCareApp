@@ -1,17 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="fab_margin">16dp</dimen>
+    <!-- Spacing -->
+    <dimen name="spacing_tiny">4dp</dimen>
+    <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_medium">16dp</dimen>
+    <dimen name="spacing_large">24dp</dimen>
+    <dimen name="spacing_xlarge">32dp</dimen>
 
-    <!-- Dimensiones para guías de captura -->
-    <dimen name="guidance_circle_radius">150dp</dimen>
-    <dimen name="guidance_circle_stroke_width">3dp</dimen>
+    <!-- Text sizes -->
+    <dimen name="text_size_small">12sp</dimen>
+    <dimen name="text_size_medium">14sp</dimen>
+    <dimen name="text_size_large">16sp</dimen>
+    <dimen name="text_size_xlarge">18sp</dimen>
+    <dimen name="text_size_title">20sp</dimen>
+    <dimen name="text_size_header">24sp</dimen>
+
+    <!-- Card properties -->
+    <dimen name="card_corner_radius">12dp</dimen>
+    <dimen name="card_elevation">4dp</dimen>
+    <dimen name="card_margin">8dp</dimen>
+    <dimen name="card_padding">16dp</dimen>
+
+    <!-- Button properties -->
+    <dimen name="button_height">48dp</dimen>
+    <dimen name="button_corner_radius">8dp</dimen>
+    <dimen name="button_padding_horizontal">24dp</dimen>
+    <dimen name="button_padding_vertical">12dp</dimen>
+
+    <!-- Icon sizes -->
+    <dimen name="icon_size_small">16dp</dimen>
+    <dimen name="icon_size_medium">24dp</dimen>
+    <dimen name="icon_size_large">32dp</dimen>
+    <dimen name="icon_size_xlarge">48dp</dimen>
+
+    <!-- Form elements -->
+    <dimen name="form_field_margin">12dp</dimen>
+    <dimen name="form_field_padding">16dp</dimen>
+    <dimen name="form_section_margin">24dp</dimen>
+
+    <!-- Camera guidance dimensions -->
     <dimen name="guidance_message_margin">16dp</dimen>
-    <dimen name="guidance_message_padding">16dp</dimen>
-    <dimen name="guidance_message_corner_radius">12dp</dimen>
-    <dimen name="guidance_indicator_size">32dp</dimen>
-    <dimen name="guidance_mini_indicator_size">16dp</dimen>
-    <dimen name="guidance_elevation">4dp</dimen>
-    <dimen name="guidance_fab_elevation">6dp</dimen>
     <dimen name="guidance_progress_height">4dp</dimen>
-    <dimen name="guidance_quality_container_padding">8dp</dimen>
+    <dimen name="guidance_fab_elevation">6dp</dimen>
+    <dimen name="guidance_quality_container_padding">12dp</dimen>
 
+    <!-- Animation durations (in milliseconds) -->
+    <integer name="animation_duration_short">150</integer>
+    <integer name="animation_duration_medium">300</integer>
+    <integer name="animation_duration_long">500</integer>
 </resources>
