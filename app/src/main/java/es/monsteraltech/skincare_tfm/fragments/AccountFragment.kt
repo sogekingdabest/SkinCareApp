@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -35,6 +36,9 @@ class AccountFragment : Fragment() {
     private lateinit var userProfileManager: UserProfileManager
     
     private val TAG = "AccountFragment"
+    
+    // Bandera para evitar disparar listeners durante la carga inicial
+    private var isLoadingSettings = false
 
     // Activity result launcher para manejar el resultado del cambio de contraseña
     private val passwordChangeResultLauncher = registerForActivityResult(
@@ -81,7 +85,7 @@ class AccountFragment : Fragment() {
         binding.apply {
             // Animate cards with staggered entrance
             UIUtils.animateListItem(cardUserInfo, 0)
-            UIUtils.animateListItem(cardAccountOptions, 1)
+            UIUtils.animateListItem(cardSettings, 1)
             UIUtils.animateListItem(cardLogout, 2)
         }
     }
@@ -123,35 +127,54 @@ class AccountFragment : Fragment() {
      */
     private fun showLoadingState() {
         binding.apply {
-            UIUtils.crossFadeViews(layoutUserInfoContent, layoutLoading)
-            UIUtils.fadeOut(tvError)
+            layoutUserInfoContent.visibility = View.GONE
+            layoutLoading.visibility = View.VISIBLE
+            tvError.visibility = View.GONE
         }
+        Log.d(TAG, "Estado de carga mostrado")
     }
 
     /**
      * Muestra la información del usuario en la UI
      */
     private fun showUserInformation(userInfo: UserInfo) {
+        Log.d(TAG, "showUserInformation llamado con: displayName='${userInfo.displayName}', email='${userInfo.email}', isGoogleUser=${userInfo.isGoogleUser}")
+        
         binding.apply {
-            // Cross fade from loading to content
-            UIUtils.crossFadeViews(layoutLoading, layoutUserInfoContent)
-            UIUtils.fadeOut(tvError)
+            // Ocultar loading y error
+            layoutLoading.visibility = View.GONE
+            tvError.visibility = View.GONE
+            
+            // Mostrar contenido de información del usuario
+            layoutUserInfoContent.visibility = View.VISIBLE
             
             // Configurar nombre del usuario
             val displayName = userInfo.displayName
             if (!displayName.isNullOrBlank()) {
                 tvUserName.text = displayName
+                Log.d(TAG, "Nombre configurado: $displayName")
             } else {
                 tvUserName.text = "Sin nombre configurado"
+                Log.d(TAG, "Nombre no disponible, usando texto por defecto")
             }
             
             // Configurar email del usuario
             val email = userInfo.email
             if (!email.isNullOrBlank()) {
                 tvUserEmail.text = email
+                Log.d(TAG, "Email configurado: $email")
             } else {
                 tvUserEmail.text = "Sin email configurado"
+                Log.d(TAG, "Email no disponible, usando texto por defecto")
             }
+            
+            // Configurar visibilidad de la opción de cambiar contraseña
+            configurePasswordChangeVisibility(userInfo.isGoogleUser)
+            
+            // Verificar que los elementos UI existan y sean visibles
+            Log.d(TAG, "layoutUserInfoContent visibility después: ${layoutUserInfoContent.visibility}")
+            Log.d(TAG, "tvUserName text: '${tvUserName.text}'")
+            Log.d(TAG, "tvUserEmail text: '${tvUserEmail.text}'")
             
             // Animate user info elements
             UIUtils.fadeIn(tvUserName, 300)
@@ -166,11 +189,11 @@ class AccountFragment : Fragment() {
      */
     private fun showErrorState(errorMessage: String) {
         binding.apply {
-            UIUtils.fadeOut(layoutLoading)
-            UIUtils.fadeOut(layoutUserInfoContent)
+            layoutLoading.visibility = View.GONE
+            layoutUserInfoContent.visibility = View.GONE
             
             tvError.text = errorMessage
-            UIUtils.fadeIn(tvError)
+            tvError.visibility = View.VISIBLE
             UIUtils.shakeView(tvError)
         }
         
@@ -192,7 +215,43 @@ class AccountFragment : Fragment() {
                 applySettingsToUI(settings)
             }.onError { error ->
                 Log.e(TAG, "Error al cargar configuraciones de usuario: ${error.message}", error.exception)
-                // En caso de error, usar configuraciones por defecto
+                
+                // Si es error de permisos, intentar crear configuraciones iniciales
+                if (error.message?.contains("PERMISSION_DENIED") == true) {
+                    Log.d(TAG, "Intentando crear configuraciones iniciales para el usuario")
+                    createInitialUserSettings()
+                } else {
+                    // En caso de otro error, usar configuraciones por defecto
+                    applySettingsToUI(AccountSettings())
+                }
+            }
+        }
+    }
+
+    /**
+     * Crea configuraciones iniciales para el usuario
+     */
+    private fun createInitialUserSettings() {
+        lifecycleScope.launch {
+            try {
+                val userId = userProfileManager.getCurrentUserId()
+                if (userId != null) {
+                    val defaultSettings = AccountSettings(userId = userId)
+                    val updateResult = userProfileManager.updateUserSettings(defaultSettings)
+                    
+                    updateResult.onSuccess {
+                        Log.d(TAG, "Configuraciones iniciales creadas exitosamente")
+                        applySettingsToUI(defaultSettings)
+                    }.onError { error ->
+                        Log.e(TAG, "Error al crear configuraciones iniciales: ${error.message}")
+                        applySettingsToUI(AccountSettings())
+                    }
+                } else {
+                    Log.w(TAG, "No se pudo obtener el ID del usuario para crear configuraciones")
+                    applySettingsToUI(AccountSettings())
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Excepción al crear configuraciones iniciales: ${e.message}", e)
                 applySettingsToUI(AccountSettings())
             }
         }
@@ -202,13 +261,20 @@ class AccountFragment : Fragment() {
      * Aplica las configuraciones cargadas a los elementos de la UI
      */
     private fun applySettingsToUI(settings: AccountSettings) {
+        // Activar bandera para evitar disparar listeners durante la aplicación de configuraciones
+        isLoadingSettings = true
+        
         binding.apply {
             switchNotifications.isChecked = settings.notificationsEnabled
             switchDarkMode.isChecked = settings.darkModeEnabled
-            switchAutoBackup.isChecked = settings.autoBackup
         }
         
-        Log.d(TAG, "Configuraciones aplicadas a la UI: notifications=${settings.notificationsEnabled}, darkMode=${settings.darkModeEnabled}, autoBackup=${settings.autoBackup}")
+        // Usar post para asegurar que la UI se actualice antes de desactivar la bandera
+        binding.root.post {
+            isLoadingSettings = false
+        }
+        
+        Log.d(TAG, "Configuraciones aplicadas a la UI: notifications=${settings.notificationsEnabled}, darkMode=${settings.darkModeEnabled}")
     }
 
     /**
@@ -218,20 +284,24 @@ class AccountFragment : Fragment() {
         binding.apply {
             // Listener para notificaciones
             switchNotifications.setOnCheckedChangeListener { _, isChecked ->
-                Log.d(TAG, "Configuración de notificaciones cambiada: $isChecked")
-                saveSettingChange("notifications", isChecked)
+                // Solo procesar si no estamos cargando configuraciones iniciales
+                if (!isLoadingSettings) {
+                    Log.d(TAG, "Configuración de notificaciones cambiada por el usuario: $isChecked")
+                    saveSettingChange("notifications", isChecked)
+                } else {
+                    Log.d(TAG, "Configuración de notificaciones aplicada desde carga inicial: $isChecked")
+                }
             }
             
             // Listener para modo oscuro
             switchDarkMode.setOnCheckedChangeListener { _, isChecked ->
-                Log.d(TAG, "Configuración de modo oscuro cambiada: $isChecked")
-                saveSettingChange("darkMode", isChecked)
-            }
-            
-            // Listener para respaldo automático
-            switchAutoBackup.setOnCheckedChangeListener { _, isChecked ->
-                Log.d(TAG, "Configuración de respaldo automático cambiada: $isChecked")
-                saveSettingChange("autoBackup", isChecked)
+                // Solo procesar si no estamos cargando configuraciones iniciales
+                if (!isLoadingSettings) {
+                    Log.d(TAG, "Configuración de modo oscuro cambiada por el usuario: $isChecked")
+                    saveSettingChange("darkMode", isChecked)
+                } else {
+                    Log.d(TAG, "Configuración de modo oscuro aplicada desde carga inicial: $isChecked")
+                }
             }
         }
     }
@@ -261,7 +331,6 @@ class AccountFragment : Fragment() {
                 val newSettings = when (settingName) {
                     "notifications" -> currentSettings.copy(notificationsEnabled = value)
                     "darkMode" -> currentSettings.copy(darkModeEnabled = value)
-                    "autoBackup" -> currentSettings.copy(autoBackup = value)
                     else -> currentSettings
                 }
                 
@@ -302,14 +371,45 @@ class AccountFragment : Fragment() {
      * Revierte un cambio de configuración en la UI
      */
     private fun revertSettingInUI(settingName: String, originalValue: Boolean) {
+        // Activar bandera para evitar disparar listeners durante la reversión
+        isLoadingSettings = true
+        
         binding.apply {
             when (settingName) {
                 "notifications" -> switchNotifications.isChecked = originalValue
                 "darkMode" -> switchDarkMode.isChecked = originalValue
-                "autoBackup" -> switchAutoBackup.isChecked = originalValue
             }
         }
+        
+        // Usar post para asegurar que la UI se actualice antes de desactivar la bandera
+        binding.root.post {
+            isLoadingSettings = false
+        }
+        
         Log.d(TAG, "Configuración '$settingName' revertida en UI a: $originalValue")
+    }
+
+    /**
+     * Configura la visibilidad de la opción de cambiar contraseña según el tipo de usuario
+     */
+    private fun configurePasswordChangeVisibility(isGoogleUser: Boolean) {
+        try {
+            binding.apply {
+                if (isGoogleUser) {
+                    // Ocultar opción de cambiar contraseña y separador para usuarios de Google
+                    layoutChangePassword.visibility = View.GONE
+                    view?.findViewById<View>(R.id.separator_change_password)?.visibility = View.GONE
+                    Log.d(TAG, "Opción de cambiar contraseña ocultada para usuario de Google")
+                } else {
+                    // Mostrar opción de cambiar contraseña y separador para usuarios con email/password
+                    layoutChangePassword.visibility = View.VISIBLE
+                    view?.findViewById<View>(R.id.separator_change_password)?.visibility = View.VISIBLE
+                    Log.d(TAG, "Opción de cambiar contraseña mostrada para usuario con email/password")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al configurar visibilidad de cambiar contraseña: ${e.message}", e)
+        }
     }
 
     /**
@@ -349,13 +449,35 @@ class AccountFragment : Fragment() {
                 return
             }
             
-            // Crear intent para PasswordChangeActivity
-            val intent = Intent(requireContext(), PasswordChangeActivity::class.java)
-            
-            // Lanzar la actividad y esperar resultado
-            passwordChangeResultLauncher.launch(intent)
-            
-            Log.d(TAG, "PasswordChangeActivity lanzada exitosamente")
+            // Verificación adicional: comprobar si es usuario de Google
+            lifecycleScope.launch {
+                val userInfoResult = userProfileManager.getCurrentUserInfo()
+                userInfoResult.onSuccess { userInfo ->
+                    if (userInfo.isGoogleUser) {
+                        Log.w(TAG, "Usuario de Google intentando cambiar contraseña")
+                        UIUtils.showErrorSnackbar(
+                            binding.root,
+                            "Los usuarios de Google no pueden cambiar la contraseña desde la aplicación"
+                        )
+                        return@onSuccess
+                    }
+                    
+                    // Crear intent para PasswordChangeActivity
+                    val intent = Intent(requireContext(), PasswordChangeActivity::class.java)
+                    
+                    // Lanzar la actividad y esperar resultado
+                    passwordChangeResultLauncher.launch(intent)
+                    
+                    Log.d(TAG, "PasswordChangeActivity lanzada exitosamente")
+                    
+                }.onError { error ->
+                    Log.e(TAG, "Error al verificar tipo de usuario: ${error.message}")
+                    UIUtils.showErrorSnackbar(
+                        binding.root,
+                        "Error al verificar información del usuario"
+                    )
+                }
+            }
             
         } catch (e: Exception) {
             Log.e(TAG, "Error al navegar a cambio de contraseña: ${e.message}", e)

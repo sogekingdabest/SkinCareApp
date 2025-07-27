@@ -18,6 +18,10 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import es.monsteraltech.skincare_tfm.MainActivity
 import es.monsteraltech.skincare_tfm.R
+import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import android.util.Pair as UtilPair
 
 
@@ -25,6 +29,7 @@ class LoginActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var googleSignInClient: GoogleSignInClient
+    private lateinit var firebaseDataManager: FirebaseDataManager
 
     private lateinit var welcomeTextView: TextView
     private lateinit var instructionsTextView: TextView
@@ -43,6 +48,7 @@ class LoginActivity : AppCompatActivity() {
         val password = intent.getStringExtra("password")
 
         auth = FirebaseAuth.getInstance()
+        firebaseDataManager = FirebaseDataManager()
 
         logoImageView = findViewById(R.id.logoImageView)
         welcomeTextView = findViewById(R.id.welcomeTextView)
@@ -100,7 +106,7 @@ class LoginActivity : AppCompatActivity() {
             .addOnCompleteListener(this, OnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val user = auth.currentUser
-                    updateUI(user)
+                    initializeUserSettingsAndNavigate(user)
                 } else {
                     Toast.makeText(baseContext, "Authentication failed.", Toast.LENGTH_SHORT).show()
                     updateUI(null)
@@ -133,12 +139,38 @@ class LoginActivity : AppCompatActivity() {
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
                     val user = auth.currentUser
-                    updateUI(user)
+                    initializeUserSettingsAndNavigate(user)
                 } else {
                     Toast.makeText(this, "Authentication Failed.", Toast.LENGTH_SHORT).show()
                     updateUI(null)
                 }
             }
+    }
+
+    /**
+     * Inicializa las configuraciones del usuario si no existen y navega a MainActivity
+     */
+    private fun initializeUserSettingsAndNavigate(user: FirebaseUser?) {
+        if (user != null) {
+            // Inicializar configuraciones del usuario en background
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    // Intentar inicializar las configuraciones del usuario
+                    firebaseDataManager.initializeUserSettings(user.uid)
+                    
+                    // Navegar a MainActivity en el hilo principal
+                    runOnUiThread {
+                        updateUI(user)
+                    }
+                } catch (e: Exception) {
+                    // Si falla la inicialización, aún así navegar a MainActivity
+                    // Las configuraciones se crearán cuando sea necesario
+                    runOnUiThread {
+                        updateUI(user)
+                    }
+                }
+            }
+        }
     }
 
     private fun updateUI(user: FirebaseUser?) {

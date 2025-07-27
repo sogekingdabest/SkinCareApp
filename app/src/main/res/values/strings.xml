@@ -131,6 +131,7 @@
     <string name="account_error">Error al cargar información</string>
     <string name="account_options">Opciones de Cuenta</string>
     <string name="account_change_password">Cambiar Contraseña</string>
+    <string name="account_google_user_info">Has iniciado sesión con Google. Para cambiar tu contraseña, ve a tu cuenta de Google.</string>
     <string name="account_settings">Configuraciones</string>
     <string name="account_logout">Cerrar Sesión</string>
     <string name="account_logout_confirm">¿Estás seguro de que deseas cerrar sesión?</string>
@@ -174,8 +175,6 @@
     <string name="settings_dark_mode_description">Usar tema oscuro en la aplicación</string>
     <string name="settings_language">Idioma</string>
     <string name="settings_language_description">Idioma de la aplicación</string>
-    <string name="settings_auto_backup">Respaldo Automático</string>
-    <string name="settings_auto_backup_description">Respaldar datos automáticamente</string>
     <string name="settings_saved">Configuraciones guardadas</string>
     <string name="settings_error">Error al guardar configuraciones</string>
 
