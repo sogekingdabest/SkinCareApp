@@ -5,6 +5,8 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import es.monsteraltech.skincare_tfm.account.AccountSettings
+import es.monsteraltech.skincare_tfm.account.UserInfo
 import java.io.File
 import java.util.Date
 import java.util.UUID
@@ -23,6 +25,7 @@ class FirebaseDataManager {
     private val USERS_COLLECTION = "users"
     private val MOLES_SUBCOLLECTION = "moles"
     private val ANALYSIS_SUBCOLLECTION = "mole_analysis"
+    private val USER_SETTINGS_SUBCOLLECTION = "settings"
 
     // Modelo de datos para un lunar
     data class MoleData(
@@ -87,6 +90,109 @@ class FirebaseDataManager {
                 Log.e(TAG, "Error al obtener lunares: ${e.message}")
                 continuation.resumeWithException(e)
             }
+    }
+
+    // ========== FUNCIONES DE GESTIÓN DE PERFIL DE USUARIO ==========
+
+    /**
+     * Obtiene la información completa del usuario actual desde Firebase Auth
+     * @return UserInfo con todos los datos del usuario o null si no está autenticado
+     */
+    suspend fun getCurrentUserProfile(): UserInfo? = suspendCoroutine { continuation ->
+        try {
+            val currentUser = auth.currentUser
+            if (currentUser == null) {
+                continuation.resume(null)
+                return@suspendCoroutine
+            }
+
+            val userInfo = UserInfo(
+                uid = currentUser.uid,
+                displayName = currentUser.displayName,
+                email = currentUser.email,
+                photoUrl = currentUser.photoUrl?.toString(),
+                emailVerified = currentUser.isEmailVerified,
+                createdAt = currentUser.metadata?.creationTimestamp?.let { Date(it) },
+                lastSignIn = currentUser.metadata?.lastSignInTimestamp?.let { Date(it) }
+            )
+
+            continuation.resume(userInfo)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al obtener perfil de usuario: ${e.message}")
+            continuation.resumeWithException(e)
+        }
+    }
+
+    /**
+     * Actualiza las configuraciones de usuario en Firestore
+     * @param settings Configuraciones de cuenta a guardar
+     */
+    suspend fun updateUserSettings(settings: AccountSettings): Boolean = suspendCoroutine { continuation ->
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            Log.e(TAG, "Usuario no autenticado para actualizar configuraciones")
+            continuation.resume(false)
+            return@suspendCoroutine
+        }
+
+        firestore.collection(USERS_COLLECTION)
+            .document(userId)
+            .collection(USER_SETTINGS_SUBCOLLECTION)
+            .document("account_settings")
+            .set(settings)
+            .addOnSuccessListener {
+                Log.d(TAG, "Configuraciones de usuario actualizadas exitosamente")
+                continuation.resume(true)
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error al actualizar configuraciones de usuario: ${e.message}")
+                continuation.resumeWithException(e)
+            }
+    }
+
+    /**
+     * Obtiene las configuraciones de usuario desde Firestore
+     * @return AccountSettings del usuario o configuraciones por defecto si no existen
+     */
+    suspend fun getUserSettings(): AccountSettings = suspendCoroutine { continuation ->
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            Log.e(TAG, "Usuario no autenticado para obtener configuraciones")
+            continuation.resume(AccountSettings())
+            return@suspendCoroutine
+        }
+
+        firestore.collection(USERS_COLLECTION)
+            .document(userId)
+            .collection(USER_SETTINGS_SUBCOLLECTION)
+            .document("account_settings")
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val settings = document.toObject(AccountSettings::class.java)
+                    continuation.resume(settings ?: AccountSettings(userId = userId))
+                } else {
+                    // Si no existen configuraciones, crear unas por defecto
+                    val defaultSettings = AccountSettings(userId = userId)
+                    continuation.resume(defaultSettings)
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error al obtener configuraciones de usuario: ${e.message}")
+                continuation.resumeWithException(e)
+            }
+    }
+
+    /**
+     * Cierra la sesión del usuario actual
+     */
+    fun signOut() {
+        try {
+            auth.signOut()
+            Log.d(TAG, "Usuario desconectado exitosamente")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al cerrar sesión: ${e.message}")
+        }
     }
 
 }
