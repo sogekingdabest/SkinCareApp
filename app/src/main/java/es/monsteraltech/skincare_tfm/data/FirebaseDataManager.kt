@@ -106,6 +106,13 @@ class FirebaseDataManager {
                 return@suspendCoroutine
             }
 
+            // Obtener información de los proveedores de autenticación
+            val providerIds = currentUser.providerData.map { it.providerId }
+            val isGoogleUser = providerIds.contains("google.com")
+            
+            Log.d(TAG, "Proveedores de autenticación del usuario: $providerIds")
+            Log.d(TAG, "¿Es usuario de Google?: $isGoogleUser")
+
             val userInfo = UserInfo(
                 uid = currentUser.uid,
                 displayName = currentUser.displayName,
@@ -113,7 +120,9 @@ class FirebaseDataManager {
                 photoUrl = currentUser.photoUrl?.toString(),
                 emailVerified = currentUser.isEmailVerified,
                 createdAt = currentUser.metadata?.creationTimestamp?.let { Date(it) },
-                lastSignIn = currentUser.metadata?.lastSignInTimestamp?.let { Date(it) }
+                lastSignIn = currentUser.metadata?.lastSignInTimestamp?.let { Date(it) },
+                providerIds = providerIds,
+                isGoogleUser = isGoogleUser
             )
 
             continuation.resume(userInfo)
@@ -179,7 +188,57 @@ class FirebaseDataManager {
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Error al obtener configuraciones de usuario: ${e.message}")
-                continuation.resumeWithException(e)
+                
+                // Si es un error de permisos, devolver configuraciones por defecto
+                // en lugar de lanzar excepción
+                if (e.message?.contains("PERMISSION_DENIED") == true) {
+                    Log.w(TAG, "Error de permisos detectado, usando configuraciones por defecto")
+                    continuation.resume(AccountSettings(userId = userId))
+                } else {
+                    continuation.resumeWithException(e)
+                }
+            }
+    }
+
+    /**
+     * Inicializa las configuraciones por defecto para un nuevo usuario
+     * Solo crea las configuraciones si no existen previamente
+     * @param userId ID del usuario para el cual crear las configuraciones
+     */
+    suspend fun initializeUserSettings(userId: String): Boolean = suspendCoroutine { continuation ->
+        // Primero verificar si ya existen configuraciones
+        firestore.collection(USERS_COLLECTION)
+            .document(userId)
+            .collection(USER_SETTINGS_SUBCOLLECTION)
+            .document("account_settings")
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    // Las configuraciones ya existen, no hacer nada
+                    Log.d(TAG, "Configuraciones ya existen para usuario: $userId")
+                    continuation.resume(true)
+                } else {
+                    // Las configuraciones no existen, crearlas
+                    val defaultSettings = AccountSettings(userId = userId)
+                    
+                    firestore.collection(USERS_COLLECTION)
+                        .document(userId)
+                        .collection(USER_SETTINGS_SUBCOLLECTION)
+                        .document("account_settings")
+                        .set(defaultSettings)
+                        .addOnSuccessListener {
+                            Log.d(TAG, "Configuraciones iniciales creadas para usuario: $userId")
+                            continuation.resume(true)
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e(TAG, "Error al crear configuraciones iniciales: ${e.message}")
+                            continuation.resume(false)
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error al verificar configuraciones existentes: ${e.message}")
+                continuation.resume(false)
             }
     }
 

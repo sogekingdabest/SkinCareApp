@@ -152,35 +152,13 @@
                     android:gravity="center"
                     android:visibility="gone" />
 
-            </LinearLayout>
-
-        </androidx.cardview.widget.CardView>
-
-        <!-- Sección de opciones de cuenta -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/card_account_options"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@color/white">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:id="@+id/tv_account_options_title"
+                <!-- Separador para cambiar contraseña -->
+                <View
+                    android:id="@+id/separator_change_password"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/account_options"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/colorPrimary"
-                    android:layout_marginBottom="16dp" />
+                    android:layout_height="1dp"
+                    android:background="@color/background_light"
+                    android:layout_marginVertical="12dp" />
 
                 <!-- Botón cambiar contraseña -->
                 <LinearLayout
@@ -191,8 +169,7 @@
                     android:padding="12dp"
                     android:background="?android:attr/selectableItemBackground"
                     android:clickable="true"
-                    android:focusable="true"
-                    android:layout_marginBottom="8dp">
+                    android:focusable="true">
 
                     <ImageView
                         android:id="@+id/iv_change_password"
@@ -221,42 +198,35 @@
 
                 </LinearLayout>
 
-                <!-- Separador -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/background_light"
-                    android:layout_marginVertical="4dp" />
+            </LinearLayout>
 
-                <!-- Sección de configuraciones expandida -->
-                <LinearLayout
-                    android:id="@+id/layout_settings_header"
+        </androidx.cardview.widget.CardView>
+
+        <!-- Sección de configuraciones -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/card_settings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="@color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/tv_settings_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="12dp"
-                    android:layout_marginBottom="8dp">
-
-                    <ImageView
-                        android:id="@+id/iv_settings"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_settings_guidance"
-                        android:layout_marginEnd="16dp"
-                        android:layout_gravity="center_vertical" />
-
-                    <TextView
-                        android:id="@+id/tv_settings"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_title"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/colorPrimary"
-                        android:layout_gravity="center_vertical" />
-
-                </LinearLayout>
+                    android:text="@string/settings_title"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorPrimary"
+                    android:layout_marginBottom="16dp" />
 
                 <!-- Configuración de Notificaciones -->
                 <LinearLayout
@@ -356,58 +326,7 @@
 
                 </LinearLayout>
 
-                <!-- Separador -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/background_light"
-                    android:layout_marginVertical="4dp"
-                    android:layout_marginStart="16dp" />
 
-                <!-- Configuración de Respaldo Automático -->
-                <LinearLayout
-                    android:id="@+id/layout_auto_backup_setting"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="12dp"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginBottom="8dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/tv_auto_backup_title"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/settings_auto_backup"
-                            android:textSize="16sp"
-                            android:textColor="@color/black"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tv_auto_backup_description"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/settings_auto_backup_description"
-                            android:textSize="14sp"
-                            android:textColor="@color/black"
-                            android:alpha="0.7" />
-
-                    </LinearLayout>
-
-                    <Switch
-                        android:id="@+id/switch_auto_backup"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center_vertical"
-                        android:checked="true" />
-
-                </LinearLayout>
 
             </LinearLayout>
 

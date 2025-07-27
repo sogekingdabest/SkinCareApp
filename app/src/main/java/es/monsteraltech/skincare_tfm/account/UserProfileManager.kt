@@ -130,6 +130,21 @@ class UserProfileManager(
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Error al obtener configuraciones de usuario: ${e.message}", e)
+                
+                // Si es un error de permisos, intentar crear configuraciones iniciales
+                if (e.message?.contains("PERMISSION_DENIED") == true) {
+                    Log.w(TAG, "Error de permisos detectado, intentando crear configuraciones iniciales")
+                    val userId = getCurrentUserId()
+                    if (userId != null) {
+                        try {
+                            firebaseDataManager.initializeUserSettings(userId)
+                            Log.d(TAG, "Configuraciones iniciales creadas, usando configuraciones por defecto")
+                        } catch (initError: Exception) {
+                            Log.e(TAG, "Error al crear configuraciones iniciales: ${initError.message}")
+                        }
+                    }
+                }
+                
                 // En caso de error, devolver configuraciones por defecto
                 Log.d(TAG, "Usando configuraciones por defecto debido al error")
                 AccountResult.success(AccountSettings())
