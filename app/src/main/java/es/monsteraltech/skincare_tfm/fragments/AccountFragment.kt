@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.account.AccountResult
 import es.monsteraltech.skincare_tfm.account.AccountSettings
+import es.monsteraltech.skincare_tfm.MainActivity
 import es.monsteraltech.skincare_tfm.account.PasswordChangeActivity
 import es.monsteraltech.skincare_tfm.account.UserInfo
 import es.monsteraltech.skincare_tfm.account.UserProfileManager
@@ -339,30 +340,53 @@ class AccountFragment : Fragment() {
                 
                 updateResult.onSuccess {
                     Log.d(TAG, "Configuración '$settingName' guardada exitosamente: $value")
-                    UIUtils.showSuccessSnackbar(
-                        binding.root,
-                        getString(R.string.settings_saved)
-                    )
+                    
+                    // Si es la configuración del modo oscuro, actualizar el tema de la aplicación
+                    if (settingName == "darkMode") {
+                        updateAppTheme(value)
+                    }
+                    
+                    // Verificar que el binding existe antes de mostrar el snackbar
+                    _binding?.let { binding ->
+                        UIUtils.showSuccessSnackbar(
+                            binding.root,
+                            getString(R.string.settings_saved)
+                        )
+                    } ?: run {
+                        Log.w(TAG, "Binding es null, no se puede mostrar snackbar de éxito")
+                    }
                 }.onError { error ->
                     Log.e(TAG, "Error al guardar configuración '$settingName': ${error.message}", error.exception)
-                    UIUtils.showErrorSnackbar(
-                        binding.root,
-                        error.message
-                    )
                     
-                    // Revertir el cambio en la UI si falló el guardado
-                    revertSettingInUI(settingName, !value)
+                    // Verificar que el binding existe antes de mostrar el snackbar
+                    _binding?.let { binding ->
+                        UIUtils.showErrorSnackbar(
+                            binding.root,
+                            error.message
+                        )
+                        
+                        // Revertir el cambio en la UI si falló el guardado
+                        revertSettingInUI(settingName, !value)
+                    } ?: run {
+                        Log.w(TAG, "Binding es null, no se puede mostrar snackbar de error ni revertir UI")
+                    }
                 }
                 
             }.onError { error ->
                 Log.e(TAG, "Error al obtener configuraciones actuales: ${error.message}", error.exception)
-                UIUtils.showErrorSnackbar(
-                    binding.root,
-                    "Error al cargar configuraciones actuales"
-                )
                 
-                // Revertir el cambio en la UI
-                revertSettingInUI(settingName, !value)
+                // Verificar que el binding existe antes de mostrar el snackbar
+                _binding?.let { binding ->
+                    UIUtils.showErrorSnackbar(
+                        binding.root,
+                        "Error al cargar configuraciones actuales"
+                    )
+                    
+                    // Revertir el cambio en la UI
+                    revertSettingInUI(settingName, !value)
+                } ?: run {
+                    Log.w(TAG, "Binding es null, no se puede mostrar snackbar de error ni revertir UI")
+                }
             }
         }
     }
@@ -371,22 +395,27 @@ class AccountFragment : Fragment() {
      * Revierte un cambio de configuración en la UI
      */
     private fun revertSettingInUI(settingName: String, originalValue: Boolean) {
-        // Activar bandera para evitar disparar listeners durante la reversión
-        isLoadingSettings = true
-        
-        binding.apply {
-            when (settingName) {
-                "notifications" -> switchNotifications.isChecked = originalValue
-                "darkMode" -> switchDarkMode.isChecked = originalValue
+        // Verificar que el binding existe antes de intentar revertir
+        _binding?.let { binding ->
+            // Activar bandera para evitar disparar listeners durante la reversión
+            isLoadingSettings = true
+            
+            binding.apply {
+                when (settingName) {
+                    "notifications" -> switchNotifications.isChecked = originalValue
+                    "darkMode" -> switchDarkMode.isChecked = originalValue
+                }
             }
+            
+            // Usar post para asegurar que la UI se actualice antes de desactivar la bandera
+            binding.root.post {
+                isLoadingSettings = false
+            }
+            
+            Log.d(TAG, "Configuración '$settingName' revertida en UI a: $originalValue")
+        } ?: run {
+            Log.w(TAG, "Binding es null, no se puede revertir configuración '$settingName'")
         }
-        
-        // Usar post para asegurar que la UI se actualice antes de desactivar la bandera
-        binding.root.post {
-            isLoadingSettings = false
-        }
-        
-        Log.d(TAG, "Configuración '$settingName' revertida en UI a: $originalValue")
     }
 
     /**
@@ -640,6 +669,26 @@ class AccountFragment : Fragment() {
                 binding.root,
                 "Error al navegar al login"
             )
+        }
+    }
+    
+    /**
+     * Actualiza el tema de la aplicación cuando cambia la configuración del modo oscuro
+     * @param darkModeEnabled Nuevo valor para el modo oscuro
+     */
+    private fun updateAppTheme(darkModeEnabled: Boolean) {
+        try {
+            // Obtener la MainActivity para acceder al ThemeManager
+            val mainActivity = activity as? MainActivity
+            mainActivity?.let { activity ->
+                val themeManager = activity.getThemeManager()
+                themeManager.updateThemeFromSettings(activity, darkModeEnabled)
+                Log.d(TAG, "Tema de la aplicación actualizado: ${if (darkModeEnabled) "OSCURO" else "CLARO"}")
+            } ?: run {
+                Log.w(TAG, "No se pudo obtener MainActivity para actualizar el tema")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al actualizar el tema de la aplicación: ${e.message}", e)
         }
     }
 

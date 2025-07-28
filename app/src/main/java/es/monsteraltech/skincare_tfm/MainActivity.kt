@@ -6,10 +6,12 @@ import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import es.monsteraltech.skincare_tfm.account.UserProfileManager
 import es.monsteraltech.skincare_tfm.camera.CameraActivity
 import es.monsteraltech.skincare_tfm.databinding.ActivityMainBinding
 import es.monsteraltech.skincare_tfm.fragments.AccountFragment
 import es.monsteraltech.skincare_tfm.fragments.MyBodyFragment
+import es.monsteraltech.skincare_tfm.utils.ThemeManager
 import org.opencv.android.OpenCVLoader
 
 /*
@@ -66,11 +68,20 @@ class MainActivity : AppCompatActivity() {
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var userProfileManager: UserProfileManager
+    private lateinit var themeManager: ThemeManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Inicializar managers antes de establecer el contenido
+        initializeManagers()
+        
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Aplicar tema basado en la configuración del usuario
+        themeManager.applyThemeFromUserSettings(this)
 
         val bottomNavigationView: BottomNavigationView = binding.navigation
 
@@ -112,6 +123,29 @@ class MainActivity : AppCompatActivity() {
         transaction.addToBackStack(null)
         transaction.commit()
     }
+    
+    /**
+     * Inicializa los managers necesarios para la aplicación
+     */
+    private fun initializeManagers() {
+        try {
+            // Inicializar UserProfileManager
+            userProfileManager = UserProfileManager()
+            
+            // Inicializar ThemeManager
+            themeManager = ThemeManager.getInstance()
+            themeManager.initialize(userProfileManager)
+            
+            Log.d("MainActivity", "Managers inicializados correctamente")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error al inicializar managers: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Obtiene el ThemeManager para uso en otros componentes
+     */
+    fun getThemeManager(): ThemeManager = themeManager
 }
 
 
