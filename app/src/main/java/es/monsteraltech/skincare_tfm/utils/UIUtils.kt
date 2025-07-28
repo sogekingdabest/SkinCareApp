@@ -111,7 +111,7 @@ object UIUtils {
      */
     fun showErrorSnackbar(view: View, message: String, duration: Int = Snackbar.LENGTH_LONG) {
         val snackbar = Snackbar.make(view, message, duration)
-        snackbar.setBackgroundTint(ContextCompat.getColor(view.context, R.color.md3_error_light))
+        snackbar.setBackgroundTint(ContextCompat.getColor(view.context, R.color.md_theme_error))
         snackbar.setTextColor(ContextCompat.getColor(view.context, R.color.white))
         snackbar.show()
     }
@@ -121,7 +121,7 @@ object UIUtils {
      */
     fun showInfoSnackbar(view: View, message: String, duration: Int = Snackbar.LENGTH_SHORT) {
         val snackbar = Snackbar.make(view, message, duration)
-        snackbar.setBackgroundTint(ContextCompat.getColor(view.context, R.color.md3_primary_light))
+        snackbar.setBackgroundTint(ContextCompat.getColor(view.context, R.color.md_theme_primary))
         snackbar.setTextColor(ContextCompat.getColor(view.context, R.color.white))
         snackbar.show()
     }
