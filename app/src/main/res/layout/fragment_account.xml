@@ -178,7 +178,7 @@
                         android:layout_height="24dp"
                         android:src="@drawable/ic_settings"
                         android:layout_marginEnd="16dp"
-                        android:tint="?attr/colorOnSurfaceVariant" />
+                        app:tint="?attr/colorOnSurfaceVariant" />
 
                     <TextView
                         android:id="@+id/tv_change_password"
@@ -194,7 +194,7 @@
                         android:layout_width="20dp"
                         android:layout_height="20dp"
                         android:src="@drawable/ic_arrow_forward"
-                        android:tint="?attr/colorOnSurfaceVariant" />
+                        app:tint="?attr/colorOnSurfaceVariant" />
 
                 </LinearLayout>
 
@@ -344,7 +344,7 @@
                     android:layout_height="24dp"
                     android:src="@drawable/ic_logout"
                     android:layout_marginEnd="16dp"
-                    android:tint="?attr/colorError" />
+                    app:tint="?attr/colorError" />
 
                 <TextView
                     android:id="@+id/tv_logout"
