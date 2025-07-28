@@ -3,127 +3,185 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
+    android:background="?attr/colorSurface"
+    android:padding="24dp"
     tools:context=".login.LoginActivity">
 
+    <!-- Logo -->
     <ImageView
         android:id="@+id/logoImageView"
-        android:layout_width="148dp"
-        android:layout_height="134dp"
-        android:layout_marginTop="10dp"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginTop="48dp"
         android:src="@drawable/dinosaur"
+        android:transitionName="logoImageView"
+        android:contentDescription="@string/app_logo_description"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:transitionName="logoImageView"/>
+        app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Título de bienvenida -->
     <TextView
         android:id="@+id/welcomeTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Bienvenido a SkinCare!"
-        android:textSize="24sp"
-        android:textColor="@android:color/black"
+        android:textAppearance="?attr/textAppearanceHeadlineMedium"
+        android:textColor="?attr/colorOnSurface"
         android:textStyle="bold"
+        android:transitionName="textTrans"
         app:layout_constraintTop_toBottomOf="@id/logoImageView"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp"
-        android:transitionName="textTrans"/>
+        android:layout_marginTop="32dp" />
 
+    <!-- Instrucciones -->
     <TextView
         android:id="@+id/instructionsTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Inicia sesión para continuar"
-        android:textSize="16sp"
-        android:textColor="@android:color/darker_gray"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:transitionName="instructionsTextView"
         app:layout_constraintTop_toBottomOf="@id/welcomeTextView"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="8dp"
-        android:transitionName="instructionsTextView"/>
+        android:layout_marginTop="8dp" />
 
+    <!-- Campo de email -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/emailEditText"
-        android:hint="Email"
-        android:transitionName="emailEditText"
-        android:inputType="textEmailAddress"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="32dp"
+        android:hint="Email"
+        android:transitionName="emailEditText"
+        style="@style/Widget.SkinCare_TFM.TextInputLayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/instructionsTextView"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">>
+        app:layout_constraintTop_toBottomOf="@id/instructionsTextView">
 
         <com.google.android.material.textfield.TextInputEditText
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            />
+            android:inputType="textEmailAddress"
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
+
     </com.google.android.material.textfield.TextInputLayout>
 
+    <!-- Campo de contraseña -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/passwordEditText"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:hint="Contraseña"
-
         android:transitionName="passwordEditText"
         app:passwordToggleEnabled="true"
+        style="@style/Widget.SkinCare_TFM.TextInputLayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/emailEditText"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">>
+        app:layout_constraintTop_toBottomOf="@+id/emailEditText">
+
         <com.google.android.material.textfield.TextInputEditText
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="textPassword"
-/>
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
+
     </com.google.android.material.textfield.TextInputLayout>
 
+    <!-- Enlace de contraseña olvidada -->
     <TextView
         android:id="@+id/forgotPasswordTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Olvidaste tu contraseña?"
-        android:textColor="@android:color/holo_red_dark"
-        android:textSize="14sp"
+        android:text="¿Olvidaste tu contraseña?"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorPrimary"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="8dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/passwordEditText" />
+        app:layout_constraintTop_toBottomOf="@+id/passwordEditText"
+        android:layout_marginTop="8dp" />
 
-    <Button
+    <!-- Botón de inicio de sesión -->
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/loginButton"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:backgroundTint="@android:color/holo_red_dark"
-        android:text="INICIO"
-        android:textColor="@android:color/white"
+        android:layout_height="56dp"
+        android:layout_marginTop="24dp"
+        android:text="INICIAR SESIÓN"
+        android:textAppearance="?attr/textAppearanceLabelLarge"
+        android:transitionName="registerOrLoginButton"
+        style="@style/Widget.SkinCare_TFM.Button"
         app:layout_constraintTop_toBottomOf="@id/forgotPasswordTextView"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="10dp"
-        android:transitionName="registerOrLoginButton"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Enlace de registro -->
     <TextView
         android:id="@+id/registerButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Eres nuevo? Regístrate!"
-        android:textColor="@android:color/darker_gray"
-        android:textSize="14sp"
+        android:text="¿Eres nuevo? Regístrate"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorPrimary"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="8dp"
+        android:transitionName="registerOrLoginEditText"
         app:layout_constraintTop_toBottomOf="@id/loginButton"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="12dp"
-        android:transitionName="registerOrLoginEditText"/>
+        android:layout_marginTop="16dp" />
 
+    <!-- Separador -->
+    <LinearLayout
+        android:id="@+id/separator_layout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="32dp"
+        app:layout_constraintTop_toBottomOf="@+id/registerButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="?attr/colorOutlineVariant" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="O continúa con"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginHorizontal="16dp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="?attr/colorOutlineVariant" />
+
+    </LinearLayout>
+
+    <!-- Botón de Google Sign In -->
     <com.google.android.gms.common.SignInButton
         android:id="@+id/googleSignInButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@+id/registerButton"
-        tools:layout_editor_absoluteX="16dp"
-        android:layout_marginTop="5dp"/>
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="24dp"
+        app:layout_constraintTop_toBottomOf="@+id/separator_layout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

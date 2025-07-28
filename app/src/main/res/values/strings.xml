@@ -197,4 +197,16 @@
     <string name="ui_changes_saved">Cambios guardados</string>
     <string name="ui_changes_discarded">Cambios descartados</string>
 
+    <!-- Strings para fragment de cuerpo -->
+    <string name="my_body_title">Mi Cuerpo</string>
+    <string name="body_instruction_title">Instrucciones</string>
+    <string name="body_instruction_description">Toca en cualquier parte del cuerpo para seleccionar la zona donde quieres analizar un lunar. Luego usa el botón de cámara para capturar la imagen.</string>
+    <string name="body_image_description">Imagen del cuerpo humano</string>
+    <string name="body_mask_description">Máscara de áreas del cuerpo</string>
+    <string name="app_logo_description">Logo de la aplicación SkinCare</string>
+
+    <!-- Strings para menú de cuerpo -->
+    <string name="body_menu_history">Historial</string>
+    <string name="body_menu_settings">Configuración</string>
+
 </resources>

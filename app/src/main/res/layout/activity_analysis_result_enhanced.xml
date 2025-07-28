@@ -6,7 +6,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_light"
+    android:background="?attr/colorSurface"
     tools:context=".analysis.AnalysisResultActivity">
 
     <com.google.android.material.appbar.AppBarLayout
@@ -134,7 +134,7 @@
                         android:minWidth="120dp"
                         android:contentDescription="@string/processing_cancel_description"
                         style="@style/Widget.MaterialComponents.Button.TextButton"
-                        app:strokeColor="@color/colorPrimary"
+                        app:strokeColor="?attr/colorPrimary"
                         app:strokeWidth="1dp"
                         android:focusable="true"
                         android:clickable="true" />
@@ -225,7 +225,7 @@
                             android:text="--"
                             android:textSize="24sp"
                             android:textStyle="bold"
-                            android:textColor="@color/colorPrimary" />
+                            android:textColor="?attr/colorPrimary" />
 
                         <View
                             android:layout_width="0dp"

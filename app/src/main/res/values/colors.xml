@@ -1,9 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Colores base -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Colores para niveles de riesgo -->
+    <!-- Material Design 3 - Colores principales para modo claro -->
+    <color name="md3_primary_light">#6750A4</color>
+    <color name="md3_on_primary_light">#FFFFFF</color>
+    <color name="md3_primary_container_light">#EADDFF</color>
+    <color name="md3_on_primary_container_light">#21005D</color>
+    
+    <color name="md3_secondary_light">#625B71</color>
+    <color name="md3_on_secondary_light">#FFFFFF</color>
+    <color name="md3_secondary_container_light">#E8DEF8</color>
+    <color name="md3_on_secondary_container_light">#1D192B</color>
+    
+    <color name="md3_tertiary_light">#7D5260</color>
+    <color name="md3_on_tertiary_light">#FFFFFF</color>
+    <color name="md3_tertiary_container_light">#FFD8E4</color>
+    <color name="md3_on_tertiary_container_light">#31111D</color>
+    
+    <color name="md3_error_light">#BA1A1A</color>
+    <color name="md3_on_error_light">#FFFFFF</color>
+    <color name="md3_error_container_light">#FFDAD6</color>
+    <color name="md3_on_error_container_light">#410002</color>
+    
+    <color name="md3_background_light">#FFFBFE</color>
+    <color name="md3_on_background_light">#1C1B1F</color>
+    <color name="md3_surface_light">#FFFBFE</color>
+    <color name="md3_on_surface_light">#1C1B1F</color>
+    <color name="md3_surface_variant_light">#E7E0EC</color>
+    <color name="md3_on_surface_variant_light">#49454F</color>
+    <color name="md3_outline_light">#79747E</color>
+    <color name="md3_outline_variant_light">#CAC4D0</color>
+    
+    <!-- Colores para niveles de riesgo (mantenidos para compatibilidad) -->
     <color name="risk_very_low">#4CAF50</color>
     <color name="risk_low">#8BC34A</color>
     <color name="risk_moderate">#FFC107</color>
@@ -16,12 +47,6 @@
     <color name="card_consult">#FFE0B2</color>
     <color name="card_urgent">#FFCCBC</color>
 
-    <!-- Otros colores de la app -->
-    <color name="background_light">#F5F5F5</color>
-    <color name="colorPrimary">#1976D2</color>
-    <color name="colorPrimaryDark">#0D47A1</color>
-    <color name="colorAccent">#FF5722</color>
-
     <!-- Colores para procesamiento -->
     <color name="processing_overlay_background">#80000000</color>
     <color name="progress_background">#E0E0E0</color>
@@ -30,14 +55,6 @@
     <color name="processing_stage_ai_analysis">#FF9800</color>
     <color name="processing_stage_abcde_analysis">#9C27B0</color>
     <color name="processing_stage_finalizing">#607D8B</color>
-
-    <!-- Colores para modo de alto contraste -->
-    <color name="high_contrast_foreground">#FFFFFF</color>
-    <color name="high_contrast_background">#000000</color>
-    <color name="high_contrast_accent">#FFFF00</color>
-    <color name="high_contrast_border">#FFFFFF</color>
-    <color name="high_contrast_text">#FFFFFF</color>
-    <color name="high_contrast_progress">#FFFF00</color>
 
     <!-- Colores para guías de captura -->
     <color name="guidance_searching">#FFC107</color>
@@ -64,12 +81,12 @@
     <color name="neutral_light">#F5F5F5</color>
     
     <!-- Colores para estados de UI -->
-    <color name="button_enabled">#1976D2</color>
+    <color name="button_enabled">#6750A4</color>
     <color name="button_disabled">#BDBDBD</color>
-    <color name="text_primary">#212121</color>
-    <color name="text_secondary">#757575</color>
-    <color name="text_hint">#BDBDBD</color>
-    <color name="divider">#E0E0E0</color>
+    <color name="text_primary">#1C1B1F</color>
+    <color name="text_secondary">#49454F</color>
+    <color name="text_hint">#79747E</color>
+    <color name="divider">#E7E0EC</color>
     <color name="ripple_effect">#1F000000</color>
     <color name="card_shadow">#1F000000</color>
 

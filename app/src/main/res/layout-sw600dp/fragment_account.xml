@@ -5,14 +5,15 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_light"
+    android:background="?attr/colorSurface"
+    android:fillViewport="true"
     tools:context=".fragments.AccountFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp"
+        android:padding="32dp"
         android:layout_gravity="center_horizontal">
 
         <!-- Título de la pantalla -->
@@ -21,11 +22,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/account_title"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:textColor="@color/colorPrimary"
+            android:textAppearance="?attr/textAppearanceHeadlineLarge"
+            android:textColor="?attr/colorOnSurface"
             android:gravity="center"
-            android:layout_marginBottom="32dp" />
+            android:layout_marginBottom="40dp" />
 
         <!-- Container principal con máximo ancho para tablets -->
         <LinearLayout
@@ -33,7 +33,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_gravity="center_horizontal"
-            android:maxWidth="800dp">
+            android:maxWidth="900dp">
 
             <!-- Columna izquierda -->
             <LinearLayout
@@ -41,33 +41,30 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical"
-                android:layout_marginEnd="12dp">
+                android:layout_marginEnd="16dp">
 
                 <!-- Sección de información del usuario -->
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_user_info"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="6dp"
-                    app:cardBackgroundColor="@color/white">
+                    android:layout_marginBottom="24dp"
+                    style="@style/Widget.SkinCare_TFM.Card">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
+                        android:padding="28dp">
 
                         <TextView
                             android:id="@+id/tv_user_info_title"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/account_user_info"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/colorPrimary"
-                            android:layout_marginBottom="20dp" />
+                            android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                            android:textColor="?attr/colorOnSurface"
+                            android:layout_marginBottom="24dp" />
 
                         <!-- Contenedor para información del usuario -->
                         <LinearLayout
@@ -82,25 +79,25 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:orientation="horizontal"
-                                android:layout_marginBottom="16dp">
+                                android:layout_marginBottom="20dp">
 
                                 <TextView
                                     android:id="@+id/tv_name_label"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="@string/account_name_label"
-                                    android:textSize="18sp"
+                                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                                    android:textColor="?attr/colorOnSurface"
                                     android:textStyle="bold"
-                                    android:textColor="@color/black"
-                                    android:layout_marginEnd="12dp" />
+                                    android:layout_marginEnd="16dp" />
 
                                 <TextView
                                     android:id="@+id/tv_user_name"
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_weight="1"
-                                    android:textSize="18sp"
-                                    android:textColor="@color/black"
+                                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                                    android:textColor="?attr/colorOnSurfaceVariant"
                                     tools:text="Usuario Ejemplo" />
 
                             </LinearLayout>
@@ -116,18 +113,18 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="@string/account_email_label"
-                                    android:textSize="18sp"
+                                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                                    android:textColor="?attr/colorOnSurface"
                                     android:textStyle="bold"
-                                    android:textColor="@color/black"
-                                    android:layout_marginEnd="12dp" />
+                                    android:layout_marginEnd="16dp" />
 
                                 <TextView
                                     android:id="@+id/tv_user_email"
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_weight="1"
-                                    android:textSize="18sp"
-                                    android:textColor="@color/black"
+                                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                                    android:textColor="?attr/colorOnSurfaceVariant"
                                     tools:text="usuario@ejemplo.com" />
 
                             </LinearLayout>
@@ -143,19 +140,22 @@
                             android:gravity="center"
                             android:visibility="visible">
 
-                            <ProgressBar
+                            <com.google.android.material.progressindicator.CircularProgressIndicator
                                 android:id="@+id/progress_loading"
-                                android:layout_width="28dp"
-                                android:layout_height="28dp"
-                                android:layout_marginEnd="12dp" />
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:layout_marginEnd="16dp"
+                                android:indeterminate="true"
+                                app:indicatorColor="?attr/colorPrimary"
+                                app:trackColor="?attr/colorSurfaceVariant" />
 
                             <TextView
                                 android:id="@+id/tv_loading"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/account_loading"
-                                android:textSize="18sp"
-                                android:textColor="@color/black" />
+                                android:textAppearance="?attr/textAppearanceBodyLarge"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
 
                         </LinearLayout>
 
@@ -165,8 +165,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/account_error"
-                            android:textSize="18sp"
-                            android:textColor="@color/colorAccent"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorError"
                             android:gravity="center"
                             android:visibility="gone" />
 
@@ -175,8 +175,8 @@
                             android:id="@+id/separator_change_password"
                             android:layout_width="match_parent"
                             android:layout_height="1dp"
-                            android:background="@color/background_light"
-                            android:layout_marginVertical="16dp" />
+                            android:background="?attr/colorOutlineVariant"
+                            android:layout_marginVertical="24dp" />
 
                         <!-- Botón cambiar contraseña -->
                         <LinearLayout
@@ -184,10 +184,11 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:padding="16dp"
-                            android:background="?android:attr/selectableItemBackground"
+                            android:padding="20dp"
+                            android:background="?attr/selectableItemBackground"
                             android:clickable="true"
-                            android:focusable="true">
+                            android:focusable="true"
+                            android:gravity="center_vertical">
 
                             <ImageView
                                 android:id="@+id/iv_change_password"
@@ -195,7 +196,7 @@
                                 android:layout_height="28dp"
                                 android:src="@drawable/ic_settings"
                                 android:layout_marginEnd="20dp"
-                                android:layout_gravity="center_vertical" />
+                                android:tint="?attr/colorOnSurfaceVariant" />
 
                             <TextView
                                 android:id="@+id/tv_change_password"
@@ -203,22 +204,21 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:text="@string/account_change_password"
-                                android:textSize="18sp"
-                                android:textColor="@color/black"
-                                android:layout_gravity="center_vertical" />
+                                android:textAppearance="?attr/textAppearanceBodyLarge"
+                                android:textColor="?attr/colorOnSurface" />
 
                             <ImageView
                                 android:id="@+id/iv_arrow_password"
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:src="@android:drawable/ic_menu_more"
-                                android:layout_gravity="center_vertical" />
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_arrow_forward"
+                                android:tint="?attr/colorOnSurfaceVariant" />
 
                         </LinearLayout>
 
                     </LinearLayout>
 
-                </androidx.cardview.widget.CardView>
+                </com.google.android.material.card.MaterialCardView>
 
             </LinearLayout>
 
@@ -228,35 +228,30 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical"
-                android:layout_marginStart="12dp">
+                android:layout_marginStart="16dp">
 
                 <!-- Sección de configuraciones -->
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_settings"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="6dp"
-                    app:cardBackgroundColor="@color/white">
+                    android:layout_marginBottom="24dp"
+                    style="@style/Widget.SkinCare_TFM.Card">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
+                        android:padding="28dp">
 
                         <TextView
                             android:id="@+id/tv_settings_title"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/settings_title"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/colorPrimary"
-                            android:layout_marginBottom="20dp" />
-
-
+                            android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                            android:textColor="?attr/colorOnSurface"
+                            android:layout_marginBottom="24dp" />
 
                         <!-- Configuración de Notificaciones -->
                         <LinearLayout
@@ -264,9 +259,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:padding="16dp"
-                            android:layout_marginStart="20dp"
-                            android:layout_marginBottom="12dp">
+                            android:padding="20dp"
+                            android:gravity="center_vertical">
 
                             <LinearLayout
                                 android:layout_width="0dp"
@@ -279,8 +273,8 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="@string/settings_notifications"
-                                    android:textSize="18sp"
-                                    android:textColor="@color/black"
+                                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                                    android:textColor="?attr/colorOnSurface"
                                     android:textStyle="bold" />
 
                                 <TextView
@@ -288,17 +282,15 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="@string/settings_notifications_description"
-                                    android:textSize="16sp"
-                                    android:textColor="@color/black"
-                                    android:alpha="0.7" />
+                                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
 
                             </LinearLayout>
 
-                            <Switch
+                            <com.google.android.material.switchmaterial.SwitchMaterial
                                 android:id="@+id/switch_notifications"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_gravity="center_vertical"
                                 android:checked="true" />
 
                         </LinearLayout>
@@ -307,9 +299,8 @@
                         <View
                             android:layout_width="match_parent"
                             android:layout_height="1dp"
-                            android:background="@color/background_light"
-                            android:layout_marginVertical="8dp"
-                            android:layout_marginStart="20dp" />
+                            android:background="?attr/colorOutlineVariant"
+                            android:layout_marginVertical="12dp" />
 
                         <!-- Configuración de Modo Oscuro -->
                         <LinearLayout
@@ -317,9 +308,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:padding="16dp"
-                            android:layout_marginStart="20dp"
-                            android:layout_marginBottom="12dp">
+                            android:padding="20dp"
+                            android:gravity="center_vertical">
 
                             <LinearLayout
                                 android:layout_width="0dp"
@@ -332,8 +322,8 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="@string/settings_dark_mode"
-                                    android:textSize="18sp"
-                                    android:textColor="@color/black"
+                                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                                    android:textColor="?attr/colorOnSurface"
                                     android:textStyle="bold" />
 
                                 <TextView
@@ -341,43 +331,37 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="@string/settings_dark_mode_description"
-                                    android:textSize="16sp"
-                                    android:textColor="@color/black"
-                                    android:alpha="0.7" />
+                                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
 
                             </LinearLayout>
 
-                            <Switch
+                            <com.google.android.material.switchmaterial.SwitchMaterial
                                 android:id="@+id/switch_dark_mode"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_gravity="center_vertical"
                                 android:checked="false" />
 
                         </LinearLayout>
 
-
-
                     </LinearLayout>
 
-                </androidx.cardview.widget.CardView>
+                </com.google.android.material.card.MaterialCardView>
 
                 <!-- Botón de cerrar sesión -->
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_logout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="6dp"
-                    app:cardBackgroundColor="@color/white">
+                    style="@style/Widget.SkinCare_TFM.Card">
 
                     <LinearLayout
                         android:id="@+id/layout_logout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:padding="20dp"
-                        android:background="?android:attr/selectableItemBackground"
+                        android:padding="24dp"
+                        android:background="?attr/selectableItemBackground"
                         android:clickable="true"
                         android:focusable="true"
                         android:gravity="center">
@@ -386,22 +370,22 @@
                             android:id="@+id/iv_logout"
                             android:layout_width="28dp"
                             android:layout_height="28dp"
-                            android:src="@android:drawable/ic_menu_revert"
-                            android:layout_marginEnd="16dp"
-                            android:tint="@color/colorAccent" />
+                            android:src="@drawable/ic_logout"
+                            android:layout_marginEnd="20dp"
+                            android:tint="?attr/colorError" />
 
                         <TextView
                             android:id="@+id/tv_logout"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/account_logout"
-                            android:textSize="18sp"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
                             android:textStyle="bold"
-                            android:textColor="@color/colorAccent" />
+                            android:textColor="?attr/colorError" />
 
                     </LinearLayout>
 
-                </androidx.cardview.widget.CardView>
+                </com.google.android.material.card.MaterialCardView>
 
             </LinearLayout>
 

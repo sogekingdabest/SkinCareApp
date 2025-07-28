@@ -44,7 +44,7 @@ class ProgressManager(
     private val normalColor = if (isHighContrastMode) {
         ContextCompat.getColor(context, android.R.color.black)
     } else {
-        ContextCompat.getColor(context, R.color.colorPrimary)
+        ContextCompat.getColor(context, R.color.md3_primary_light)
     }
     private val errorColor = if (isHighContrastMode) {
         ContextCompat.getColor(context, android.R.color.black)
@@ -227,7 +227,7 @@ class ProgressManager(
             
             // Resetear colores a estado normal
             statusText?.setTextColor(ContextCompat.getColor(context, android.R.color.black))
-            progressBar?.progressTintList = ContextCompat.getColorStateList(context, R.color.colorPrimary)
+            progressBar?.progressTintList = ContextCompat.getColorStateList(context, R.color.md3_primary_light)
         }
     }
     
@@ -279,8 +279,8 @@ class ProgressManager(
     private fun updateProgressBarColor(stage: ProcessingStage) {
         progressBar?.let { bar ->
             val colorRes = when (stage) {
-                ProcessingStage.INITIALIZING -> R.color.colorPrimary
-                ProcessingStage.PREPROCESSING -> R.color.colorPrimary
+                ProcessingStage.INITIALIZING -> R.color.md3_primary_light
+                ProcessingStage.PREPROCESSING -> R.color.md3_primary_light
                 ProcessingStage.AI_ANALYSIS -> android.R.color.holo_blue_light
                 ProcessingStage.ABCDE_ANALYSIS -> android.R.color.holo_orange_light
                 ProcessingStage.FINALIZING -> android.R.color.holo_green_light
