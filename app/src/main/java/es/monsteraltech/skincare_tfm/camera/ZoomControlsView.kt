@@ -129,9 +129,9 @@ class ZoomControlsView @JvmOverloads constructor(
         // Resaltar botón óptimo si está en uso
         val isOptimal = zoomInfo.isOptimalForSmallMoles
         val optimalColor = if (isOptimal) {
-            ContextCompat.getColor(context, R.color.md3_primary_light)
+            ContextCompat.getColor(context, R.color.md_theme_primary)
         } else {
-            ContextCompat.getColor(context, R.color.md3_surface_variant_light)
+            ContextCompat.getColor(context, R.color.md_theme_surfaceVariant)
         }
         zoomOptimalButton.backgroundTintList = android.content.res.ColorStateList.valueOf(optimalColor)
         

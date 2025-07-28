@@ -1,35 +1,57 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.SkinCare_TFM" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Material Design 3 - Colores principales para modo oscuro -->
-        <item name="colorPrimary">@color/md3_primary_dark</item>
-        <item name="colorOnPrimary">@color/md3_on_primary_dark</item>
-        <item name="colorPrimaryContainer">@color/md3_primary_container_dark</item>
-        <item name="colorOnPrimaryContainer">@color/md3_on_primary_container_dark</item>
+        <!-- Material Design 3 - Colores del tema generado para modo oscuro -->
+        <item name="colorPrimary">@color/md_theme_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/md_theme_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/md_theme_onPrimaryContainer</item>
         
-        <item name="colorSecondary">@color/md3_secondary_dark</item>
-        <item name="colorOnSecondary">@color/md3_on_secondary_dark</item>
-        <item name="colorSecondaryContainer">@color/md3_secondary_container_dark</item>
-        <item name="colorOnSecondaryContainer">@color/md3_on_secondary_container_dark</item>
+        <item name="colorSecondary">@color/md_theme_secondary</item>
+        <item name="colorOnSecondary">@color/md_theme_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/md_theme_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/md_theme_onSecondaryContainer</item>
         
-        <item name="colorTertiary">@color/md3_tertiary_dark</item>
-        <item name="colorOnTertiary">@color/md3_on_tertiary_dark</item>
-        <item name="colorTertiaryContainer">@color/md3_tertiary_container_dark</item>
-        <item name="colorOnTertiaryContainer">@color/md3_on_tertiary_container_dark</item>
+        <item name="colorTertiary">@color/md_theme_tertiary</item>
+        <item name="colorOnTertiary">@color/md_theme_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/md_theme_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/md_theme_onTertiaryContainer</item>
         
-        <item name="colorError">@color/md3_error_dark</item>
-        <item name="colorOnError">@color/md3_on_error_dark</item>
-        <item name="colorErrorContainer">@color/md3_error_container_dark</item>
-        <item name="colorOnErrorContainer">@color/md3_on_error_container_dark</item>
+        <item name="colorError">@color/md_theme_error</item>
+        <item name="colorOnError">@color/md_theme_onError</item>
+        <item name="colorErrorContainer">@color/md_theme_errorContainer</item>
+        <item name="colorOnErrorContainer">@color/md_theme_onErrorContainer</item>
         
-        <item name="android:colorBackground">@color/md3_background_dark</item>
-        <item name="colorOnBackground">@color/md3_on_background_dark</item>
-        <item name="colorSurface">@color/md3_surface_dark</item>
-        <item name="colorOnSurface">@color/md3_on_surface_dark</item>
-        <item name="colorSurfaceVariant">@color/md3_surface_variant_dark</item>
-        <item name="colorOnSurfaceVariant">@color/md3_on_surface_variant_dark</item>
-        <item name="colorOutline">@color/md3_outline_dark</item>
-        <item name="colorOutlineVariant">@color/md3_outline_variant_dark</item>
+        <item name="android:colorBackground">@color/md_theme_background</item>
+        <item name="colorOnBackground">@color/md_theme_onBackground</item>
+        <item name="colorSurface">@color/md_theme_surface</item>
+        <item name="colorOnSurface">@color/md_theme_onSurface</item>
+        <item name="colorSurfaceVariant">@color/md_theme_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/md_theme_onSurfaceVariant</item>
+        <item name="colorOutline">@color/md_theme_outline</item>
+        <item name="colorOutlineVariant">@color/md_theme_outlineVariant</item>
+        <item name="colorSurfaceInverse">@color/md_theme_inverseSurface</item>
+        <item name="colorOnSurfaceInverse">@color/md_theme_inverseOnSurface</item>
+        <item name="colorPrimaryInverse">@color/md_theme_inversePrimary</item>
+        <item name="colorPrimaryFixed">@color/md_theme_primaryFixed</item>
+        <item name="colorOnPrimaryFixed">@color/md_theme_onPrimaryFixed</item>
+        <item name="colorPrimaryFixedDim">@color/md_theme_primaryFixedDim</item>
+        <item name="colorOnPrimaryFixedVariant">@color/md_theme_onPrimaryFixedVariant</item>
+        <item name="colorSecondaryFixed">@color/md_theme_secondaryFixed</item>
+        <item name="colorOnSecondaryFixed">@color/md_theme_onSecondaryFixed</item>
+        <item name="colorSecondaryFixedDim">@color/md_theme_secondaryFixedDim</item>
+        <item name="colorOnSecondaryFixedVariant">@color/md_theme_onSecondaryFixedVariant</item>
+        <item name="colorTertiaryFixed">@color/md_theme_tertiaryFixed</item>
+        <item name="colorOnTertiaryFixed">@color/md_theme_onTertiaryFixed</item>
+        <item name="colorTertiaryFixedDim">@color/md_theme_tertiaryFixedDim</item>
+        <item name="colorOnTertiaryFixedVariant">@color/md_theme_onTertiaryFixedVariant</item>
+        <item name="colorSurfaceDim">@color/md_theme_surfaceDim</item>
+        <item name="colorSurfaceBright">@color/md_theme_surfaceBright</item>
+        <item name="colorSurfaceContainerLowest">@color/md_theme_surfaceContainerLowest</item>
+        <item name="colorSurfaceContainerLow">@color/md_theme_surfaceContainerLow</item>
+        <item name="colorSurfaceContainer">@color/md_theme_surfaceContainer</item>
+        <item name="colorSurfaceContainerHigh">@color/md_theme_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/md_theme_surfaceContainerHighest</item>
         
         <!-- Configuraciones adicionales de Material Design 3 para modo oscuro -->
         <item name="android:statusBarColor">@android:color/transparent</item>
@@ -56,8 +78,8 @@
     <style name="Widget.SkinCare_TFM.Card" parent="Widget.Material3.CardView.Elevated">
         <item name="cardElevation">2dp</item>
         <item name="cardCornerRadius">16dp</item>
-        <item name="cardBackgroundColor">@color/md3_surface_dark</item>
-        <item name="strokeColor">@color/md3_outline_variant_dark</item>
+        <item name="cardBackgroundColor">@color/md_theme_surface</item>
+        <item name="strokeColor">@color/md_theme_outlineVariant</item>
         <item name="strokeWidth">1dp</item>
     </style>
 
@@ -81,9 +103,9 @@
     </style>
 
     <style name="Widget.SkinCare_TFM.BottomNavigation" parent="Widget.Material3.BottomNavigationView">
-        <item name="itemRippleColor">@color/md3_primary_dark</item>
-        <item name="itemIconTint">@color/md3_on_surface_variant_dark</item>
-        <item name="itemTextColor">@color/md3_on_surface_variant_dark</item>
+        <item name="itemRippleColor">@color/md_theme_primary</item>
+        <item name="itemIconTint">@color/md_theme_onSurfaceVariant</item>
+        <item name="itemTextColor">@color/md_theme_onSurfaceVariant</item>
     </style>
 
 </resources>

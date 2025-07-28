@@ -1,55 +1,112 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Material Design 3 - Colores principales para modo oscuro -->
-    <color name="md3_primary_dark">#D0BCFF</color>
-    <color name="md3_on_primary_dark">#381E72</color>
-    <color name="md3_primary_container_dark">#4F378B</color>
-    <color name="md3_on_primary_container_dark">#EADDFF</color>
-    
-    <color name="md3_secondary_dark">#CCC2DC</color>
-    <color name="md3_on_secondary_dark">#332D41</color>
-    <color name="md3_secondary_container_dark">#4A4458</color>
-    <color name="md3_on_secondary_container_dark">#E8DEF8</color>
-    
-    <color name="md3_tertiary_dark">#EFB8C8</color>
-    <color name="md3_on_tertiary_dark">#492532</color>
-    <color name="md3_tertiary_container_dark">#633B48</color>
-    <color name="md3_on_tertiary_container_dark">#FFD8E4</color>
-    
-    <color name="md3_error_dark">#FFB4AB</color>
-    <color name="md3_on_error_dark">#690005</color>
-    <color name="md3_error_container_dark">#93000A</color>
-    <color name="md3_on_error_container_dark">#FFDAD6</color>
-    
-    <color name="md3_background_dark">#1C1B1F</color>
-    <color name="md3_on_background_dark">#E6E1E5</color>
-    <color name="md3_surface_dark">#1C1B1F</color>
-    <color name="md3_on_surface_dark">#E6E1E5</color>
-    <color name="md3_surface_variant_dark">#49454F</color>
-    <color name="md3_on_surface_variant_dark">#CAC4D0</color>
-    <color name="md3_outline_dark">#938F99</color>
-    <color name="md3_outline_variant_dark">#49454F</color>
+    <!-- Colores base -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
 
-    <!-- Colores para tarjetas según urgencia (modo oscuro) -->
-    <color name="card_routine">#2D2D2D</color>
-    <color name="card_monitor">#3D2F1F</color>
-    <color name="card_consult">#3D2A1F</color>
-    <color name="card_urgent">#3D1F1F</color>
+    <!-- Material Design 3 - Colores del tema generado para modo oscuro -->
+    <color name="md_theme_primary">#B1D18A</color>
+    <color name="md_theme_onPrimary">#1F3701</color>
+    <color name="md_theme_primaryContainer">#354E16</color>
+    <color name="md_theme_onPrimaryContainer">#CDEDA3</color>
+    <color name="md_theme_secondary">#BFCBAD</color>
+    <color name="md_theme_onSecondary">#2A331E</color>
+    <color name="md_theme_secondaryContainer">#404A33</color>
+    <color name="md_theme_onSecondaryContainer">#DCE7C8</color>
+    <color name="md_theme_tertiary">#A0D0CB</color>
+    <color name="md_theme_onTertiary">#003735</color>
+    <color name="md_theme_tertiaryContainer">#1F4E4B</color>
+    <color name="md_theme_onTertiaryContainer">#BCECE7</color>
+    <color name="md_theme_error">#FFB4AB</color>
+    <color name="md_theme_onError">#690005</color>
+    <color name="md_theme_errorContainer">#93000A</color>
+    <color name="md_theme_onErrorContainer">#FFDAD6</color>
+    <color name="md_theme_background">#12140E</color>
+    <color name="md_theme_onBackground">#E2E3D8</color>
+    <color name="md_theme_surface">#12140E</color>
+    <color name="md_theme_onSurface">#E2E3D8</color>
+    <color name="md_theme_surfaceVariant">#44483D</color>
+    <color name="md_theme_onSurfaceVariant">#C5C8BA</color>
+    <color name="md_theme_outline">#8F9285</color>
+    <color name="md_theme_outlineVariant">#44483D</color>
+    <color name="md_theme_scrim">#000000</color>
+    <color name="md_theme_inverseSurface">#E2E3D8</color>
+    <color name="md_theme_inverseOnSurface">#2F312A</color>
+    <color name="md_theme_inversePrimary">#4C662B</color>
+    <color name="md_theme_primaryFixed">#CDEDA3</color>
+    <color name="md_theme_onPrimaryFixed">#102000</color>
+    <color name="md_theme_primaryFixedDim">#B1D18A</color>
+    <color name="md_theme_onPrimaryFixedVariant">#354E16</color>
+    <color name="md_theme_secondaryFixed">#DCE7C8</color>
+    <color name="md_theme_onSecondaryFixed">#151E0B</color>
+    <color name="md_theme_secondaryFixedDim">#BFCBAD</color>
+    <color name="md_theme_onSecondaryFixedVariant">#404A33</color>
+    <color name="md_theme_tertiaryFixed">#BCECE7</color>
+    <color name="md_theme_onTertiaryFixed">#00201E</color>
+    <color name="md_theme_tertiaryFixedDim">#A0D0CB</color>
+    <color name="md_theme_onTertiaryFixedVariant">#1F4E4B</color>
+    <color name="md_theme_surfaceDim">#12140E</color>
+    <color name="md_theme_surfaceBright">#383A32</color>
+    <color name="md_theme_surfaceContainerLowest">#0C0F09</color>
+    <color name="md_theme_surfaceContainerLow">#1A1C16</color>
+    <color name="md_theme_surfaceContainer">#1E201A</color>
+    <color name="md_theme_surfaceContainerHigh">#282B24</color>
+    <color name="md_theme_surfaceContainerHighest">#33362E</color>
 
-    <!-- Colores para procesamiento (modo oscuro) -->
-    <color name="progress_background">#424242</color>
+    <!-- Colores para niveles de riesgo (mantenidos para compatibilidad) -->
+    <color name="risk_very_low">#4CAF50</color>
+    <color name="risk_low">#8BC34A</color>
+    <color name="risk_moderate">#FFC107</color>
+    <color name="risk_high">#FF5722</color>
+    <color name="risk_very_high">#D32F2F</color>
 
-    <!-- Colores para feedback visual y animaciones (modo oscuro) -->
+    <!-- Colores para tarjetas según urgencia -->
+    <color name="card_routine">#1E201A</color>
+    <color name="card_monitor">#2A2D25</color>
+    <color name="card_consult">#33362E</color>
+    <color name="card_urgent">#3C3F37</color>
+
+    <!-- Colores para procesamiento -->
+    <color name="processing_overlay_background">#80000000</color>
+    <color name="progress_background">#44483D</color>
+    <color name="processing_stage_initializing">#2196F3</color>
+    <color name="processing_stage_preprocessing">#4CAF50</color>
+    <color name="processing_stage_ai_analysis">#FF9800</color>
+    <color name="processing_stage_abcde_analysis">#9C27B0</color>
+    <color name="processing_stage_finalizing">#607D8B</color>
+
+    <!-- Colores para guías de captura -->
+    <color name="guidance_searching">#FFC107</color>
+    <color name="guidance_centering">#2196F3</color>
+    <color name="guidance_too_far">#FF9800</color>
+    <color name="guidance_too_close">#FF5722</color>
+    <color name="guidance_poor_lighting">#9C27B0</color>
+    <color name="guidance_blurry">#795548</color>
+    <color name="guidance_ready">#4CAF50</color>
+    <color name="guidance_overlay_background">#80000000</color>
+    <color name="guidance_message_background">#CC000000</color>
+    <color name="guidance_circle_stroke">#FFFFFF</color>
+
+    <!-- Colores para feedback visual y animaciones -->
+    <color name="success_green">#4CAF50</color>
     <color name="success_light">#1B5E20</color>
+    <color name="error_red">#F44336</color>
     <color name="error_light">#B71C1C</color>
+    <color name="warning_orange">#FF9800</color>
     <color name="warning_light">#E65100</color>
+    <color name="info_blue">#2196F3</color>
     <color name="info_light">#0D47A1</color>
+    <color name="neutral_gray">#9E9E9E</color>
     <color name="neutral_light">#424242</color>
     
-    <!-- Colores para estados de UI (modo oscuro) -->
-    <color name="button_enabled">#D0BCFF</color>
-    <color name="text_primary">#E6E1E5</color>
-    <color name="text_secondary">#CAC4D0</color>
-    <color name="text_hint">#938F99</color>
-    <color name="divider">#49454F</color>
+    <!-- Colores para estados de UI -->
+    <color name="button_enabled">#B1D18A</color>
+    <color name="button_disabled">#666666</color>
+    <color name="text_primary">#E2E3D8</color>
+    <color name="text_secondary">#C5C8BA</color>
+    <color name="text_hint">#8F9285</color>
+    <color name="divider">#44483D</color>
+    <color name="ripple_effect">#1FFFFFFF</color>
+    <color name="card_shadow">#1F000000</color>
+
 </resources>
