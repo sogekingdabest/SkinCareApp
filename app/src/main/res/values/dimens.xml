@@ -39,6 +39,7 @@
     <dimen name="form_section_margin">24dp</dimen>
 
     <!-- Camera guidance dimensions -->
+    <dimen name="fab_margin">16dp</dimen>
     <dimen name="guidance_message_margin">16dp</dimen>
     <dimen name="guidance_progress_height">4dp</dimen>
     <dimen name="guidance_fab_elevation">6dp</dimen>

@@ -73,7 +73,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val bottomNavigationView: BottomNavigationView = binding.navigation
-        bottomNavigationView.inflateMenu(R.menu.bottom_navigation_menu)
 
         if (!OpenCVLoader.initLocal()) {
             Log.d("OpenCV", "Unable to load OpenCV!")
@@ -82,7 +81,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Configurar la barra de navegación inferior
-        binding.navigation.setOnNavigationItemSelectedListener { item ->
+        binding.navigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.navigation_my_body -> {
                     openFragment(MyBodyFragment())

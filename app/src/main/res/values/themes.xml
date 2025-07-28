@@ -1,8 +1,55 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.SkinCare_TFM" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <!-- Material Design 3 - Colores principales -->
+        <item name="colorPrimary">@color/md3_primary_light</item>
+        <item name="colorOnPrimary">@color/md3_on_primary_light</item>
+        <item name="colorPrimaryContainer">@color/md3_primary_container_light</item>
+        <item name="colorOnPrimaryContainer">@color/md3_on_primary_container_light</item>
+        
+        <item name="colorSecondary">@color/md3_secondary_light</item>
+        <item name="colorOnSecondary">@color/md3_on_secondary_light</item>
+        <item name="colorSecondaryContainer">@color/md3_secondary_container_light</item>
+        <item name="colorOnSecondaryContainer">@color/md3_on_secondary_container_light</item>
+        
+        <item name="colorTertiary">@color/md3_tertiary_light</item>
+        <item name="colorOnTertiary">@color/md3_on_tertiary_light</item>
+        <item name="colorTertiaryContainer">@color/md3_tertiary_container_light</item>
+        <item name="colorOnTertiaryContainer">@color/md3_on_tertiary_container_light</item>
+        
+        <item name="colorError">@color/md3_error_light</item>
+        <item name="colorOnError">@color/md3_on_error_light</item>
+        <item name="colorErrorContainer">@color/md3_error_container_light</item>
+        <item name="colorOnErrorContainer">@color/md3_on_error_container_light</item>
+        
+        <item name="android:colorBackground">@color/md3_background_light</item>
+        <item name="colorOnBackground">@color/md3_on_background_light</item>
+        <item name="colorSurface">@color/md3_surface_light</item>
+        <item name="colorOnSurface">@color/md3_on_surface_light</item>
+        <item name="colorSurfaceVariant">@color/md3_surface_variant_light</item>
+        <item name="colorOnSurfaceVariant">@color/md3_on_surface_variant_light</item>
+        <item name="colorOutline">@color/md3_outline_light</item>
+        <item name="colorOutlineVariant">@color/md3_outline_variant_light</item>
+        
+        <!-- Configuraciones adicionales de Material Design 3 -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        
+        <!-- Configuraciones de tipografía -->
+        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.Material3.HeadlineLarge</item>
+        <item name="textAppearanceHeadlineMedium">@style/TextAppearance.Material3.HeadlineMedium</item>
+        <item name="textAppearanceHeadlineSmall">@style/TextAppearance.Material3.HeadlineSmall</item>
+        <item name="textAppearanceTitleLarge">@style/TextAppearance.Material3.TitleLarge</item>
+        <item name="textAppearanceTitleMedium">@style/TextAppearance.Material3.TitleMedium</item>
+        <item name="textAppearanceTitleSmall">@style/TextAppearance.Material3.TitleSmall</item>
+        <item name="textAppearanceBodyLarge">@style/TextAppearance.Material3.BodyLarge</item>
+        <item name="textAppearanceBodyMedium">@style/TextAppearance.Material3.BodyMedium</item>
+        <item name="textAppearanceBodySmall">@style/TextAppearance.Material3.BodySmall</item>
+        <item name="textAppearanceLabelLarge">@style/TextAppearance.Material3.LabelLarge</item>
+        <item name="textAppearanceLabelMedium">@style/TextAppearance.Material3.LabelMedium</item>
+        <item name="textAppearanceLabelSmall">@style/TextAppearance.Material3.LabelSmall</item>
     </style>
 
     <style name="Theme.SkinCare_TFM" parent="Base.Theme.SkinCare_TFM" />
@@ -37,13 +84,47 @@
     </style>
 
     <style name="GuidanceFAB.Mini">
-        <item name="fabSize">mini</item>
+        <item name="fabSize">normal</item>
     </style>
 
     <style name="GuidanceStatusIndicator">
         <item name="android:layout_width">32dp</item>
         <item name="android:layout_height">32dp</item>
         <item name="android:elevation">4dp</item>
+    </style>
+
+    <!-- Estilos personalizados para Material Design 3 -->
+    <style name="Widget.SkinCare_TFM.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardElevation">2dp</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardBackgroundColor">@color/md3_surface_light</item>
+        <item name="strokeColor">@color/md3_outline_variant_light</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="Widget.SkinCare_TFM.Button" parent="Widget.Material3.Button">
+        <item name="android:textAppearance">@style/TextAppearance.Material3.LabelLarge</item>
+        <item name="cornerRadius">24dp</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
+    <style name="Widget.SkinCare_TFM.Button.Secondary" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textAppearance">@style/TextAppearance.Material3.LabelLarge</item>
+        <item name="cornerRadius">24dp</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
+    <style name="Widget.SkinCare_TFM.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+    </style>
+
+    <style name="Widget.SkinCare_TFM.BottomNavigation" parent="Widget.Material3.BottomNavigationView">
+        <item name="itemRippleColor">@color/md3_primary_light</item>
+        <item name="itemIconTint">@color/md3_on_surface_variant_light</item>
+        <item name="itemTextColor">@color/md3_on_surface_variant_light</item>
     </style>
 
 </resources>
