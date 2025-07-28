@@ -143,36 +143,44 @@ class AnalysisResultActivity : AppCompatActivity() {
 
             override fun onStageChanged(stage: ProcessingStage) {
                 progressManager.showStageWithAccessibility(stage)
-                // Actualizar texto de etapa con información más detallada
-                val stageText = "Etapa ${stage.ordinal + 1}/5: ${stage.message}"
-                binding.processingStageText.text = stageText
-                binding.processingStageText.contentDescription = "Progreso del análisis: $stageText"
+                // Actualizar texto de etapa con información más detallada en el hilo principal
+                runOnUiThread {
+                    val stageText = "Etapa ${stage.ordinal + 1}/5: ${stage.message}"
+                    binding.processingStageText.text = stageText
+                    binding.processingStageText.contentDescription = "Progreso del análisis: $stageText"
+                }
             }
 
             override fun onError(error: String) {
                 progressManager.showErrorWithAccessibility(error)
-                // Ocultar overlay después de mostrar error
-                hideProcessingOverlay()
-                showError("Error en análisis: $error")
+                // Ocultar overlay después de mostrar error en el hilo principal
+                runOnUiThread {
+                    hideProcessingOverlay()
+                    showError("Error en análisis: $error")
+                }
             }
 
             override fun onCompleted(result: MelanomaAIDetector.CombinedAnalysisResult) {
                 progressManager.completeProcessingWithAccessibility()
                 analysisResult = result
                 
-                // Actualizar UI con resultados
-                displayResults(result)
-                
-                // Ocultar overlay después de un breve delay
-                binding.processingOverlay.postDelayed({
-                    hideProcessingOverlay()
-                }, 1500)
+                // Actualizar UI con resultados en el hilo principal
+                runOnUiThread {
+                    displayResults(result)
+                    
+                    // Ocultar overlay después de un breve delay
+                    binding.processingOverlay.postDelayed({
+                        hideProcessingOverlay()
+                    }, 1500)
+                }
             }
 
             override fun onCancelled() {
                 progressManager.showCancelledWithAccessibility()
-                hideProcessingOverlay()
-                Toast.makeText(this@AnalysisResultActivity, "Análisis cancelado", Toast.LENGTH_SHORT).show()
+                runOnUiThread {
+                    hideProcessingOverlay()
+                    Toast.makeText(this@AnalysisResultActivity, "Análisis cancelado", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -202,28 +210,23 @@ class AnalysisResultActivity : AppCompatActivity() {
             selectedBodyPart = colorToBodyPartMap[bodyPartColorCode] ?: ""
             binding.bodyPartTextView.text = selectedBodyPart
             binding.bodyPartTextView.visibility = View.VISIBLE
-            binding.bodyPartSpinner.visibility = View.GONE
+            binding.bodyPartInputLayout.visibility = View.GONE
         } else {
             binding.bodyPartTextView.visibility = View.GONE
-            binding.bodyPartSpinner.visibility = View.VISIBLE
+            binding.bodyPartInputLayout.visibility = View.VISIBLE
         }
     }
 
     private fun setupBodyPartSpinner() {
         val bodyPartsList = arrayListOf("Seleccionar parte del cuerpo") + bodyPartToColorMap.keys.toList()
-        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_item, bodyPartsList)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.bodyPartSpinner.adapter = adapter
+        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, bodyPartsList)
+        binding.bodyPartSpinner.setAdapter(adapter)
 
-        binding.bodyPartSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (position > 0) {
-                    selectedBodyPart = bodyPartsList[position]
-                    bodyPartColorCode = bodyPartToColorMap[selectedBodyPart]
-                }
-            }
-
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {
+        binding.bodyPartSpinner.setOnItemClickListener { parent, view, position, id ->
+            if (position > 0) {
+                selectedBodyPart = bodyPartsList[position]
+                bodyPartColorCode = bodyPartToColorMap[selectedBodyPart]
+            } else {
                 selectedBodyPart = ""
                 bodyPartColorCode = null
             }
@@ -258,7 +261,10 @@ class AnalysisResultActivity : AppCompatActivity() {
                     android.util.Log.d("AnalysisResultActivity", "Aplicando transformación para cámara frontal")
                     val matrix = Matrix()
                     matrix.preScale(-1.0f, 1.0f)
-                    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                    val flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                    if (flippedBitmap != null) {
+                        bitmap = flippedBitmap
+                    }
                 }
 
                 // Mostrar imagen inmediatamente
@@ -353,25 +359,25 @@ class AnalysisResultActivity : AppCompatActivity() {
     private fun displayABCDEScores(abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult) {
         // A - Asimetría
         binding.asymmetryScore.text = String.format("%.1f/2", abcdeResult.asymmetryScore)
-        binding.asymmetryProgress.progress = (abcdeResult.asymmetryScore / 2f * 100).toInt()
+        binding.asymmetryProgress.setProgress((abcdeResult.asymmetryScore / 2f * 100).toInt(), true)
 
         // B - Bordes
         binding.borderScore.text = String.format("%.1f/8", abcdeResult.borderScore)
-        binding.borderProgress.progress = (abcdeResult.borderScore / 8f * 100).toInt()
+        binding.borderProgress.setProgress((abcdeResult.borderScore / 8f * 100).toInt(), true)
 
         // C - Color
         binding.colorScore.text = String.format("%.1f/6", abcdeResult.colorScore)
-        binding.colorProgress.progress = (abcdeResult.colorScore / 6f * 100).toInt()
+        binding.colorProgress.setProgress((abcdeResult.colorScore / 6f * 100).toInt(), true)
 
         // D - Diámetro
         binding.diameterScore.text = String.format("%.1f/5", abcdeResult.diameterScore)
-        binding.diameterProgress.progress = (abcdeResult.diameterScore / 5f * 100).toInt()
+        binding.diameterProgress.setProgress((abcdeResult.diameterScore / 5f * 100).toInt(), true)
 
         // E - Evolución
         if (abcdeResult.evolutionScore != null) {
             binding.evolutionLayout.visibility = View.VISIBLE
             binding.evolutionScore.text = String.format("%.1f/3", abcdeResult.evolutionScore)
-            binding.evolutionProgress.progress = (abcdeResult.evolutionScore / 3f * 100).toInt()
+            binding.evolutionProgress.setProgress((abcdeResult.evolutionScore / 3f * 100).toInt(), true)
         } else {
             binding.evolutionLayout.visibility = View.GONE
         }

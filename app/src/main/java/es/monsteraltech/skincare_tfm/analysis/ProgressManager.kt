@@ -13,7 +13,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Button
-import android.widget.ProgressBar
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import es.monsteraltech.skincare_tfm.R
@@ -25,7 +25,7 @@ import es.monsteraltech.skincare_tfm.R
  */
 class ProgressManager(
     private val context: Context,
-    private val progressBar: ProgressBar?,
+    private val progressBar: LinearProgressIndicator?,
     private val statusText: TextView?,
     private val cancelButton: Button? = null
 ) {
@@ -266,7 +266,7 @@ class ProgressManager(
                 duration = 500
                 interpolator = AccelerateDecelerateInterpolator()
                 addUpdateListener { animator ->
-                    bar.progress = animator.animatedValue as Int
+                    bar.setProgress(animator.animatedValue as Int, true)
                 }
                 start()
             }
