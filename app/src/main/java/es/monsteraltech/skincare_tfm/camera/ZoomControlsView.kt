@@ -6,7 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageButton
 import android.widget.LinearLayout
-import android.widget.SeekBar
+import com.google.android.material.slider.Slider
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import es.monsteraltech.skincare_tfm.R
@@ -32,7 +32,7 @@ class ZoomControlsView @JvmOverloads constructor(
     private lateinit var zoomOutButton: ImageButton
     private lateinit var zoomResetButton: ImageButton
     private lateinit var zoomOptimalButton: ImageButton
-    private lateinit var zoomSeekBar: SeekBar
+    private lateinit var zoomSeekBar: Slider
     private lateinit var zoomLevelText: TextView
     private lateinit var stabilizationIndicator: View
     
@@ -60,9 +60,10 @@ class ZoomControlsView @JvmOverloads constructor(
         zoomLevelText = findViewById(R.id.zoom_level_text)
         stabilizationIndicator = findViewById(R.id.stabilization_indicator)
         
-        // Configurar SeekBar
-        zoomSeekBar.max = SEEKBAR_MAX
-        zoomSeekBar.progress = 0
+        // Configurar Slider
+        zoomSeekBar.valueFrom = 0f
+        zoomSeekBar.valueTo = SEEKBAR_MAX.toFloat()
+        zoomSeekBar.value = 0f
         
         // Configurar accesibilidad
         setupAccessibility()
@@ -85,19 +86,14 @@ class ZoomControlsView @JvmOverloads constructor(
             zoomListener?.onZoomOptimal()
         }
         
-        zoomSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    val zoomInfo = currentZoomInfo ?: return
-                    val zoomRange = zoomInfo.maxLevel - zoomInfo.minLevel
-                    val zoomLevel = zoomInfo.minLevel + (progress.toFloat() / SEEKBAR_MAX) * zoomRange
-                    zoomListener?.onZoomLevelChanged(zoomLevel)
-                }
+        zoomSeekBar.addOnChangeListener { slider, value, fromUser ->
+            if (fromUser) {
+                val zoomInfo = currentZoomInfo ?: return@addOnChangeListener
+                val zoomRange = zoomInfo.maxLevel - zoomInfo.minLevel
+                val zoomLevel = zoomInfo.minLevel + (value / SEEKBAR_MAX) * zoomRange
+                zoomListener?.onZoomLevelChanged(zoomLevel)
             }
-            
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
+        }
     }
     
     private fun setupAccessibility() {
@@ -118,10 +114,10 @@ class ZoomControlsView @JvmOverloads constructor(
         // Actualizar texto del nivel de zoom
         zoomLevelText.text = String.format("%.1fx", zoomInfo.currentLevel)
         
-        // Actualizar SeekBar
+        // Actualizar Slider
         val zoomRange = zoomInfo.maxLevel - zoomInfo.minLevel
-        val normalizedProgress = ((zoomInfo.currentLevel - zoomInfo.minLevel) / zoomRange * SEEKBAR_MAX).toInt()
-        zoomSeekBar.progress = normalizedProgress
+        val normalizedProgress = ((zoomInfo.currentLevel - zoomInfo.minLevel) / zoomRange * SEEKBAR_MAX).toFloat()
+        zoomSeekBar.value = normalizedProgress
         
         // Actualizar estado de botones
         zoomOutButton.isEnabled = zoomInfo.currentLevel > zoomInfo.minLevel
@@ -133,9 +129,9 @@ class ZoomControlsView @JvmOverloads constructor(
         // Resaltar botón óptimo si está en uso
         val isOptimal = zoomInfo.isOptimalForSmallMoles
         val optimalColor = if (isOptimal) {
-            ContextCompat.getColor(context, R.color.risk_very_low)
+            ContextCompat.getColor(context, R.color.md3_primary_light)
         } else {
-            ContextCompat.getColor(context, R.color.guidance_overlay_background)
+            ContextCompat.getColor(context, R.color.md3_surface_variant_light)
         }
         zoomOptimalButton.backgroundTintList = android.content.res.ColorStateList.valueOf(optimalColor)
         

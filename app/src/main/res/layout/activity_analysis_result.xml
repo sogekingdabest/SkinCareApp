@@ -46,22 +46,30 @@
             android:visibility="gone" />
 
         <!-- El Spinner para seleccionar parte del cuerpo cuando no viene predefinida -->
-        <Spinner
-            android:id="@+id/bodyPartSpinner"
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/bodyPartInputLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:minHeight="48dp" />
+            android:hint="Seleccionar parte del cuerpo"
+                                style="@style/Widget.SkinCare_TFM.TextInputLayout">
+
+            <AutoCompleteTextView
+                android:id="@+id/bodyPartSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none" />
+
+        </com.google.android.material.textfield.TextInputLayout>
 
     </LinearLayout>
 
-    <androidx.cardview.widget.CardView
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/analysisCardView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="4dp"
+        style="@style/Widget.SkinCare_TFM.Card"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/bodyPartContainer">
@@ -88,7 +96,7 @@
                 android:textSize="14sp" />
 
         </LinearLayout>
-    </androidx.cardview.widget.CardView>
+    </com.google.android.material.card.MaterialCardView>
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/titleInputLayout"
@@ -128,12 +136,13 @@
 
     </com.google.android.material.textfield.TextInputLayout>
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/saveButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:text="Guardar"
+        style="@style/Widget.SkinCare_TFM.Button"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

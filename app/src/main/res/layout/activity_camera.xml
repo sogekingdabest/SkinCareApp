@@ -67,9 +67,8 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- Indicador de progreso de análisis -->
-    <ProgressBar
+    <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/analysis_progress"
-        style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="0dp"
         android:layout_height="@dimen/guidance_progress_height"
         android:layout_marginStart="32dp"
@@ -77,8 +76,8 @@
         android:layout_marginTop="8dp"
         android:progress="0"
         android:max="100"
-        android:progressTint="@color/guidance_ready"
-        android:progressBackgroundTint="@color/guidance_overlay_background"
+        app:indicatorColor="?attr/colorPrimary"
+        app:trackColor="?attr/colorSurfaceVariant"
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/capture_status_indicator"
         app:layout_constraintStart_toStartOf="parent"
@@ -96,8 +95,8 @@
         android:src="@drawable/ic_camera"
         android:contentDescription="@string/capture_button_description"
         android:enabled="false"
-        app:backgroundTint="@color/guidance_overlay_background"
-        app:tint="@android:color/white"
+        app:backgroundTint="?attr/colorSurfaceVariant"
+        app:tint="?attr/colorOnSurface"
         app:elevation="@dimen/guidance_fab_elevation" />
 
     <!-- Controles de zoom digital -->
@@ -137,7 +136,7 @@
                 android:id="@+id/focus_indicator"
                 style="@style/GuidanceIndicatorIcon"
                 android:src="@drawable/ic_blur_on"
-                android:tint="@color/guidance_indicator_color" />
+                android:tint="?attr/colorPrimary" />
             <TextView
                 style="@style/GuidanceIndicatorText"
                 android:layout_width="wrap_content"
@@ -156,7 +155,7 @@
                 android:id="@+id/lighting_indicator"
                 style="@style/GuidanceIndicatorIcon"
                 android:src="@drawable/ic_wb_sunny"
-                android:tint="@color/guidance_indicator_color" />
+                android:tint="?attr/colorPrimary" />
             <TextView
                 style="@style/GuidanceIndicatorText"
                 android:layout_width="wrap_content"
@@ -175,7 +174,7 @@
                 android:id="@+id/centering_indicator"
                 style="@style/GuidanceIndicatorIcon"
                 android:src="@drawable/ic_center_focus_weak"
-                android:tint="@color/guidance_indicator_color" />
+                android:tint="?attr/colorPrimary" />
             <TextView
                 style="@style/GuidanceIndicatorText"
                 android:layout_width="wrap_content"

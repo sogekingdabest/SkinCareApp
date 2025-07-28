@@ -3,7 +3,8 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface">
 
     <ImageView
         android:id="@+id/preview_image"
@@ -21,21 +22,30 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
+        android:padding="16dp"
+        android:background="?attr/colorSurface"
+        android:elevation="8dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/confirm_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="8dp"
-            android:text="Usar" />
+            android:text="Usar"
+            android:textColor="?attr/colorOnPrimary"
+            android:backgroundTint="?attr/colorPrimary"
+            style="@style/Widget.SkinCare_TFM.Button" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/discard_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="8dp"
-            android:text="Descartar" />
+            android:text="Descartar"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:backgroundTint="?attr/colorSurfaceVariant"
+            style="@style/Widget.SkinCare_TFM.Button.Secondary" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -14,13 +14,13 @@
         android:layout_height="wrap_content"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
 
-        <androidx.appcompat.widget.Toolbar
+        <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
+            android:background="?attr/colorSurface"
             app:title="Análisis IA + ABCDE"
-            app:titleTextColor="@android:color/white">
+            app:titleTextColor="?attr/colorOnSurface">
 
             <ImageButton
                 android:id="@+id/infoButton"
@@ -32,7 +32,7 @@
                 android:src="@drawable/ic_info"
                 android:contentDescription="Info ABCDE" />
 
-        </androidx.appcompat.widget.Toolbar>
+        </com.google.android.material.appbar.MaterialToolbar>
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -41,7 +41,7 @@
         android:id="@+id/processingOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/processing_overlay_background"
+        android:background="?attr/colorSurfaceVariant"
         android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
@@ -53,11 +53,10 @@
             android:padding="32dp">
 
             <!-- Processing Card -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="8dp">
+                style="@style/Widget.SkinCare_TFM.Card">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -76,15 +75,15 @@
                         android:layout_marginBottom="16dp" />
 
                     <!-- Progress Bar -->
-                    <ProgressBar
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
                         android:id="@+id/processingProgressBar"
-                        style="?android:attr/progressBarStyleHorizontal"
                         android:layout_width="match_parent"
                         android:layout_height="12dp"
                         android:layout_marginBottom="16dp"
                         android:max="100"
                         android:progress="0"
-                        android:progressDrawable="@drawable/progress_processing_stage"
+                        app:indicatorColor="?attr/colorPrimary"
+                        app:trackColor="?attr/colorSurfaceVariant"
                         android:contentDescription="Progreso del análisis de imagen"
                         android:importantForAccessibility="yes"
                         android:accessibilityLiveRegion="polite"
@@ -113,7 +112,7 @@
                         android:layout_height="wrap_content"
                         android:text="@string/processing_stage_format"
                         android:textSize="14sp"
-                        android:textColor="@android:color/darker_gray"
+                        android:textColor="?attr/colorOnSurfaceVariant"
                         android:textAlignment="center"
                         android:layout_marginBottom="20dp"
                         android:minHeight="20dp"
@@ -141,7 +140,7 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
 
@@ -160,12 +159,11 @@
             android:padding="16dp">
 
             <!-- Imagen del lunar -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                style="@style/Widget.SkinCare_TFM.Card">
 
                 <FrameLayout
                     android:layout_width="match_parent"
@@ -178,25 +176,24 @@
                         android:scaleType="centerCrop" />
 
                     <!-- Indicador de riesgo superpuesto -->
-                    <View
+                                            <View
                         android:id="@+id/riskIndicator"
                         android:layout_width="match_parent"
                         android:layout_height="4dp"
                         android:layout_gravity="bottom"
-                        android:background="@color/risk_low" />
+                        android:background="?attr/colorPrimary" />
 
                 </FrameLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Resultado principal -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/analysisCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                style="@style/Widget.SkinCare_TFM.Card">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -249,13 +246,13 @@
                         android:layout_marginTop="8dp"
                         android:text="IA: -- (Confianza: --)"
                         android:textSize="14sp"
-                        android:textColor="@android:color/darker_gray" />
+                        android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginVertical="12dp"
-                        android:background="@android:color/darker_gray" />
+                        android:background="?attr/colorOutline" />
 
                     <TextView
                         android:id="@+id/recommendationText"
@@ -276,15 +273,14 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Análisis ABCDE detallado -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                style="@style/Widget.SkinCare_TFM.Card">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -314,14 +310,15 @@
                             android:textStyle="bold"
                             android:contentDescription="Criterio A: Asimetría del lunar" />
 
-                        <ProgressBar
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
                             android:id="@+id/asymmetryProgress"
-                            style="?android:attr/progressBarStyleHorizontal"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_gravity="center_vertical"
                             android:max="100"
+                            app:indicatorColor="?attr/colorPrimary"
+                            app:trackColor="?attr/colorSurfaceVariant"
                             android:contentDescription="Progreso de evaluación de asimetría"
                             android:importantForAccessibility="yes" />
 
@@ -349,14 +346,15 @@
                             android:textStyle="bold"
                             android:contentDescription="Criterio B: Irregularidad de bordes del lunar" />
 
-                        <ProgressBar
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
                             android:id="@+id/borderProgress"
-                            style="?android:attr/progressBarStyleHorizontal"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_gravity="center_vertical"
                             android:max="100"
+                            app:indicatorColor="?attr/colorPrimary"
+                            app:trackColor="?attr/colorSurfaceVariant"
                             android:contentDescription="Progreso de evaluación de bordes"
                             android:importantForAccessibility="yes" />
 
@@ -384,14 +382,15 @@
                             android:textStyle="bold"
                             android:contentDescription="Criterio C: Variación de color del lunar" />
 
-                        <ProgressBar
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
                             android:id="@+id/colorProgress"
-                            style="?android:attr/progressBarStyleHorizontal"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_gravity="center_vertical"
                             android:max="100"
+                            app:indicatorColor="?attr/colorPrimary"
+                            app:trackColor="?attr/colorSurfaceVariant"
                             android:contentDescription="Progreso de evaluación de color"
                             android:importantForAccessibility="yes" />
 
@@ -419,14 +418,15 @@
                             android:textStyle="bold"
                             android:contentDescription="Criterio D: Tamaño del diámetro del lunar" />
 
-                        <ProgressBar
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
                             android:id="@+id/diameterProgress"
-                            style="?android:attr/progressBarStyleHorizontal"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_gravity="center_vertical"
                             android:max="100"
+                            app:indicatorColor="?attr/colorPrimary"
+                            app:trackColor="?attr/colorSurfaceVariant"
                             android:contentDescription="Progreso de evaluación de diámetro"
                             android:importantForAccessibility="yes" />
 
@@ -456,14 +456,15 @@
                             android:textStyle="bold"
                             android:contentDescription="Criterio E: Evolución temporal del lunar" />
 
-                        <ProgressBar
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
                             android:id="@+id/evolutionProgress"
-                            style="?android:attr/progressBarStyleHorizontal"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_gravity="center_vertical"
                             android:max="100"
+                            app:indicatorColor="?attr/colorPrimary"
+                            app:trackColor="?attr/colorSurfaceVariant"
                             android:contentDescription="Progreso de evaluación de evolución"
                             android:importantForAccessibility="yes" />
 
@@ -481,7 +482,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginVertical="8dp"
-                        android:background="@android:color/darker_gray" />
+                        android:background="?attr/colorOutline" />
 
                     <TextView
                         android:id="@+id/abcdeTotalScore"
@@ -493,15 +494,14 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Explicaciones detalladas -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                style="@style/Widget.SkinCare_TFM.Card">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -525,7 +525,7 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Parte del cuerpo -->
             <LinearLayout
@@ -551,12 +551,21 @@
                     android:textSize="16sp"
                     android:visibility="gone" />
 
-                <Spinner
-                    android:id="@+id/bodyPartSpinner"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/bodyPartInputLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:minHeight="48dp" />
+                    android:hint="Seleccionar parte del cuerpo"
+                    style="@style/Widget.SkinCare_TFM.TextInputLayout">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/bodyPartSpinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+
+                </com.google.android.material.textfield.TextInputLayout>
 
             </LinearLayout>
 
