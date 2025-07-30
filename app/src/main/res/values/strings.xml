@@ -209,4 +209,18 @@
     <string name="body_menu_history">Historial</string>
     <string name="body_menu_settings">Configuración</string>
 
+    <!-- Strings para SessionCheckActivity -->
+    <string name="session_check_verifying">Verificando sesión...</string>
+    <string name="session_check_loading">Cargando...</string>
+    <string name="session_check_preparing">Preparando aplicación...</string>
+    <string name="session_check_preloading">Precargando datos...</string>
+    <string name="session_check_error_generic">Error al verificar la sesión. Por favor, inténtalo de nuevo.</string>
+    <string name="session_check_error_network">Sin conexión a internet. Verificando sesión offline...</string>
+    <string name="session_check_error_expired">Tu sesión ha expirado. Serás redirigido al login.</string>
+    <string name="session_check_success">Sesión válida. Accediendo a la aplicación...</string>
+    <string name="session_check_optimized">Verificación optimizada activa</string>
+
+    <!-- Strings para menú principal -->
+    <string name="menu_logout">Cerrar Sesión</string>
+
 </resources>

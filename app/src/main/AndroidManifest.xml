@@ -69,8 +69,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".login.LoginActivity" />
-        <activity android:name=".login.RegisterActivity" />
+        <activity 
+            android:name=".login.SessionCheckActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SkinCare_TFM"
+            android:noHistory="true"
+            android:screenOrientation="portrait" />
+        <activity 
+            android:name=".login.LoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SkinCare_TFM" />
+        <activity 
+            android:name=".login.RegisterActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SkinCare_TFM" />
 
         <meta-data
             android:name="com.google.android.gms.version"

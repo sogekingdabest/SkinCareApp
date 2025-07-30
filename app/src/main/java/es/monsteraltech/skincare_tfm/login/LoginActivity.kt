@@ -19,6 +19,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import es.monsteraltech.skincare_tfm.MainActivity
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
+import es.monsteraltech.skincare_tfm.data.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,6 +31,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var firebaseDataManager: FirebaseDataManager
+    private lateinit var sessionManager: SessionManager
 
     private lateinit var welcomeTextView: TextView
     private lateinit var instructionsTextView: TextView
@@ -49,6 +51,7 @@ class LoginActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
         firebaseDataManager = FirebaseDataManager()
+        sessionManager = SessionManager.getInstance(this)
 
         logoImageView = findViewById(R.id.logoImageView)
         welcomeTextView = findViewById(R.id.welcomeTextView)
@@ -148,12 +151,27 @@ class LoginActivity : AppCompatActivity() {
     }
 
     /**
-     * Inicializa las configuraciones del usuario si no existen y navega a MainActivity
+     * Inicializa las configuraciones del usuario si no existen, guarda la sesión y navega a MainActivity
      */
     private fun initializeUserSettingsAndNavigate(user: FirebaseUser?) {
         if (user != null) {
-            // Inicializar configuraciones del usuario en background
+            // Inicializar configuraciones del usuario y guardar sesión en background
             CoroutineScope(Dispatchers.IO).launch {
+                var sessionSaved = false
+                
+                try {
+                    // Intentar guardar la sesión primero
+                    sessionSaved = sessionManager.saveSession(user)
+                    if (sessionSaved) {
+                        android.util.Log.d("LoginActivity", "Sesión guardada exitosamente para usuario: ${user.uid}")
+                    } else {
+                        android.util.Log.w("LoginActivity", "No se pudo guardar la sesión, continuando sin persistencia")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("LoginActivity", "Error al guardar sesión: ${e.message}", e)
+                    // Continuar sin persistencia de sesión
+                }
+                
                 try {
                     // Intentar inicializar las configuraciones del usuario
                     firebaseDataManager.initializeUserSettings(user.uid)
@@ -165,6 +183,7 @@ class LoginActivity : AppCompatActivity() {
                 } catch (e: Exception) {
                     // Si falla la inicialización, aún así navegar a MainActivity
                     // Las configuraciones se crearán cuando sea necesario
+                    android.util.Log.w("LoginActivity", "Error al inicializar configuraciones de usuario: ${e.message}", e)
                     runOnUiThread {
                         updateUI(user)
                     }
