@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
@@ -34,14 +35,15 @@ class InicioActivity : AppCompatActivity() {
         skinCareTextView.animation = animacion2
         logoImageView.animation = animacion1
 
-        Handler().postDelayed({
-            val intent = Intent(this@InicioActivity, LoginActivity::class.java)
+        Handler(Looper.getMainLooper()).postDelayed({
+            val intent = Intent(this@InicioActivity, SessionCheckActivity::class.java)
             val pairs = arrayOf(
                 android.util.Pair<View, String>(logoImageView, "logoImageView"),
                 android.util.Pair<View, String>(skinCareTextView, "textTrans")
             )
             val options = ActivityOptions.makeSceneTransitionAnimation(this@InicioActivity, *pairs)
             startActivity(intent, options.toBundle())
+            finish() // Finalizar InicioActivity para que no quede en el stack
         }, 4000)
     }
 }
