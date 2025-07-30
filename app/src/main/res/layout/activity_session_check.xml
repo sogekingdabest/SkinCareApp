@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="?attr/colorSurface"
     tools:context=".login.SessionCheckActivity">
 
     <!-- Logo similar al de InicioActivity -->
@@ -31,6 +31,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:indeterminate="true"
+        android:indeterminateTint="?attr/colorPrimary"
         app:layout_constraintBottom_toTopOf="@+id/statusTextView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -43,7 +44,8 @@
         android:layout_marginBottom="60dp"
         android:text="@string/session_check_verifying"
         android:textSize="16sp"
-        android:textColor="@color/black"
+        android:textColor="?attr/colorOnSurface"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
         android:gravity="center"
         app:layout_constraintBottom_toTopOf="@+id/skinCareTextView"
         app:layout_constraintEnd_toEndOf="parent"
@@ -57,6 +59,8 @@
         android:layout_marginBottom="30dp"
         android:text="SkinCare"
         android:textSize="50sp"
+        android:textColor="?attr/colorOnSurface"
+        android:textAppearance="?attr/textAppearanceHeadlineLarge"
         android:transitionName="textTrans"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -68,6 +72,8 @@
         android:layout_height="wrap_content"
         android:text="de"
         android:textSize="25sp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textAppearance="?attr/textAppearanceTitleMedium"
         app:layout_constraintBottom_toTopOf="@+id/skinCareTextView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -85,6 +91,7 @@
         android:text="@string/session_check_error_generic"
         android:textColor="@color/white"
         android:textSize="14sp"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
         android:gravity="center"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/retryButton"
@@ -92,13 +99,15 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <!-- Botón de reintentar (inicialmente oculto) -->
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/retryButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="80dp"
         android:text="@string/ui_retry"
+        android:textAppearance="?attr/textAppearanceLabelLarge"
         android:visibility="gone"
+        style="@style/Widget.SkinCare_TFM.Button"
         app:layout_constraintBottom_toTopOf="@+id/deTextView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
