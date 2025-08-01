@@ -223,4 +223,73 @@
     <!-- Strings para menú principal -->
     <string name="menu_logout">Cerrar Sesión</string>
 
+    <!-- Strings para selector de lunares -->
+    <string name="mole_selector_title">Seleccionar Lunar Existente</string>
+    <string name="mole_selector_description">Elige un lunar existente para asociar este análisis o crea uno nuevo</string>
+    <string name="mole_selector_search_hint">Buscar por nombre, parte del cuerpo...</string>
+    <string name="mole_selector_create_new">Crear Nuevo Lunar</string>
+    <string name="mole_selector_cancel">Cancelar</string>
+    <string name="mole_selector_no_moles">No tienes lunares guardados aún.\nCrea tu primer lunar usando el botón de abajo.</string>
+    <string name="mole_selector_no_results">No se encontraron lunares que coincidan con tu búsqueda.</string>
+    <string name="mole_selector_results_count">%d lunares encontrados</string>
+    <string name="mole_selector_search_results_count">%1$d de %2$d lunares encontrados</string>
+    <string name="mole_selector_no_search_results">No se encontraron lunares que coincidan con \"%s\"</string>
+    <string name="mole_selector_clear_search">Limpiar búsqueda</string>
+    <string name="mole_selector_search_suggestions">Prueba buscar por: nombre del lunar, parte del cuerpo, fecha o número de análisis</string>
+    <string name="mole_selector_loading_error">Error al cargar lunares</string>
+    <string name="mole_selector_user_not_authenticated">Usuario no autenticado</string>
+    <string name="mole_analysis_count">%d análisis</string>
+    <string name="mole_last_analysis">Último: %s</string>
+    <string name="mole_created_date">Creado: %s</string>
+    <string name="mole_no_previous_analysis">Sin análisis previos</string>
+    <string name="mole_no_description">Sin descripción</string>
+
+    <!-- Strings para manejo de errores -->
+    <string name="error_network_connection">Sin conexión a internet. Verifica tu conexión y vuelve a intentar.</string>
+    <string name="error_network_timeout">La conexión tardó demasiado. Inténtalo de nuevo.</string>
+    <string name="error_network_ssl">Error de conexión segura. Verifica tu conexión.</string>
+    <string name="error_authentication">Tu sesión ha expirado. Inicia sesión nuevamente.</string>
+    <string name="error_permission_denied">Permisos insuficientes para realizar esta operación.</string>
+    <string name="error_data_not_found">No se encontraron los datos solicitados.</string>
+    <string name="error_validation">Los datos proporcionados no son válidos.</string>
+    <string name="error_storage">Error de almacenamiento. Verifica el espacio disponible.</string>
+    <string name="error_parsing">Error al procesar los datos. Inténtalo de nuevo.</string>
+    <string name="error_unknown">Ha ocurrido un error inesperado.</string>
+    
+    <!-- Acciones sugeridas para errores -->
+    <string name="error_action_check_connection">Verifica tu conexión a internet</string>
+    <string name="error_action_retry_later">Inténtalo de nuevo en unos momentos</string>
+    <string name="error_action_check_permissions">Verifica los permisos de la aplicación</string>
+    <string name="error_action_login_again">Inicia sesión nuevamente</string>
+    <string name="error_action_refresh_data">Actualiza los datos</string>
+    <string name="error_action_check_data">Verifica los datos ingresados</string>
+    <string name="error_action_free_space">Libera espacio de almacenamiento</string>
+    <string name="error_action_try_again">Inténtalo de nuevo</string>
+    
+    <!-- Estados vacíos -->
+    <string name="empty_state_no_moles_title">No hay lunares guardados</string>
+    <string name="empty_state_no_moles_message">Aún no has guardado ningún lunar.\nComienza creando tu primer análisis.</string>
+    <string name="empty_state_no_analysis_title">Sin análisis previos</string>
+    <string name="empty_state_no_analysis_message">Este lunar no tiene análisis guardados.\nRealiza un análisis para ver el histórico.</string>
+    <string name="empty_state_no_search_results_title">Sin resultados</string>
+    <string name="empty_state_no_search_results_message">No se encontraron lunares que coincidan con tu búsqueda.\nIntenta con otros términos.</string>
+    <string name="empty_state_loading_failed_title">Error al cargar</string>
+    <string name="empty_state_loading_failed_message">No se pudieron cargar los datos.\nVerifica tu conexión e inténtalo de nuevo.</string>
+    
+    <!-- Botones de acción para estados vacíos -->
+    <string name="empty_state_action_create_first">Crear primer lunar</string>
+    <string name="empty_state_action_try_again">Intentar de nuevo</string>
+    <string name="empty_state_action_clear_search">Limpiar búsqueda</string>
+    <string name="empty_state_action_refresh">Actualizar</string>
+    
+    <!-- Retry automático -->
+    <string name="retry_attempting">Reintentando... (%1$d/%2$d)</string>
+    <string name="retry_failed_all_attempts">Falló después de %d intentos</string>
+    <string name="retry_success_after_attempts">Éxito después de %d intentos</string>
+    
+    <!-- Strings para componente de estado vacío -->
+    <string name="empty_state_icon_description">Icono de estado vacío</string>
+    <string name="empty_state_no_data_title">Sin datos</string>
+    <string name="empty_state_no_data_message">No hay información disponible en este momento.</string>
+
 </resources>

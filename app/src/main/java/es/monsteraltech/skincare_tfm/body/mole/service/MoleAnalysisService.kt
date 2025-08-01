@@ -1,219 +1,221 @@
 package es.monsteraltech.skincare_tfm.body.mole.service
 
-import android.graphics.Bitmap
 import android.util.Log
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import es.monsteraltech.skincare_tfm.body.mole.model.MoleAnalysisResult
+import com.google.firebase.firestore.Query
+import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
+import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionComparison
+import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionSummary
+import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
+import es.monsteraltech.skincare_tfm.body.mole.validation.AnalysisDataValidator
+import es.monsteraltech.skincare_tfm.body.mole.validation.AnalysisDataSanitizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import java.util.*
 
 /**
- * Servicio para analizar imágenes de lunares y guardar los resultados en Firestore
+ * Servicio para gestión de análisis históricos de lunares
+ * Implementa funcionalidades para guardar, recuperar y comparar análisis
  */
 class MoleAnalysisService {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
+    private val moleRepository = MoleRepository()
 
     private val USERS_COLLECTION = "users"
     private val MOLES_SUBCOLLECTION = "moles"
-    private val ANALYSIS_SUBCOLLECTION = "analysis"
+    private val ANALYSIS_SUBCOLLECTION = "mole_analysis"
 
-    // Analiza la imagen de un lunar y guarda los resultados en Firestore
-    suspend fun analyzeMoleImage(bitmap: Bitmap, moleId: String): Result<MoleAnalysisResult> =
+    /**
+     * Guarda un análisis asociado a un lunar específico
+     * Actualiza los contadores del lunar automáticamente
+     */
+    suspend fun saveAnalysisToMole(moleId: String, analysis: AnalysisData): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
-                // Verificar usuario autenticado
                 val currentUser = auth.currentUser ?: return@withContext Result.failure(
-                    Exception("Usuario no autenticado")
+                    SecurityException("Usuario no autenticado")
                 )
 
-                if (moleId.isEmpty()) {
-                    return@withContext Result.failure(Exception("ID de lunar requerido"))
+                // Validar datos de entrada
+                val validationResult = AnalysisDataValidator.validateAnalysisData(analysis)
+                if (!validationResult.isValid) {
+                    return@withContext Result.failure(
+                        IllegalArgumentException("Datos de análisis inválidos: ${validationResult.getErrorMessage()}")
+                    )
                 }
 
-                // Realizar el análisis de la imagen
-                val analysisResult = performImageAnalysis(bitmap)
+                // Sanitizar datos
+                val sanitizedAnalysis = AnalysisDataSanitizer.sanitizeAnalysisData(analysis.copy(moleId = moleId))
 
-                // Crear el objeto MoleAnalysisResult
-                val analysisId = UUID.randomUUID().toString()
-                val moleAnalysis = MoleAnalysisResult(
-                    id = analysisId,
-                    analysisText = analysisResult.analysisDescription,
-                    riskLevel = analysisResult.riskLevel,
-                    confidence = analysisResult.confidence,
-                    characteristics = analysisResult.characteristics,
-                    recommendedAction = analysisResult.recommendation
-                )
-
-                // Guardar en Firestore como subcolección del lunar
+                // Guardar análisis en Firestore con timeout
                 firestore.collection(USERS_COLLECTION)
                     .document(currentUser.uid)
-                    .collection(MOLES_SUBCOLLECTION)
-                    .document(moleId)
                     .collection(ANALYSIS_SUBCOLLECTION)
-                    .document(analysisId)
-                    .set(moleAnalysis.toMap())
+                    .document(sanitizedAnalysis.id)
+                    .set(sanitizedAnalysis.toMap())
                     .await()
 
-                Result.success(moleAnalysis)
+                // Actualizar contadores del lunar
+                updateMoleAnalysisCount(currentUser.uid, moleId)
 
+                Result.success(Unit)
+
+            } catch (e: SecurityException) {
+                Log.e("MoleAnalysisService", "Error de autenticación al guardar análisis", e)
+                Result.failure(e)
+            } catch (e: IllegalArgumentException) {
+                Log.e("MoleAnalysisService", "Error de validación al guardar análisis", e)
+                Result.failure(e)
             } catch (e: Exception) {
-                Log.e("MoleAnalysisService", "Error al analizar imagen", e)
+                Log.e("MoleAnalysisService", "Error al guardar análisis", e)
                 Result.failure(e)
             }
         }
 
-    // Obtiene todos los análisis de un lunar específico
-    suspend fun getMoleAnalysisHistory(moleId: String): Result<List<MoleAnalysisResult>> =
+    /**
+     * Recupera el histórico completo de análisis de un lunar específico
+     */
+    suspend fun getAnalysisHistory(moleId: String): Result<List<AnalysisData>> =
         withContext(Dispatchers.IO) {
             try {
                 val currentUser = auth.currentUser ?: return@withContext Result.failure(
-                    Exception("Usuario no autenticado")
+                    SecurityException("Usuario no autenticado")
                 )
+
+                if (moleId.isBlank()) {
+                    return@withContext Result.failure(
+                        IllegalArgumentException("ID de lunar no válido")
+                    )
+                }
 
                 val querySnapshot = firestore.collection(USERS_COLLECTION)
                     .document(currentUser.uid)
-                    .collection(MOLES_SUBCOLLECTION)
-                    .document(moleId)
                     .collection(ANALYSIS_SUBCOLLECTION)
-                    .orderBy("analysisDate", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                    .whereEqualTo("moleId", moleId)
                     .get()
                     .await()
 
+                // Ordenar los resultados en memoria después de obtenerlos
                 val analysisList = querySnapshot.documents.mapNotNull { doc ->
-                    doc.toObject(MoleAnalysisResult::class.java)?.copy(id = doc.id)
+                    try {
+                        AnalysisData.fromMap(doc.id, doc.data ?: emptyMap())
+                    } catch (e: Exception) {
+                        Log.w("MoleAnalysisService", "Error al parsear análisis ${doc.id}", e)
+                        null
+                    }
+                }.sortedByDescending { it.createdAt }
+
+                if (analysisList.isEmpty() && querySnapshot.isEmpty) {
+                    Log.i("MoleAnalysisService", "No se encontraron análisis para el lunar $moleId")
                 }
 
                 Result.success(analysisList)
 
+            } catch (e: SecurityException) {
+                Log.e("MoleAnalysisService", "Error de autenticación al obtener historial", e)
+                Result.failure(e)
+            } catch (e: IllegalArgumentException) {
+                Log.e("MoleAnalysisService", "Error de validación al obtener historial", e)
+                Result.failure(e)
             } catch (e: Exception) {
                 Log.e("MoleAnalysisService", "Error al obtener historial de análisis", e)
                 Result.failure(e)
             }
         }
-    /**
-     * Clase para los resultados simulados del análisis
-     */
-    private data class AnalysisSimulationResult(
-        val analysisDescription: String,
-        val riskLevel: String,
-        val confidence: Double,
-        val characteristics: Map<String, Any>,
-        val recommendation: String
-    )
 
     /**
-     * Simula el análisis de la imagen (reemplazar con la implementación real de IA)
+     * Compara dos análisis consecutivos para calcular evolución
      */
-    private fun performImageAnalysis(bitmap: Bitmap): AnalysisSimulationResult {
-        // En un escenario real, aquí se enviaría la imagen a un servicio de IA
-        // o se utilizaría un modelo local de ML Kit o TensorFlow Lite
+    suspend fun compareAnalyses(current: AnalysisData, previous: AnalysisData): Result<EvolutionComparison> =
+        withContext(Dispatchers.IO) {
+            try {
+                // Validar que ambos análisis pertenezcan al mismo lunar
+                if (current.moleId != previous.moleId) {
+                    return@withContext Result.failure(
+                        Exception("Los análisis no pertenecen al mismo lunar")
+                    )
+                }
 
-        // Simulamos un análisis aleatorio con diferentes resultados
-        val random = Random()
-        val riskLevels = listOf("Bajo", "Medio", "Alto")
-        val selectedRisk = riskLevels[random.nextInt(riskLevels.size)]
+                // Validar datos de análisis
+                val currentValidation = AnalysisDataValidator.validateAnalysisData(current)
+                val previousValidation = AnalysisDataValidator.validateAnalysisData(previous)
 
-        // Características que varían según el nivel de riesgo
-        val characteristics = mutableMapOf<String, Any>()
+                if (!currentValidation.isValid || !previousValidation.isValid) {
+                    return@withContext Result.failure(
+                        Exception("Datos de análisis inválidos para comparación")
+                    )
+                }
 
-        // Simulamos características diferentes según el riesgo
-        when (selectedRisk) {
-            "Bajo" -> {
-                characteristics["bordeRegular"] = true
-                characteristics["colorUniforme"] = true
-                characteristics["diametro"] = 4.2 // mm
-                characteristics["simetria"] = "Alta"
-            }
-            "Medio" -> {
-                characteristics["bordeRegular"] = random.nextBoolean()
-                characteristics["colorUniforme"] = false
-                characteristics["diametro"] = 5.8 // mm
-                characteristics["simetria"] = "Media"
-                characteristics["puntosSospechosos"] = random.nextInt(3) + 1
-            }
-            "Alto" -> {
-                characteristics["bordeRegular"] = false
-                characteristics["colorUniforme"] = false
-                characteristics["diametro"] = 7.5 // mm
-                characteristics["simetria"] = "Baja"
-                characteristics["puntosSospechosos"] = random.nextInt(5) + 3
-                characteristics["pigmentacionIrregular"] = true
+                val comparison = EvolutionComparison.create(current, previous)
+                Result.success(comparison)
+
+            } catch (e: Exception) {
+                Log.e("MoleAnalysisService", "Error al comparar análisis", e)
+                Result.failure(e)
             }
         }
 
-        // Simular una descripción basada en las características
-        val description = buildAnalysisDescription(selectedRisk, characteristics)
+    /**
+     * Obtiene un resumen de evolución completo de un lunar específico
+     */
+    suspend fun getEvolutionSummary(moleId: String): Result<EvolutionSummary> =
+        withContext(Dispatchers.IO) {
+            try {
+                // Obtener histórico completo
+                val historyResult = getAnalysisHistory(moleId)
+                if (historyResult.isFailure) {
+                    return@withContext Result.failure(
+                        historyResult.exceptionOrNull() ?: Exception("Error al obtener histórico")
+                    )
+                }
 
-        // Simular una recomendación basada en el riesgo
-        val recommendation = when (selectedRisk) {
-            "Bajo" -> "Monitorizar regularmente. Seguimiento normal cada 6 meses."
-            "Medio" -> "Se recomienda consultar con un dermatólogo en las próximas semanas."
-            "Alto" -> "Consulte con un dermatólogo lo antes posible para una evaluación profesional."
-            else -> "Se recomienda seguimiento normal."
+                val analyses = historyResult.getOrNull() ?: emptyList()
+                val summary = EvolutionSummary.create(moleId, analyses)
+                
+                Result.success(summary)
+
+            } catch (e: Exception) {
+                Log.e("MoleAnalysisService", "Error al generar resumen de evolución", e)
+                Result.failure(e)
+            }
         }
+    /**
+     * Actualiza los contadores de análisis del lunar
+     */
+    private suspend fun updateMoleAnalysisCount(userId: String, moleId: String) {
+        try {
+            val moleRef = firestore.collection(USERS_COLLECTION)
+                .document(userId)
+                .collection(MOLES_SUBCOLLECTION)
+                .document(moleId)
 
-        // Simular nivel de confianza
-        val confidence = when (selectedRisk) {
-            "Bajo" -> 0.85 + (random.nextDouble() * 0.1)
-            "Medio" -> 0.75 + (random.nextDouble() * 0.1)
-            "Alto" -> 0.80 + (random.nextDouble() * 0.1)
-            else -> 0.70 + (random.nextDouble() * 0.15)
+            firestore.runTransaction { transaction ->
+                val moleSnapshot = transaction.get(moleRef)
+                val currentCount = moleSnapshot.getLong("analysisCount") ?: 0L
+                val currentTimestamp = Timestamp.now()
+
+                val updates = mutableMapOf<String, Any>(
+                    "analysisCount" to (currentCount + 1),
+                    "lastAnalysisDate" to currentTimestamp,
+                    "updatedAt" to currentTimestamp
+                )
+
+                // Si es el primer análisis, establecer también firstAnalysisDate
+                if (currentCount == 0L) {
+                    updates["firstAnalysisDate"] = currentTimestamp
+                }
+
+                transaction.update(moleRef, updates)
+            }.await()
+
+        } catch (e: Exception) {
+            Log.w("MoleAnalysisService", "Error al actualizar contadores del lunar", e)
+            // No lanzamos excepción para no fallar el guardado del análisis
         }
-
-        return AnalysisSimulationResult(
-            analysisDescription = description,
-            riskLevel = selectedRisk,
-            confidence = confidence,
-            characteristics = characteristics,
-            recommendation = recommendation
-        )
     }
 
-    /**
-     * Construye una descripción textual basada en el análisis
-     */
-    private fun buildAnalysisDescription(riskLevel: String, characteristics: Map<String, Any>): String {
-        val sb = StringBuilder()
 
-        sb.append("Análisis de lunar: Nivel de riesgo $riskLevel.\n\n")
-
-        // Añadir detalles sobre bordes
-        if (characteristics["bordeRegular"] == true) {
-            sb.append("• Bordes: Regulares y bien definidos.\n")
-        } else {
-            sb.append("• Bordes: Irregulares o mal definidos.\n")
-        }
-
-        // Añadir detalles sobre color
-        if (characteristics["colorUniforme"] == true) {
-            sb.append("• Color: Uniforme y consistente.\n")
-        } else {
-            sb.append("• Color: Variaciones o irregularidades en la pigmentación.\n")
-        }
-
-        // Añadir detalles sobre diámetro
-        val diametro = characteristics["diametro"] as? Double ?: 0.0
-        sb.append("• Diámetro: Aproximadamente ${String.format("%.1f", diametro)} mm.\n")
-
-        // Añadir detalles sobre simetría
-        val simetria = characteristics["simetria"] as? String ?: "No evaluada"
-        sb.append("• Simetría: $simetria.\n")
-
-        // Añadir detalles sobre puntos sospechosos si existen
-        if (characteristics.containsKey("puntosSospechosos")) {
-            val puntos = characteristics["puntosSospechosos"]
-            sb.append("• Puntos irregulares: $puntos identificados.\n")
-        }
-
-        // Añadir detalles sobre pigmentación irregular si existe
-        if (characteristics["pigmentacionIrregular"] == true) {
-            sb.append("• Pigmentación: Irregular con variaciones significativas.\n")
-        }
-
-        return sb.toString()
-    }
 }

@@ -104,6 +104,7 @@ class BodyPartActivity : ComponentActivity() {
             intent.putExtra("LUNAR_DESCRIPTION", mole.description)
             intent.putExtra("LUNAR_ANALYSIS_RESULT", mole.analysisResult)
             intent.putExtra("LUNAR_IMAGE_URL", mole.imageUrl)
+            intent.putExtra("ANALYSIS_COUNT", mole.analysisCount)
             startActivity(intent)
         }
         lunarRecyclerView.adapter = moleAdapter
@@ -131,7 +132,8 @@ class BodyPartActivity : ComponentActivity() {
                             title = fbMole.title,
                             description = fbMole.description,
                             imageUrl = fbMole.imageUrl,  // Ahora es una ruta local
-                            analysisResult = fbMole.analysisResult
+                            analysisResult = fbMole.aiResult, // Usar aiResult del nuevo modelo
+                            analysisCount = fbMole.analysisCount
                         )
                     )
                 }

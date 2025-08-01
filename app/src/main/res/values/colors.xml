@@ -3,6 +3,9 @@
     <!-- Colores base -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    
+    <!-- Alias para compatibilidad -->
+    <color name="colorPrimary">@color/md_theme_primary</color>
 
     <!-- Material Design 3 - Colores del tema generado para modo claro -->
     <color name="md_theme_primary">#4C662B</color>

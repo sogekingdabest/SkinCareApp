@@ -87,18 +87,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
+    <es.monsteraltech.skincare_tfm.body.mole.view.EmptyStateView
         android:id="@+id/emptyView"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:padding="16dp"
-        android:text="No hay análisis disponibles para este lunar"
-        android:textSize="16sp"
+        android:layout_height="0dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/historyTitleText" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

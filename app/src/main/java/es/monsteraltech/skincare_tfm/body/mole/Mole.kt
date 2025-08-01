@@ -6,5 +6,6 @@ data class Mole(
     val description: String = "",
     val imageUrl: String = "",
     val analysisResult: String = "",
+    val analysisCount: Int = 0,
     val imageList: List<Int> = emptyList()
 )

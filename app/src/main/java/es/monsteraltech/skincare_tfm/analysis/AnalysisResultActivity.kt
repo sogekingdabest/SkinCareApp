@@ -16,12 +16,19 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.auth.FirebaseAuth
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.body.BodyPartActivity
+import es.monsteraltech.skincare_tfm.body.mole.dialog.MoleSelectorDialog
+import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
+import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
+import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
+import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisResultEnhancedBinding
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 class AnalysisResultActivity : AppCompatActivity() {
 
@@ -39,6 +46,7 @@ class AnalysisResultActivity : AppCompatActivity() {
     private var analysisResult: MelanomaAIDetector.CombinedAnalysisResult? = null
 
     private val moleRepository = MoleRepository()
+    private val moleAnalysisService = MoleAnalysisService()
     private val auth = FirebaseAuth.getInstance()
 
     // Mapeo entre nombres de partes del cuerpo y códigos de color
@@ -107,7 +115,11 @@ class AnalysisResultActivity : AppCompatActivity() {
 
         // Configurar listeners
         binding.saveButton.setOnClickListener {
-            saveAnalysis()
+            saveAnalysisAsNewMole()
+        }
+
+        binding.assignToExistingMoleButton.setOnClickListener {
+            showMoleSelectorDialog()
         }
 
         binding.historyButton.setOnClickListener {
@@ -332,11 +344,11 @@ class AnalysisResultActivity : AppCompatActivity() {
             MelanomaAIDetector.RiskLevel.VERY_LOW ->
                 Pair(getColor(R.color.risk_very_low), "Muy Bajo")
             MelanomaAIDetector.RiskLevel.LOW ->
-                Pair(getColor(R.color.risk_low), "Bajo")
+                Pair(getColor(R.color.risk_low), "LOW")
             MelanomaAIDetector.RiskLevel.MODERATE ->
-                Pair(getColor(R.color.risk_moderate), "Moderado")
+                Pair(getColor(R.color.risk_moderate), "MODERATE")
             MelanomaAIDetector.RiskLevel.HIGH ->
-                Pair(getColor(R.color.risk_high), "Alto")
+                Pair(getColor(R.color.risk_high), "HIGH")
             MelanomaAIDetector.RiskLevel.VERY_HIGH ->
                 Pair(getColor(R.color.risk_very_high), "Muy Alto")
         }
@@ -386,26 +398,88 @@ class AnalysisResultActivity : AppCompatActivity() {
         binding.abcdeTotalScore.text = String.format("Score ABCDE: %.1f", abcdeResult.totalScore)
     }
 
-    private fun saveAnalysis() {
+    private fun validateInputs(): Boolean {
         val currentUser = auth.currentUser
         if (currentUser == null) {
             Toast.makeText(this, "Por favor, inicia sesión para guardar", Toast.LENGTH_SHORT).show()
-            return
+            return false
         }
 
         val title = binding.titleEditText.text.toString()
-        val description = binding.descriptionEditText.text.toString()
-
         if (title.isEmpty()) {
             Toast.makeText(this, "Por favor, añade un título", Toast.LENGTH_SHORT).show()
-            return
+            return false
         }
 
         if (selectedBodyPart.isEmpty()) {
             Toast.makeText(this, "Por favor, selecciona una parte del cuerpo", Toast.LENGTH_SHORT).show()
-            return
+            return false
         }
 
+        return true
+    }
+
+    private fun showMoleSelectorDialog() {
+        if (!validateInputs()) return
+
+        val dialog = MoleSelectorDialog.newInstance()
+        
+        dialog.setOnMoleSelectedListener { selectedMole ->
+            if (selectedMole != null) {
+                // Usuario seleccionó un lunar existente - asociar análisis
+                val title = binding.titleEditText.text.toString()
+                val description = binding.descriptionEditText.text.toString()
+                saveAnalysisToExistingMole(selectedMole, title, description)
+            } else {
+                // Usuario eligió crear nuevo lunar - comportamiento actual
+                saveAnalysisAsNewMole()
+            }
+        }
+        
+        dialog.show(supportFragmentManager, MoleSelectorDialog.TAG)
+    }
+
+    private fun saveAnalysisAsNewMole() {
+        if (!validateInputs()) return
+
+        val title = binding.titleEditText.text.toString()
+        val description = binding.descriptionEditText.text.toString()
+        
+        saveAnalysisAsNewMole(title, description)
+    }
+
+    private fun saveAnalysisToExistingMole(mole: MoleData, title: String, description: String) {
+        val progressDialog = ProgressDialog(this).apply {
+            setMessage("Asociando análisis al lunar existente...")
+            setCancelable(false)
+            show()
+        }
+
+        lifecycleScope.launch {
+            try {
+                // Crear AnalysisData desde el resultado actual
+                val analysisData = createAnalysisDataFromResult(mole.id, title, description)
+                
+                // Guardar usando MoleAnalysisService
+                val result = moleAnalysisService.saveAnalysisToMole(mole.id, analysisData)
+                
+                progressDialog.dismiss()
+
+                if (result.isSuccess) {
+                    Toast.makeText(this@AnalysisResultActivity, "Análisis asociado al lunar '${mole.title}' correctamente", Toast.LENGTH_SHORT).show()
+                    navigateBack()
+                } else {
+                    Toast.makeText(this@AnalysisResultActivity, "Error al asociar análisis: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                }
+
+            } catch (e: Exception) {
+                progressDialog.dismiss()
+                Toast.makeText(this@AnalysisResultActivity, "Error al asociar análisis: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun saveAnalysisAsNewMole(title: String, description: String) {
         val progressDialog = ProgressDialog(this).apply {
             setMessage("Guardando análisis...")
             setCancelable(false)
@@ -414,36 +488,25 @@ class AnalysisResultActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                // Crear resumen del análisis para guardar
-                val analysisData = createAnalysisSummary()
+                // Crear datos de análisis estructurados
+                val moleId = UUID.randomUUID().toString()
+                val analysisData = createAnalysisDataFromResult(moleId, title, description)
 
-                val result = moleRepository.saveMole(
+                val result = moleRepository.saveMoleWithAnalysis(
                     context = applicationContext,
                     imageFile = photoFile!!,
                     title = title,
                     description = description,
                     bodyPart = selectedBodyPart,
                     bodyPartColorCode = bodyPartColorCode ?: "",
-                    aiResult = analysisData
+                    analysisData = analysisData
                 )
 
                 progressDialog.dismiss()
 
                 if (result.isSuccess) {
                     Toast.makeText(this@AnalysisResultActivity, "Análisis guardado correctamente", Toast.LENGTH_SHORT).show()
-
-                    // Volver a la actividad correspondiente
-                    val intent = if (bodyPartColorCode != null) {
-                        Intent(this@AnalysisResultActivity, BodyPartActivity::class.java).apply {
-                            putExtra("COLOR_VALUE", bodyPartColorCode)
-                        }
-                    } else {
-                        Intent(this@AnalysisResultActivity, es.monsteraltech.skincare_tfm.MainActivity::class.java)
-                    }
-
-                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    startActivity(intent)
-                    finish()
+                    navigateBack()
                 } else {
                     Toast.makeText(this@AnalysisResultActivity, "Error al guardar: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
                 }
@@ -485,6 +548,58 @@ class AnalysisResultActivity : AppCompatActivity() {
             appendLine("RECOMENDACIÓN:")
             appendLine(result.recommendation)
         }
+    }
+
+    private fun createAnalysisDataFromResult(moleId: String, title: String, description: String): AnalysisData {
+        val result = analysisResult ?: throw IllegalStateException("No hay resultado de análisis disponible")
+        
+        // Crear ABCDEScores desde el resultado ABCDE
+        val abcdeScores = ABCDEScores(
+            asymmetryScore = result.abcdeResult.asymmetryScore,
+            borderScore = result.abcdeResult.borderScore,
+            colorScore = result.abcdeResult.colorScore,
+            diameterScore = result.abcdeResult.diameterScore,
+            evolutionScore = result.abcdeResult.evolutionScore,
+            totalScore = result.abcdeResult.totalScore
+        )
+
+        // Crear metadatos del análisis
+        val metadata = mapOf(
+            "title" to title,
+            "description" to description,
+            "bodyPart" to selectedBodyPart,
+            "bodyPartColorCode" to (bodyPartColorCode ?: ""),
+            "urgencyLevel" to result.urgencyLevel.name,
+            "explanations" to result.explanations
+        )
+
+        return AnalysisData(
+            moleId = moleId,
+            analysisResult = createAnalysisSummary(),
+            aiProbability = result.aiProbability,
+            aiConfidence = result.aiConfidence,
+            abcdeScores = abcdeScores,
+            combinedScore = result.combinedScore,
+            riskLevel = result.combinedRiskLevel.name,
+            recommendation = result.recommendation,
+            imageUrl = photoFile?.absolutePath ?: "", // Por ahora usar la ruta local
+            analysisMetadata = metadata
+        )
+    }
+
+    private fun navigateBack() {
+        // Volver a la actividad correspondiente
+        val intent = if (bodyPartColorCode != null) {
+            Intent(this@AnalysisResultActivity, BodyPartActivity::class.java).apply {
+                putExtra("COLOR_VALUE", bodyPartColorCode)
+            }
+        } else {
+            Intent(this@AnalysisResultActivity, es.monsteraltech.skincare_tfm.MainActivity::class.java)
+        }
+
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        startActivity(intent)
+        finish()
     }
 
     private fun loadPreviousImageIfExists(): Bitmap? {
