@@ -5,18 +5,14 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.viewpager2.widget.ViewPager2
-import com.google.android.material.tabs.TabLayout
-import com.google.android.material.tabs.TabLayoutMediator
 import es.monsteraltech.skincare_tfm.R
-import es.monsteraltech.skincare_tfm.body.mole.ViewPageImages.UrlImagePagerAdapter
-import es.monsteraltech.skincare_tfm.body.mole.ViewPageImages.ZoomOutPageTransformer
 import es.monsteraltech.skincare_tfm.body.mole.error.ErrorHandler
 import es.monsteraltech.skincare_tfm.body.mole.error.RetryManager
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
@@ -26,6 +22,8 @@ import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
 import es.monsteraltech.skincare_tfm.body.mole.util.ImageLoadingUtil
 import es.monsteraltech.skincare_tfm.body.mole.view.EmptyStateView
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 /**
  * Actividad mejorada para visualizar lunares con análisis completos guardados
@@ -39,19 +37,40 @@ class MoleViewerActivity : AppCompatActivity() {
     // UI Components
     private lateinit var titleTextView: TextView
     private lateinit var descriptionTextView: TextView
-    private lateinit var viewPager: ViewPager2
-    private lateinit var tabLayout: TabLayout
+    private lateinit var resultImageView: ImageView
     private lateinit var analysisContainer: LinearLayout
-    private lateinit var analysisResultTextView: TextView
+    private lateinit var combinedScoreText: TextView
     private lateinit var abcdeScoresContainer: LinearLayout
     private lateinit var aiProbabilityTextView: TextView
-    private lateinit var aiConfidenceTextView: TextView
     private lateinit var riskLevelTextView: TextView
     private lateinit var recommendationTextView: TextView
     private lateinit var analysisDateTextView: TextView
     private lateinit var viewHistoryButton: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var emptyStateView: EmptyStateView
+    private lateinit var riskIndicator: View
+    private lateinit var abcdeTotalScore: TextView
+    
+    // ABCDE Progress indicators
+    private lateinit var asymmetryProgress: com.google.android.material.progressindicator.LinearProgressIndicator
+    private lateinit var borderProgress: com.google.android.material.progressindicator.LinearProgressIndicator
+    private lateinit var colorProgress: com.google.android.material.progressindicator.LinearProgressIndicator
+    private lateinit var diameterProgress: com.google.android.material.progressindicator.LinearProgressIndicator
+    private lateinit var evolutionProgress: com.google.android.material.progressindicator.LinearProgressIndicator
+    
+    // ABCDE Score TextViews
+    private lateinit var asymmetryScore: TextView
+    private lateinit var borderScore: TextView
+    private lateinit var colorScore: TextView
+    private lateinit var diameterScore: TextView
+    private lateinit var evolutionScore: TextView
+    
+    // ABCDE Layouts
+    private lateinit var asymmetryLayout: LinearLayout
+    private lateinit var borderLayout: LinearLayout
+    private lateinit var colorLayout: LinearLayout
+    private lateinit var diameterLayout: LinearLayout
+    private lateinit var evolutionLayout: LinearLayout
 
     private var currentMoleData: MoleData? = null
     private var isRetrying = false
@@ -70,19 +89,40 @@ class MoleViewerActivity : AppCompatActivity() {
     private fun initializeViews() {
         titleTextView = findViewById(R.id.detailTitle)
         descriptionTextView = findViewById(R.id.detailDescription)
-        viewPager = findViewById(R.id.detailImagePager)
-        tabLayout = findViewById(R.id.tabLayout)
+        resultImageView = findViewById(R.id.resultImageView)
         analysisContainer = findViewById(R.id.analysisContainer)
-        analysisResultTextView = findViewById(R.id.analysisResultText)
+        combinedScoreText = findViewById(R.id.combinedScoreText)
         abcdeScoresContainer = findViewById(R.id.abcdeScoresContainer)
         aiProbabilityTextView = findViewById(R.id.aiProbabilityText)
-        aiConfidenceTextView = findViewById(R.id.aiConfidenceText)
         riskLevelTextView = findViewById(R.id.riskLevelText)
         recommendationTextView = findViewById(R.id.recommendationText)
         analysisDateTextView = findViewById(R.id.analysisDateText)
         viewHistoryButton = findViewById(R.id.viewHistoryButton)
         progressBar = findViewById(R.id.progressBar)
         emptyStateView = findViewById(R.id.emptyStateView)
+        riskIndicator = findViewById(R.id.riskIndicator)
+        abcdeTotalScore = findViewById(R.id.abcdeTotalScore)
+        
+        // ABCDE Progress indicators
+        asymmetryProgress = findViewById(R.id.asymmetryProgress)
+        borderProgress = findViewById(R.id.borderProgress)
+        colorProgress = findViewById(R.id.colorProgress)
+        diameterProgress = findViewById(R.id.diameterProgress)
+        evolutionProgress = findViewById(R.id.evolutionProgress)
+        
+        // ABCDE Score TextViews
+        asymmetryScore = findViewById(R.id.asymmetryScore)
+        borderScore = findViewById(R.id.borderScore)
+        colorScore = findViewById(R.id.colorScore)
+        diameterScore = findViewById(R.id.diameterScore)
+        evolutionScore = findViewById(R.id.evolutionScore)
+        
+        // ABCDE Layouts
+        asymmetryLayout = findViewById(R.id.asymmetryLayout)
+        borderLayout = findViewById(R.id.borderLayout)
+        colorLayout = findViewById(R.id.colorLayout)
+        diameterLayout = findViewById(R.id.diameterLayout)
+        evolutionLayout = findViewById(R.id.evolutionLayout)
 
         viewHistoryButton.setOnClickListener {
             openAnalysisHistory()
@@ -123,22 +163,23 @@ class MoleViewerActivity : AppCompatActivity() {
 
     private fun setupBasicUI(title: String, description: String, imageUrl: String?) {
         titleTextView.text = title
-        descriptionTextView.text = description
-
-        // Configurar ViewPager con las imágenes usando ImageLoadingUtil
-        if (!imageUrl.isNullOrEmpty()) {
-            val urlList = listOf(imageUrl)
-            val urlPagerAdapter = UrlImagePagerAdapter(urlList)
-            viewPager.adapter = urlPagerAdapter
-            viewPager.setPageTransformer(ZoomOutPageTransformer())
-            TabLayoutMediator(tabLayout, viewPager) { _, _ -> }.attach()
-            
-            // Precargar la imagen para mejor rendimiento
-            ImageLoadingUtil.preloadImage(this, imageUrl)
+        
+        // Solo mostrar descripción si no está vacía
+        if (description.isNotEmpty()) {
+            descriptionTextView.text = description
+            descriptionTextView.visibility = View.VISIBLE
         } else {
-            tabLayout.visibility = View.GONE
-            showEmptyState(EmptyStateView.EmptyStateType.NO_ANALYSIS)
+            descriptionTextView.visibility = View.GONE
         }
+
+        // Configurar ImageView con la imagen usando ImageLoadingUtil
+        ImageLoadingUtil.loadImageWithFallback(
+            context = this,
+            imageView = resultImageView,
+            imageUrl = imageUrl,
+            config = ImageLoadingUtil.Configs.fullSize(),
+            coroutineScope = lifecycleScope
+        )
     }
 
     private fun displayAnalysisFromAiResult(aiResult: String, imageUrl: String) {
@@ -233,113 +274,142 @@ class MoleViewerActivity : AppCompatActivity() {
         analysisContainer.visibility = View.VISIBLE
         emptyStateView.hide()
 
-        // Mostrar información básica del análisis
-        analysisResultTextView.text = if (analysisData.analysisResult.isNotEmpty()) {
-            analysisData.analysisResult
+        // Mostrar score combinado
+        val combinedScore = analysisData.combinedScore
+        if (combinedScore > 0f) {
+            combinedScoreText.text = String.format("%.1f%%", combinedScore * 100)
         } else {
-            "Análisis realizado el ${analysisData.createdAt.toDate()}"
+            combinedScoreText.text = "--"
         }
 
         // Mostrar probabilidad y confianza de IA
-        if (analysisData.aiProbability > 0f || analysisData.aiConfidence > 0f) {
-            aiProbabilityTextView.text = "Probabilidad IA: ${String.format("%.1f%%", analysisData.aiProbability * 100)}"
-            aiConfidenceTextView.text = "Confianza: ${String.format("%.1f%%", analysisData.aiConfidence * 100)}"
+        if (analysisData.aiProbability > 0f && analysisData.aiConfidence > 0f) {
+            aiProbabilityTextView.text = "IA: ${String.format("%.1f%%", analysisData.aiProbability * 100)} (Confianza: ${String.format("%.1f%%", analysisData.aiConfidence * 100)})"
             aiProbabilityTextView.visibility = View.VISIBLE
-            aiConfidenceTextView.visibility = View.VISIBLE
         } else {
             aiProbabilityTextView.visibility = View.GONE
-            aiConfidenceTextView.visibility = View.GONE
         }
 
-        // Mostrar puntuaciones ABCDE
-        displayABCDEScores(analysisData)
+        // Mostrar nivel de riesgo y configurar indicador
+        displayRiskLevel(analysisData.riskLevel)
 
-        // Mostrar nivel de riesgo
-        if (analysisData.riskLevel.isNotEmpty()) {
-            riskLevelTextView.text = "Nivel de Riesgo: ${analysisData.riskLevel}"
-            riskLevelTextView.visibility = View.VISIBLE
-            
-            // Cambiar color según el nivel de riesgo
-            val colorRes = when (analysisData.riskLevel.uppercase()) {
-                "LOW" -> android.R.color.holo_green_dark
-                "MODERATE" -> android.R.color.holo_orange_dark
-                "HIGH", "HIGH" -> android.R.color.holo_red_dark
-                else -> android.R.color.black
-            }
-            riskLevelTextView.setTextColor(getColor(colorRes))
-        } else {
-            riskLevelTextView.visibility = View.GONE
-        }
+        // Mostrar puntuaciones ABCDE detalladas
+        displayABCDEScoresDetailed(analysisData)
 
         // Mostrar recomendación
         if (analysisData.recommendation.isNotEmpty()) {
-            recommendationTextView.text = "Recomendación: ${analysisData.recommendation}"
-            recommendationTextView.visibility = View.VISIBLE
+            recommendationTextView.text = analysisData.recommendation
         } else {
-            recommendationTextView.visibility = View.GONE
+            recommendationTextView.text = "Análisis completado. Consulte los resultados detallados."
         }
 
         // Mostrar fecha del análisis
-        analysisDateTextView.text = "Fecha: ${analysisData.createdAt.toDate()}"
+        analysisDateTextView.text = "Fecha: ${formatDate(analysisData.createdAt.toDate())}"
         analysisDateTextView.visibility = View.VISIBLE
 
         // Mostrar botón de histórico si hay múltiples análisis
         val analysisCount = currentMoleData?.analysisCount ?: 0
         if (analysisCount > 1) {
             viewHistoryButton.visibility = View.VISIBLE
-            viewHistoryButton.text = "Ver Histórico ($analysisCount análisis)"
+            viewHistoryButton.text = "Ver Evolución ($analysisCount análisis)"
         } else {
             viewHistoryButton.visibility = View.GONE
         }
     }
 
-    private fun displayABCDEScores(analysisData: AnalysisData) {
-        abcdeScoresContainer.removeAllViews()
+    private fun displayRiskLevel(riskLevel: String) {
+        if (riskLevel.isNotEmpty()) {
+            riskLevelTextView.text = "Riesgo: $riskLevel"
+            riskIndicator.visibility = View.VISIBLE
+            
+            // Cambiar color según el nivel de riesgo
+            val colorRes = when (riskLevel.uppercase()) {
+                "LOW", "BAJO" -> android.R.color.holo_green_dark
+                "MODERATE", "MODERADO" -> android.R.color.holo_orange_dark
+                "HIGH", "ALTO" -> android.R.color.holo_red_dark
+                else -> android.R.color.darker_gray
+            }
+            val color = getColor(colorRes)
+            riskLevelTextView.setTextColor(color)
+            riskIndicator.setBackgroundColor(color)
+        } else {
+            riskLevelTextView.text = "Riesgo: --"
+            riskIndicator.visibility = View.GONE
+        }
+    }
 
+    private fun displayABCDEScoresDetailed(analysisData: AnalysisData) {
         val scores = analysisData.abcdeScores
         
         // Solo mostrar si hay puntuaciones válidas
         if (scores.totalScore > 0f || scores.asymmetryScore > 0f || 
             scores.borderScore > 0f || scores.colorScore > 0f || scores.diameterScore > 0f) {
             
-            addScoreView("Asimetría", scores.asymmetryScore, 2f)
-            addScoreView("Bordes", scores.borderScore, 8f)
-            addScoreView("Color", scores.colorScore, 6f)
-            addScoreView("Diámetro", scores.diameterScore, 5f)
-            
-            scores.evolutionScore?.let { evolutionScore ->
-                addScoreView("Evolución", evolutionScore, 3f)
-            }
-            
-            if (scores.totalScore > 0f) {
-                addScoreView("Score Total", scores.totalScore, null, isTotal = true)
-            }
-            
-            abcdeScoresContainer.visibility = View.VISIBLE
-        } else {
-            abcdeScoresContainer.visibility = View.GONE
-        }
-    }
-
-    private fun addScoreView(label: String, score: Float, maxScore: Float?, isTotal: Boolean = false) {
-        val scoreView = TextView(this).apply {
-            text = if (maxScore != null) {
-                "$label: ${String.format("%.1f", score)}/$maxScore"
+            // A - Asimetría
+            if (scores.asymmetryScore >= 0f) {
+                asymmetryLayout.visibility = View.VISIBLE
+                asymmetryScore.text = "${String.format("%.1f", scores.asymmetryScore)}/2"
+                asymmetryProgress.progress = ((scores.asymmetryScore / 2f) * 100).toInt()
             } else {
-                "$label: ${String.format("%.1f", score)}"
+                asymmetryLayout.visibility = View.GONE
             }
             
-            textSize = if (isTotal) 16f else 14f
-            setTextColor(if (isTotal) getColor(android.R.color.black) else getColor(android.R.color.darker_gray))
-            
-            if (isTotal) {
-                setTypeface(null, android.graphics.Typeface.BOLD)
+            // B - Bordes
+            if (scores.borderScore >= 0f) {
+                borderLayout.visibility = View.VISIBLE
+                borderScore.text = "${String.format("%.1f", scores.borderScore)}/8"
+                borderProgress.progress = ((scores.borderScore / 8f) * 100).toInt()
+            } else {
+                borderLayout.visibility = View.GONE
             }
             
-            setPadding(0, 8, 0, 8)
+            // C - Color
+            if (scores.colorScore >= 0f) {
+                colorLayout.visibility = View.VISIBLE
+                colorScore.text = "${String.format("%.1f", scores.colorScore)}/6"
+                colorProgress.progress = ((scores.colorScore / 6f) * 100).toInt()
+            } else {
+                colorLayout.visibility = View.GONE
+            }
+            
+            // D - Diámetro
+            if (scores.diameterScore >= 0f) {
+                diameterLayout.visibility = View.VISIBLE
+                diameterScore.text = "${String.format("%.1f", scores.diameterScore)}/5"
+                diameterProgress.progress = ((scores.diameterScore / 5f) * 100).toInt()
+            } else {
+                diameterLayout.visibility = View.GONE
+            }
+            
+            // E - Evolución (opcional)
+            scores.evolutionScore?.let { evolutionScoreValue ->
+                if (evolutionScoreValue > 0f) {
+                    evolutionLayout.visibility = View.VISIBLE
+                    evolutionScore.text = "${String.format("%.1f", evolutionScoreValue)}/3"
+                    evolutionProgress.progress = ((evolutionScoreValue / 3f) * 100).toInt()
+                } else {
+                    evolutionLayout.visibility = View.GONE
+                }
+            } ?: run {
+                evolutionLayout.visibility = View.GONE
+            }
+            
+            // Score total ABCDE
+            if (scores.totalScore > 0f) {
+                abcdeTotalScore.text = "Score ABCDE Total: ${String.format("%.1f", scores.totalScore)}"
+            } else {
+                abcdeTotalScore.text = "Score ABCDE Total: --"
+            }
+            
+        } else {
+            // Ocultar todos los layouts si no hay datos
+            asymmetryLayout.visibility = View.GONE
+            borderLayout.visibility = View.GONE
+            colorLayout.visibility = View.GONE
+            diameterLayout.visibility = View.GONE
+            evolutionLayout.visibility = View.GONE
+            abcdeTotalScore.text = "Score ABCDE Total: --"
         }
-        
-        abcdeScoresContainer.addView(scoreView)
     }
 
     private fun displayRawAnalysisResult(aiResult: String) {
@@ -347,22 +417,32 @@ class MoleViewerActivity : AppCompatActivity() {
         analysisContainer.visibility = View.VISIBLE
         emptyStateView.hide()
 
-        // Mostrar resultado crudo
-        analysisResultTextView.text = aiResult
+        // Mostrar resultado crudo en la recomendación
+        recommendationTextView.text = aiResult
+        
+        // Configurar valores por defecto
+        combinedScoreText.text = "--"
+        riskLevelTextView.text = "Riesgo: --"
+        riskIndicator.visibility = View.GONE
         
         // Ocultar otros campos específicos
         aiProbabilityTextView.visibility = View.GONE
-        aiConfidenceTextView.visibility = View.GONE
-        abcdeScoresContainer.visibility = View.GONE
-        riskLevelTextView.visibility = View.GONE
-        recommendationTextView.visibility = View.GONE
+        
+        // Ocultar todos los layouts ABCDE
+        asymmetryLayout.visibility = View.GONE
+        borderLayout.visibility = View.GONE
+        colorLayout.visibility = View.GONE
+        diameterLayout.visibility = View.GONE
+        evolutionLayout.visibility = View.GONE
+        abcdeTotalScore.text = "Score ABCDE Total: --"
+        
         analysisDateTextView.visibility = View.GONE
 
         // Mostrar botón de histórico si hay múltiples análisis
         val analysisCount = currentMoleData?.analysisCount ?: 0
         if (analysisCount > 1) {
             viewHistoryButton.visibility = View.VISIBLE
-            viewHistoryButton.text = "Ver Histórico ($analysisCount análisis)"
+            viewHistoryButton.text = "Ver Evolución ($analysisCount análisis)"
         } else {
             viewHistoryButton.visibility = View.GONE
         }
@@ -448,5 +528,13 @@ class MoleViewerActivity : AppCompatActivity() {
             )
             showErrorState(errorResult) { loadMoleData() }
         }
+    }
+
+    /**
+     * Formatea una fecha en formato español DD/MM/YYYY
+     */
+    private fun formatDate(date: java.util.Date): String {
+        val formatter = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
+        return formatter.format(date)
     }
 }
