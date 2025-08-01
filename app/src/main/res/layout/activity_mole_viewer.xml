@@ -20,11 +20,25 @@
             android:background="?attr/colorSurface"
             app:title="Detalles del Lunar"
             app:titleTextColor="?attr/colorOnSurface"
-            app:navigationIcon="@drawable/ic_arrow_back" />
+            app:navigationIcon="@drawable/ic_arrow_back">
+
+            <ImageButton
+                android:id="@+id/infoButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginEnd="16dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_info"
+                android:contentDescription="Información del análisis"
+                android:visibility="gone" />
+
+        </com.google.android.material.appbar.MaterialToolbar>
 
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/mainContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
@@ -35,8 +49,42 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Título del lunar -->
+            <!-- Imagen del lunar -->
             <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                style="@style/Widget.SkinCare_TFM.Card">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <!-- Imagen del lunar -->
+                    <ImageView
+                        android:id="@+id/resultImageView"
+                        android:layout_width="match_parent"
+                        android:layout_height="250dp"
+                        android:scaleType="centerCrop"
+                        android:contentDescription="Imagen del lunar" />
+
+                    <!-- Indicador de riesgo superpuesto -->
+                    <View
+                        android:id="@+id/riskIndicator"
+                        android:layout_width="match_parent"
+                        android:layout_height="4dp"
+                        android:layout_gravity="bottom"
+                        android:background="?attr/colorPrimary"
+                        android:visibility="gone" />
+
+
+                </FrameLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Información básica del lunar -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/moleInfoCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
@@ -52,9 +100,8 @@
                         android:id="@+id/detailTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textSize="24sp"
+                        android:textSize="20sp"
                         android:textStyle="bold"
-                        android:textAlignment="center"
                         android:textColor="?attr/colorOnSurface"
                         android:layout_marginBottom="8dp" />
 
@@ -62,43 +109,10 @@
                         android:id="@+id/detailDescription"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textAlignment="center" />
-
-                </LinearLayout>
-
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Galería de imágenes -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                style="@style/Widget.SkinCare_TFM.Card">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <!-- ViewPager para imágenes -->
-                    <androidx.viewpager2.widget.ViewPager2
-                        android:id="@+id/detailImagePager"
-                        android:layout_width="match_parent"
-                        android:layout_height="250dp" />
-
-                    <!-- Indicadores de página -->
-                    <com.google.android.material.tabs.TabLayout
-                        android:id="@+id/tabLayout"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center_horizontal"
-                        android:layout_marginTop="8dp"
-                        android:layout_marginBottom="8dp"
-                        app:tabBackground="@drawable/tab_selector"
-                        app:tabGravity="center"
-                        app:tabIndicatorHeight="0dp" />
+                        android:lineSpacingExtra="2dp"
+                        android:visibility="gone" />
 
                 </LinearLayout>
 
@@ -155,8 +169,9 @@
                 android:orientation="vertical"
                 android:visibility="gone">
 
-                <!-- Resultado principal del análisis -->
+                <!-- Resultado principal -->
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/analysisCard"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
@@ -172,90 +187,79 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:layout_marginBottom="12dp">
+                            android:gravity="center_vertical">
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Resultado:"
+                                android:text="Score Combinado:"
                                 android:textSize="18sp"
-                                android:textStyle="bold"
-                                android:textColor="?attr/colorOnSurface" />
+                                android:textStyle="bold" />
 
                             <TextView
-                                android:id="@+id/analysisResultText"
-                                android:layout_width="0dp"
+                                android:id="@+id/combinedScoreText"
+                                android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_weight="1"
                                 android:layout_marginStart="8dp"
-                                android:textSize="18sp"
+                                android:text="--"
+                                android:textSize="24sp"
                                 android:textStyle="bold"
                                 android:textColor="?attr/colorPrimary" />
 
+                            <View
+                                android:layout_width="0dp"
+                                android:layout_height="1dp"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:id="@+id/riskLevelText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Riesgo: --"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
                         </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/aiProbabilityText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="IA: -- (Confianza: --)"
+                            android:textSize="14sp"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:visibility="gone" />
 
                         <View
                             android:layout_width="match_parent"
                             android:layout_height="1dp"
-                            android:layout_marginVertical="8dp"
+                            android:layout_marginVertical="12dp"
                             android:background="?attr/colorOutline" />
 
-                        <!-- Información de IA -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginBottom="8dp">
-
-                            <TextView
-                                android:id="@+id/aiProbabilityText"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:textSize="14sp"
-                                android:textColor="?attr/colorOnSurfaceVariant"
-                                android:visibility="gone" />
-
-                            <TextView
-                                android:id="@+id/aiConfidenceText"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:textSize="14sp"
-                                android:textColor="?attr/colorOnSurfaceVariant"
-                                android:textAlignment="textEnd"
-                                android:visibility="gone" />
-
-                        </LinearLayout>
-
-                        <!-- Nivel de riesgo -->
-                        <TextView
-                            android:id="@+id/riskLevelText"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:padding="12dp"
-                            android:layout_marginBottom="8dp"
-                            android:visibility="gone"
-                            android:background="@drawable/rounded_risk_background" />
-
-                        <!-- Recomendación -->
                         <TextView
                             android:id="@+id/recommendationText"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:textSize="14sp"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            android:lineSpacingExtra="2dp"
-                            android:visibility="gone" />
+                            android:text="Analizando..."
+                            android:textSize="16sp"
+                            android:lineSpacingExtra="2dp" />
+
+                        <!-- Botón de histórico integrado en la card principal -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/viewHistoryButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="Ver Evolución"
+                            android:visibility="gone"
+                            style="@style/Widget.MaterialComponents.Button.TextButton" />
 
                     </LinearLayout>
 
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Puntuaciones ABCDE -->
+                <!-- Análisis ABCDE detallado -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -271,11 +275,200 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Puntuaciones ABCDE"
+                            android:text="Análisis ABCDE"
                             android:textSize="18sp"
                             android:textStyle="bold"
-                            android:textColor="?attr/colorOnSurface"
                             android:layout_marginBottom="12dp" />
+
+                        <!-- A - Asimetría -->
+                        <LinearLayout
+                            android:id="@+id/asymmetryLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="A - Asimetría:"
+                                android:textStyle="bold"
+                                android:contentDescription="Criterio A: Asimetría del lunar" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/asymmetryProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="center_vertical"
+                                android:max="100"
+                                app:indicatorColor="?attr/colorPrimary"
+                                app:trackColor="?attr/colorSurfaceVariant"
+                                android:contentDescription="Progreso de evaluación de asimetría"
+                                android:importantForAccessibility="yes" />
+
+                            <TextView
+                                android:id="@+id/asymmetryScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="0/2"
+                                android:contentDescription="Puntuación de asimetría sobre 2 puntos" />
+
+                        </LinearLayout>
+
+                        <!-- B - Bordes -->
+                        <LinearLayout
+                            android:id="@+id/borderLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="B - Bordes:"
+                                android:textStyle="bold"
+                                android:contentDescription="Criterio B: Irregularidad de bordes del lunar" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/borderProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="center_vertical"
+                                android:max="100"
+                                app:indicatorColor="?attr/colorPrimary"
+                                app:trackColor="?attr/colorSurfaceVariant"
+                                android:contentDescription="Progreso de evaluación de bordes"
+                                android:importantForAccessibility="yes" />
+
+                            <TextView
+                                android:id="@+id/borderScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="0/8"
+                                android:contentDescription="Puntuación de bordes sobre 8 puntos" />
+
+                        </LinearLayout>
+
+                        <!-- C - Color -->
+                        <LinearLayout
+                            android:id="@+id/colorLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="C - Color:"
+                                android:textStyle="bold"
+                                android:contentDescription="Criterio C: Variación de color del lunar" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/colorProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="center_vertical"
+                                android:max="100"
+                                app:indicatorColor="?attr/colorPrimary"
+                                app:trackColor="?attr/colorSurfaceVariant"
+                                android:contentDescription="Progreso de evaluación de color"
+                                android:importantForAccessibility="yes" />
+
+                            <TextView
+                                android:id="@+id/colorScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="0/6"
+                                android:contentDescription="Puntuación de color sobre 6 puntos" />
+
+                        </LinearLayout>
+
+                        <!-- D - Diámetro -->
+                        <LinearLayout
+                            android:id="@+id/diameterLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="D - Diámetro:"
+                                android:textStyle="bold"
+                                android:contentDescription="Criterio D: Tamaño del diámetro del lunar" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/diameterProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="center_vertical"
+                                android:max="100"
+                                app:indicatorColor="?attr/colorPrimary"
+                                app:trackColor="?attr/colorSurfaceVariant"
+                                android:contentDescription="Progreso de evaluación de diámetro"
+                                android:importantForAccessibility="yes" />
+
+                            <TextView
+                                android:id="@+id/diameterScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="0/5"
+                                android:contentDescription="Puntuación de diámetro sobre 5 puntos" />
+
+                        </LinearLayout>
+
+                        <!-- E - Evolución (opcional) -->
+                        <LinearLayout
+                            android:id="@+id/evolutionLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="E - Evolución:"
+                                android:textStyle="bold"
+                                android:contentDescription="Criterio E: Evolución temporal del lunar" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/evolutionProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="center_vertical"
+                                android:max="100"
+                                app:indicatorColor="?attr/colorPrimary"
+                                app:trackColor="?attr/colorSurfaceVariant"
+                                android:contentDescription="Progreso de evaluación de evolución"
+                                android:importantForAccessibility="yes" />
+
+                            <TextView
+                                android:id="@+id/evolutionScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="0/3"
+                                android:contentDescription="Puntuación de evolución sobre 3 puntos" />
+
+                        </LinearLayout>
 
                         <LinearLayout
                             android:id="@+id/abcdeScoresContainer"
@@ -283,6 +476,20 @@
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
                             android:visibility="gone" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginVertical="8dp"
+                            android:background="?attr/colorOutline" />
+
+                        <TextView
+                            android:id="@+id/abcdeTotalScore"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Score ABCDE Total: --"
+                            android:textStyle="bold"
+                            android:textSize="16sp" />
 
                         <!-- Fecha del análisis -->
                         <TextView
@@ -297,20 +504,6 @@
                     </LinearLayout>
 
                 </com.google.android.material.card.MaterialCardView>
-
-                <!-- Botón para ver histórico -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/viewHistoryButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:text="Ver Histórico de Análisis"
-                    android:textSize="16sp"
-                    android:layout_marginBottom="16dp"
-                    android:visibility="gone"
-                    app:cornerRadius="28dp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    app:strokeColor="?attr/colorPrimary"
-                    app:strokeWidth="2dp" />
 
             </LinearLayout>
 
