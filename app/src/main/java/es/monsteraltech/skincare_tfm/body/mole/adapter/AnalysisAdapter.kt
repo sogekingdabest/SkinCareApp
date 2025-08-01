@@ -41,7 +41,7 @@ class AnalysisAdapter(
         // Configurar nivel de riesgo con color adecuado
         holder.riskLevelText.text = analysis.riskLevel
         when (analysis.riskLevel) {
-            "Bajo" -> {
+            "LOW" -> {
                 holder.riskLevelText.setBackgroundResource(R.drawable.rounded_risk_background)
                 holder.riskLevelText.setTextColor(Color.WHITE)
                 holder.riskLevelText.background.setTint(Color.parseColor("#4CAF50")) // Verde
@@ -51,7 +51,7 @@ class AnalysisAdapter(
                 holder.riskLevelText.setTextColor(Color.WHITE)
                 holder.riskLevelText.background.setTint(Color.parseColor("#FF9800")) // Naranja
             }
-            "Alto" -> {
+            "HIGH" -> {
                 holder.riskLevelText.setBackgroundResource(R.drawable.rounded_risk_background)
                 holder.riskLevelText.setTextColor(Color.WHITE)
                 holder.riskLevelText.background.setTint(Color.parseColor("#F44336")) // Rojo

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:visibility="gone">
+
+    <!-- Icono del estado vacío -->
+    <ImageView
+        android:id="@+id/emptyStateIcon"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginBottom="24dp"
+        android:src="@drawable/ic_search_off"
+        android:alpha="0.6"
+        android:contentDescription="@string/empty_state_icon_description" />
+
+    <!-- Título del estado vacío -->
+    <TextView
+        android:id="@+id/emptyStateTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:text="@string/empty_state_no_data_title"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        android:gravity="center"
+        android:fontFamily="sans-serif-medium" />
+
+    <!-- Mensaje del estado vacío -->
+    <TextView
+        android:id="@+id/emptyStateMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:text="@string/empty_state_no_data_message"
+        android:textSize="16sp"
+        android:textColor="@android:color/darker_gray"
+        android:gravity="center"
+        android:lineSpacingExtra="4dp" />
+
+    <!-- Botón de acción principal -->
+    <Button
+        android:id="@+id/emptyStateActionButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:text="@string/empty_state_action_try_again"
+        android:textColor="@android:color/white"
+        android:background="@drawable/button_primary_background"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="12dp"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:elevation="2dp"
+        android:visibility="gone" />
+
+    <!-- Botón de acción secundaria -->
+    <Button
+        android:id="@+id/emptyStateSecondaryButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/empty_state_action_refresh"
+        android:textColor="@android:color/holo_blue_dark"
+        android:background="@drawable/button_secondary_background"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="10dp"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <!-- Indicador de carga para reintentos -->
+    <ProgressBar
+        android:id="@+id/emptyStateProgressBar"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        android:indeterminate="true" />
+
+    <!-- Texto de estado de reintento -->
+    <TextView
+        android:id="@+id/emptyStateRetryText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/retry_attempting"
+        android:textSize="14sp"
+        android:textColor="@android:color/holo_blue_dark"
+        android:visibility="gone" />
+
+</LinearLayout>

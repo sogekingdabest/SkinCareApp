@@ -602,14 +602,36 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Botón guardar -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/saveButton"
+            <!-- Botones de guardado -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:text="Guardar Análisis"
-                android:textSize="18sp"
-                app:cornerRadius="30dp" />
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp">
+
+                <!-- Botón asignar a lunar existente -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/assignToExistingMoleButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:text="Asignar a lunar existente"
+                    android:textSize="18sp"
+                    android:layout_marginBottom="8dp"
+                    app:cornerRadius="30dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    app:strokeColor="?attr/colorPrimary"
+                    app:strokeWidth="2dp" />
+
+                <!-- Botón guardar como nuevo -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/saveButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:text="Guardar como nuevo lunar"
+                    android:textSize="18sp"
+                    app:cornerRadius="30dp" />
+
+            </LinearLayout>
 
         </LinearLayout>
 

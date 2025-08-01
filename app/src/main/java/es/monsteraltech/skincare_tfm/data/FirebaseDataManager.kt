@@ -7,6 +7,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import es.monsteraltech.skincare_tfm.account.AccountSettings
 import es.monsteraltech.skincare_tfm.account.UserInfo
+import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import java.io.File
 import java.util.Date
 import java.util.UUID
@@ -26,20 +27,6 @@ class FirebaseDataManager {
     private val MOLES_SUBCOLLECTION = "moles"
     private val ANALYSIS_SUBCOLLECTION = "mole_analysis"
     private val USER_SETTINGS_SUBCOLLECTION = "settings"
-
-    // Modelo de datos para un lunar
-    data class MoleData(
-        val id: String = UUID.randomUUID().toString(),
-        val userId: String = "",
-        val title: String = "",
-        val description: String = "",
-        val bodyPart: String = "",
-        val bodyPartColorCode: String = "",
-        val analysisResult: String = "",
-        val imageUrl: String = "",
-        val createdAt: Date = Date(),
-        val updatedAt: Date = Date()
-    )
 
     suspend fun saveImageLocally(context: Context, imagePath: String): String = suspendCoroutine { continuation ->
         try {
@@ -83,7 +70,9 @@ class FirebaseDataManager {
             .whereEqualTo("bodyPartColorCode", bodyPartColorCode)
             .get()
             .addOnSuccessListener { documents ->
-                val moles = documents.toObjects(MoleData::class.java)
+                val moles = documents.mapNotNull { document ->
+                    MoleData.fromMap(document.id, document.data)
+                }
                 continuation.resume(moles)
             }
             .addOnFailureListener { e ->
