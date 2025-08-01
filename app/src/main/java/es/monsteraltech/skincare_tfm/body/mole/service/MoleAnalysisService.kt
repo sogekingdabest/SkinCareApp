@@ -6,6 +6,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
+import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionComparison
 import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionSummary
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
@@ -26,11 +27,11 @@ class MoleAnalysisService {
 
     private val USERS_COLLECTION = "users"
     private val MOLES_SUBCOLLECTION = "moles"
-    private val ANALYSIS_SUBCOLLECTION = "mole_analysis"
+    private val ANALYSIS_SUBCOLLECTION = "mole_analysis_historial"
 
     /**
      * Guarda un análisis asociado a un lunar específico
-     * Actualiza los contadores del lunar automáticamente
+     * Mueve el análisis actual al historial y actualiza el lunar con el nuevo análisis
      */
     suspend fun saveAnalysisToMole(moleId: String, analysis: AnalysisData): Result<Unit> =
         withContext(Dispatchers.IO) {
@@ -50,16 +51,84 @@ class MoleAnalysisService {
                 // Sanitizar datos
                 val sanitizedAnalysis = AnalysisDataSanitizer.sanitizeAnalysisData(analysis.copy(moleId = moleId))
 
-                // Guardar análisis en Firestore con timeout
-                firestore.collection(USERS_COLLECTION)
-                    .document(currentUser.uid)
-                    .collection(ANALYSIS_SUBCOLLECTION)
-                    .document(sanitizedAnalysis.id)
-                    .set(sanitizedAnalysis.toMap())
-                    .await()
+                // Ejecutar transacción para mover análisis actual al historial y actualizar lunar
+                firestore.runTransaction { transaction ->
+                    val moleRef = firestore.collection(USERS_COLLECTION)
+                        .document(currentUser.uid)
+                        .collection(MOLES_SUBCOLLECTION)
+                        .document(moleId)
 
-                // Actualizar contadores del lunar
-                updateMoleAnalysisCount(currentUser.uid, moleId)
+                    // Obtener el lunar actual
+                    val moleSnapshot = transaction.get(moleRef)
+                    if (!moleSnapshot.exists()) {
+                        throw Exception("Lunar no encontrado")
+                    }
+
+                    val currentCount = moleSnapshot.getLong("analysisCount") ?: 0L
+                    val currentTimestamp = Timestamp.now()
+
+                    // Si ya existe un análisis en el lunar, moverlo al historial
+                    if (currentCount > 0L) {
+                        val currentAnalysisResult = moleSnapshot.getString("analysisResult") ?: ""
+                        if (currentAnalysisResult.isNotEmpty()) {
+                            // Crear AnalysisData del análisis actual para moverlo al historial
+                            val currentAnalysisData = AnalysisData(
+                                id = "${moleId}_analysis_${currentCount}",
+                                moleId = moleId,
+                                analysisResult = currentAnalysisResult,
+                                aiProbability = moleSnapshot.getDouble("aiProbability")?.toFloat() ?: 0f,
+                                aiConfidence = moleSnapshot.getDouble("aiConfidence")?.toFloat() ?: 0f,
+                                abcdeScores = ABCDEScores(
+                                    asymmetryScore = moleSnapshot.getDouble("abcdeAsymmetry")?.toFloat() ?: 0f,
+                                    borderScore = moleSnapshot.getDouble("abcdeBorder")?.toFloat() ?: 0f,
+                                    colorScore = moleSnapshot.getDouble("abcdeColor")?.toFloat() ?: 0f,
+                                    diameterScore = moleSnapshot.getDouble("abcdeDiameter")?.toFloat() ?: 0f,
+                                    evolutionScore = null,
+                                    totalScore = moleSnapshot.getDouble("abcdeTotalScore")?.toFloat() ?: 0f
+                                ),
+                                combinedScore = moleSnapshot.getDouble("combinedScore")?.toFloat() ?: 0f,
+                                riskLevel = moleSnapshot.getString("riskLevel") ?: "",
+                                recommendation = moleSnapshot.getString("recommendation") ?: "",
+                                imageUrl = moleSnapshot.getString("imageUrl") ?: "",
+                                createdAt = moleSnapshot.getTimestamp("lastAnalysisDate") ?: currentTimestamp,
+                                analysisMetadata = emptyMap()
+                            )
+
+                            // Guardar análisis actual en el historial
+                            val historialRef = firestore.collection(USERS_COLLECTION)
+                                .document(currentUser.uid)
+                                .collection(ANALYSIS_SUBCOLLECTION)
+                                .document(currentAnalysisData.id)
+
+                            transaction.set(historialRef, currentAnalysisData.toMap())
+                        }
+                    }
+
+                    // Actualizar el lunar con el nuevo análisis
+                    val updates = mutableMapOf<String, Any>(
+                        "analysisResult" to sanitizedAnalysis.analysisResult,
+                        "aiProbability" to sanitizedAnalysis.aiProbability.toDouble(),
+                        "aiConfidence" to sanitizedAnalysis.aiConfidence.toDouble(),
+                        "riskLevel" to sanitizedAnalysis.riskLevel,
+                        "combinedScore" to sanitizedAnalysis.combinedScore.toDouble(),
+                        "abcdeAsymmetry" to sanitizedAnalysis.abcdeScores.asymmetryScore.toDouble(),
+                        "abcdeBorder" to sanitizedAnalysis.abcdeScores.borderScore.toDouble(),
+                        "abcdeColor" to sanitizedAnalysis.abcdeScores.colorScore.toDouble(),
+                        "abcdeDiameter" to sanitizedAnalysis.abcdeScores.diameterScore.toDouble(),
+                        "abcdeTotalScore" to sanitizedAnalysis.abcdeScores.totalScore.toDouble(),
+                        "recommendation" to sanitizedAnalysis.recommendation,
+                        "analysisCount" to (currentCount + 1),
+                        "lastAnalysisDate" to currentTimestamp,
+                        "updatedAt" to currentTimestamp
+                    )
+
+                    // Si es el primer análisis, establecer también firstAnalysisDate
+                    if (currentCount == 0L) {
+                        updates["firstAnalysisDate"] = currentTimestamp
+                    }
+
+                    transaction.update(moleRef, updates)
+                }.await()
 
                 Result.success(Unit)
 
@@ -77,6 +146,7 @@ class MoleAnalysisService {
 
     /**
      * Recupera el histórico completo de análisis de un lunar específico
+     * Incluye el análisis actual del lunar más el historial de análisis anteriores
      */
     suspend fun getAnalysisHistory(moleId: String): Result<List<AnalysisData>> =
         withContext(Dispatchers.IO) {
@@ -91,6 +161,46 @@ class MoleAnalysisService {
                     )
                 }
 
+                val analysisList = mutableListOf<AnalysisData>()
+
+                // 1. Obtener el análisis actual del lunar
+                val moleSnapshot = firestore.collection(USERS_COLLECTION)
+                    .document(currentUser.uid)
+                    .collection(MOLES_SUBCOLLECTION)
+                    .document(moleId)
+                    .get()
+                    .await()
+
+                if (moleSnapshot.exists()) {
+                    val analysisResult = moleSnapshot.getString("analysisResult") ?: ""
+                    if (analysisResult.isNotEmpty()) {
+                        // Crear AnalysisData del análisis actual
+                        val currentAnalysis = AnalysisData(
+                            id = "${moleId}_current",
+                            moleId = moleId,
+                            analysisResult = analysisResult,
+                            aiProbability = moleSnapshot.getDouble("aiProbability")?.toFloat() ?: 0f,
+                            aiConfidence = moleSnapshot.getDouble("aiConfidence")?.toFloat() ?: 0f,
+                            abcdeScores = ABCDEScores(
+                                asymmetryScore = moleSnapshot.getDouble("abcdeAsymmetry")?.toFloat() ?: 0f,
+                                borderScore = moleSnapshot.getDouble("abcdeBorder")?.toFloat() ?: 0f,
+                                colorScore = moleSnapshot.getDouble("abcdeColor")?.toFloat() ?: 0f,
+                                diameterScore = moleSnapshot.getDouble("abcdeDiameter")?.toFloat() ?: 0f,
+                                evolutionScore = null,
+                                totalScore = moleSnapshot.getDouble("abcdeTotalScore")?.toFloat() ?: 0f
+                            ),
+                            combinedScore = moleSnapshot.getDouble("combinedScore")?.toFloat() ?: 0f,
+                            riskLevel = moleSnapshot.getString("riskLevel") ?: "",
+                            recommendation = moleSnapshot.getString("recommendation") ?: "",
+                            imageUrl = moleSnapshot.getString("imageUrl") ?: "",
+                            createdAt = moleSnapshot.getTimestamp("lastAnalysisDate") ?: Timestamp.now(),
+                            analysisMetadata = emptyMap()
+                        )
+                        analysisList.add(currentAnalysis)
+                    }
+                }
+
+                // 2. Obtener el historial de análisis anteriores
                 val querySnapshot = firestore.collection(USERS_COLLECTION)
                     .document(currentUser.uid)
                     .collection(ANALYSIS_SUBCOLLECTION)
@@ -98,21 +208,25 @@ class MoleAnalysisService {
                     .get()
                     .await()
 
-                // Ordenar los resultados en memoria después de obtenerlos
-                val analysisList = querySnapshot.documents.mapNotNull { doc ->
+                val historicalAnalyses = querySnapshot.documents.mapNotNull { doc ->
                     try {
                         AnalysisData.fromMap(doc.id, doc.data ?: emptyMap())
                     } catch (e: Exception) {
                         Log.w("MoleAnalysisService", "Error al parsear análisis ${doc.id}", e)
                         null
                     }
-                }.sortedByDescending { it.createdAt }
+                }
 
-                if (analysisList.isEmpty() && querySnapshot.isEmpty) {
+                analysisList.addAll(historicalAnalyses)
+
+                // 3. Ordenar por fecha descendente (más reciente primero)
+                val sortedAnalyses = analysisList.sortedByDescending { it.createdAt }
+
+                if (sortedAnalyses.isEmpty()) {
                     Log.i("MoleAnalysisService", "No se encontraron análisis para el lunar $moleId")
                 }
 
-                Result.success(analysisList)
+                Result.success(sortedAnalyses)
 
             } catch (e: SecurityException) {
                 Log.e("MoleAnalysisService", "Error de autenticación al obtener historial", e)
@@ -182,40 +296,7 @@ class MoleAnalysisService {
                 Result.failure(e)
             }
         }
-    /**
-     * Actualiza los contadores de análisis del lunar
-     */
-    private suspend fun updateMoleAnalysisCount(userId: String, moleId: String) {
-        try {
-            val moleRef = firestore.collection(USERS_COLLECTION)
-                .document(userId)
-                .collection(MOLES_SUBCOLLECTION)
-                .document(moleId)
 
-            firestore.runTransaction { transaction ->
-                val moleSnapshot = transaction.get(moleRef)
-                val currentCount = moleSnapshot.getLong("analysisCount") ?: 0L
-                val currentTimestamp = Timestamp.now()
-
-                val updates = mutableMapOf<String, Any>(
-                    "analysisCount" to (currentCount + 1),
-                    "lastAnalysisDate" to currentTimestamp,
-                    "updatedAt" to currentTimestamp
-                )
-
-                // Si es el primer análisis, establecer también firstAnalysisDate
-                if (currentCount == 0L) {
-                    updates["firstAnalysisDate"] = currentTimestamp
-                }
-
-                transaction.update(moleRef, updates)
-            }.await()
-
-        } catch (e: Exception) {
-            Log.w("MoleAnalysisService", "Error al actualizar contadores del lunar", e)
-            // No lanzamos excepción para no fallar el guardado del análisis
-        }
-    }
 
 
 }

@@ -82,16 +82,53 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             context = this,
             analysisList = emptyList(),
             onItemClick = { analysis ->
-                // Abrir vista detallada del análisis
+                // Abrir vista detallada del análisis pasando datos primitivos
                 val intent = Intent(this, AnalysisDetailActivity::class.java)
-                intent.putExtra("ANALYSIS_DATA", analysis)
+                intent.putExtra("ANALYSIS_ID", analysis.id)
+                intent.putExtra("MOLE_ID", analysis.moleId)
+                intent.putExtra("ANALYSIS_RESULT", analysis.analysisResult)
+                intent.putExtra("AI_PROBABILITY", analysis.aiProbability)
+                intent.putExtra("AI_CONFIDENCE", analysis.aiConfidence)
+                intent.putExtra("COMBINED_SCORE", analysis.combinedScore)
+                intent.putExtra("RISK_LEVEL", analysis.riskLevel)
+                intent.putExtra("RECOMMENDATION", analysis.recommendation)
+                intent.putExtra("IMAGE_URL", analysis.imageUrl)
+                intent.putExtra("CREATED_AT", analysis.createdAt.toDate().time)
+                
+                // ABCDE Scores
+                intent.putExtra("ASYMMETRY_SCORE", analysis.abcdeScores.asymmetryScore)
+                intent.putExtra("BORDER_SCORE", analysis.abcdeScores.borderScore)
+                intent.putExtra("COLOR_SCORE", analysis.abcdeScores.colorScore)
+                intent.putExtra("DIAMETER_SCORE", analysis.abcdeScores.diameterScore)
+                intent.putExtra("EVOLUTION_SCORE", analysis.abcdeScores.evolutionScore ?: -1f)
+                intent.putExtra("TOTAL_SCORE", analysis.abcdeScores.totalScore)
+                
                 startActivity(intent)
             },
             onCompareClick = { currentAnalysis, previousAnalysis ->
-                // Abrir vista de comparación
+                // Abrir vista de comparación pasando datos primitivos
                 val intent = Intent(this, AnalysisComparisonActivity::class.java)
-                intent.putExtra("CURRENT_ANALYSIS", currentAnalysis)
-                intent.putExtra("PREVIOUS_ANALYSIS", previousAnalysis)
+                
+                // Current Analysis
+                intent.putExtra("CURRENT_ID", currentAnalysis.id)
+                intent.putExtra("CURRENT_RESULT", currentAnalysis.analysisResult)
+                intent.putExtra("CURRENT_AI_PROBABILITY", currentAnalysis.aiProbability)
+                intent.putExtra("CURRENT_AI_CONFIDENCE", currentAnalysis.aiConfidence)
+                intent.putExtra("CURRENT_COMBINED_SCORE", currentAnalysis.combinedScore)
+                intent.putExtra("CURRENT_RISK_LEVEL", currentAnalysis.riskLevel)
+                intent.putExtra("CURRENT_IMAGE_URL", currentAnalysis.imageUrl)
+                intent.putExtra("CURRENT_CREATED_AT", currentAnalysis.createdAt.toDate().time)
+                
+                // Previous Analysis
+                intent.putExtra("PREVIOUS_ID", previousAnalysis.id)
+                intent.putExtra("PREVIOUS_RESULT", previousAnalysis.analysisResult)
+                intent.putExtra("PREVIOUS_AI_PROBABILITY", previousAnalysis.aiProbability)
+                intent.putExtra("PREVIOUS_AI_CONFIDENCE", previousAnalysis.aiConfidence)
+                intent.putExtra("PREVIOUS_COMBINED_SCORE", previousAnalysis.combinedScore)
+                intent.putExtra("PREVIOUS_RISK_LEVEL", previousAnalysis.riskLevel)
+                intent.putExtra("PREVIOUS_IMAGE_URL", previousAnalysis.imageUrl)
+                intent.putExtra("PREVIOUS_CREATED_AT", previousAnalysis.createdAt.toDate().time)
+                
                 startActivity(intent)
             }
         )

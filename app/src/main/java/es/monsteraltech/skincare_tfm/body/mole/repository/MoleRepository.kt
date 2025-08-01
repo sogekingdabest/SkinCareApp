@@ -28,7 +28,7 @@ class MoleRepository {
 
     private val USERS_COLLECTION = "users"
     private val MOLES_SUBCOLLECTION = "moles"
-    private val ANALYSIS_SUBCOLLECTION = "mole_analysis"
+    private val ANALYSIS_SUBCOLLECTION = "mole_analysis_historial"
 
     // Función para guardar un lunar con análisis estructurado
     suspend fun saveMoleWithAnalysis(

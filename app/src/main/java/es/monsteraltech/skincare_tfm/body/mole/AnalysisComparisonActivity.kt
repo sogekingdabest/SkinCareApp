@@ -33,8 +33,8 @@ class AnalysisComparisonActivity : AppCompatActivity() {
         supportActionBar?.title = "Comparación de Análisis"
 
         // Obtener datos de comparación
-        val currentAnalysis = intent.getSerializableExtra("CURRENT_ANALYSIS") as? AnalysisData
-        val previousAnalysis = intent.getSerializableExtra("PREVIOUS_ANALYSIS") as? AnalysisData
+        val currentAnalysis = reconstructCurrentAnalysisFromIntent()
+        val previousAnalysis = reconstructPreviousAnalysisFromIntent()
 
         if (currentAnalysis == null || previousAnalysis == null) {
             Toast.makeText(this, "Error: Datos de comparación no válidos", Toast.LENGTH_SHORT).show()
@@ -47,6 +47,62 @@ class AnalysisComparisonActivity : AppCompatActivity() {
 
         // Configurar la interfaz
         setupComparison()
+    }
+
+    private fun reconstructCurrentAnalysisFromIntent(): AnalysisData? {
+        return try {
+            val id = intent.getStringExtra("CURRENT_ID") ?: return null
+            val analysisResult = intent.getStringExtra("CURRENT_RESULT") ?: ""
+            val aiProbability = intent.getFloatExtra("CURRENT_AI_PROBABILITY", 0f)
+            val aiConfidence = intent.getFloatExtra("CURRENT_AI_CONFIDENCE", 0f)
+            val combinedScore = intent.getFloatExtra("CURRENT_COMBINED_SCORE", 0f)
+            val riskLevel = intent.getStringExtra("CURRENT_RISK_LEVEL") ?: ""
+            val imageUrl = intent.getStringExtra("CURRENT_IMAGE_URL") ?: ""
+            val createdAtMillis = intent.getLongExtra("CURRENT_CREATED_AT", System.currentTimeMillis())
+            
+            val createdAt = com.google.firebase.Timestamp(java.util.Date(createdAtMillis))
+            
+            AnalysisData(
+                id = id,
+                analysisResult = analysisResult,
+                aiProbability = aiProbability,
+                aiConfidence = aiConfidence,
+                combinedScore = combinedScore,
+                riskLevel = riskLevel,
+                imageUrl = imageUrl,
+                createdAt = createdAt
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun reconstructPreviousAnalysisFromIntent(): AnalysisData? {
+        return try {
+            val id = intent.getStringExtra("PREVIOUS_ID") ?: return null
+            val analysisResult = intent.getStringExtra("PREVIOUS_RESULT") ?: ""
+            val aiProbability = intent.getFloatExtra("PREVIOUS_AI_PROBABILITY", 0f)
+            val aiConfidence = intent.getFloatExtra("PREVIOUS_AI_CONFIDENCE", 0f)
+            val combinedScore = intent.getFloatExtra("PREVIOUS_COMBINED_SCORE", 0f)
+            val riskLevel = intent.getStringExtra("PREVIOUS_RISK_LEVEL") ?: ""
+            val imageUrl = intent.getStringExtra("PREVIOUS_IMAGE_URL") ?: ""
+            val createdAtMillis = intent.getLongExtra("PREVIOUS_CREATED_AT", System.currentTimeMillis())
+            
+            val createdAt = com.google.firebase.Timestamp(java.util.Date(createdAtMillis))
+            
+            AnalysisData(
+                id = id,
+                analysisResult = analysisResult,
+                aiProbability = aiProbability,
+                aiConfidence = aiConfidence,
+                combinedScore = combinedScore,
+                riskLevel = riskLevel,
+                imageUrl = imageUrl,
+                createdAt = createdAt
+            )
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun setupComparison() {
