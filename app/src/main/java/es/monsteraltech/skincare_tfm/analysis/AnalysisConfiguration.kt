@@ -81,21 +81,6 @@ data class AnalysisConfiguration(
         )
     }
     
-    /**
-     * Crea una configuración optimizada para alta precisión
-     */
-    fun forHighAccuracy(): AnalysisConfiguration {
-        return copy(
-            enableParallelProcessing = true,
-            enableAutoImageReduction = false,
-            maxImageResolution = 2048 * 2048, // 4MP
-            compressionQuality = 95,
-            timeoutMs = 60000L, // Más tiempo para mayor precisión
-            aiTimeoutMs = 30000L,
-            abcdeTimeoutMs = 20000L
-        )
-    }
-    
     companion object {
         /**
          * Configuración por defecto balanceada
@@ -105,7 +90,7 @@ data class AnalysisConfiguration(
         }
         
         /**
-         * Configuración rápida (menor precisión, mayor velocidad)
+         * Configuración rápida
          */
         fun fast(): AnalysisConfiguration {
             return AnalysisConfiguration(
@@ -115,32 +100,6 @@ data class AnalysisConfiguration(
                 timeoutMs = 20000L,
                 aiTimeoutMs = 10000L,
                 abcdeTimeoutMs = 8000L
-            )
-        }
-        
-        /**
-         * Configuración solo para análisis ABCDE (sin IA)
-         */
-        fun abcdeOnly(): AnalysisConfiguration {
-            return AnalysisConfiguration(
-                enableAI = false,
-                enableABCDE = true,
-                enableParallelProcessing = false,
-                timeoutMs = 15000L,
-                abcdeTimeoutMs = 12000L
-            )
-        }
-        
-        /**
-         * Configuración solo para análisis de IA (sin ABCDE)
-         */
-        fun aiOnly(): AnalysisConfiguration {
-            return AnalysisConfiguration(
-                enableAI = true,
-                enableABCDE = false,
-                enableParallelProcessing = false,
-                timeoutMs = 20000L,
-                aiTimeoutMs = 15000L
             )
         }
     }

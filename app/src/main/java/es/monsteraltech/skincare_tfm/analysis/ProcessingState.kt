@@ -40,24 +40,7 @@ data class ProcessingState(
     val hasError: Boolean
         get() = error != null
     
-    /**
-     * Indica si el procesamiento está activo (no completado, cancelado o con error)
-     */
-    val isActive: Boolean
-        get() = !isCompleted && !isCancelled && !hasError
-    
     companion object {
-        /**
-         * Crea un estado inicial para el procesamiento
-         */
-        fun initial(): ProcessingState {
-            return ProcessingState(
-                stage = ProcessingStage.INITIALIZING,
-                progress = 0,
-                message = ProcessingStage.INITIALIZING.message
-            )
-        }
-        
         /**
          * Crea un estado de error
          */
@@ -71,7 +54,7 @@ data class ProcessingState(
         }
         
         /**
-         * Crea un estado de cancelación
+         * Crea un estado de cancelación, pero no se usa actualmente, mantener para un futuro
          */
         fun cancelled(currentStage: ProcessingStage = ProcessingStage.INITIALIZING): ProcessingState {
             return ProcessingState(
@@ -83,7 +66,7 @@ data class ProcessingState(
         }
         
         /**
-         * Crea un estado de completado
+         * Crea un estado de completado, pero no se usa actualmente, mantener para un futuro
          */
         fun completed(): ProcessingState {
             return ProcessingState(

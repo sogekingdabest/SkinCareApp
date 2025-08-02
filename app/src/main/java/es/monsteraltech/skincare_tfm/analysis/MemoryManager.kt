@@ -143,22 +143,6 @@ class MemoryManager {
     }
     
     /**
-     * Libera todos los bitmaps gestionados
-     */
-    fun releaseAllBitmaps() {
-        val count = managedBitmaps.size
-        managedBitmaps.forEach { (id, bitmapRef) ->
-            bitmapRef.get()?.let { bitmap ->
-                if (!bitmap.isRecycled) {
-                    bitmap.recycle()
-                }
-            }
-        }
-        managedBitmaps.clear()
-        Log.d(TAG, "Liberados $count bitmaps gestionados")
-    }
-    
-    /**
      * Limpia bitmaps que ya no están en uso (garbage collection)
      */
     fun cleanupUnusedBitmaps() {

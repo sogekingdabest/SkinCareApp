@@ -1,5 +1,6 @@
 package es.monsteraltech.skincare_tfm.body.mole.model
 
+import es.monsteraltech.skincare_tfm.analysis.ABCDEAnalyzerOpenCV
 import java.io.Serializable
 
 /**
@@ -51,7 +52,7 @@ data class ABCDEScores(
         /**
          * Crea una instancia desde un resultado de ABCDEAnalyzer
          */
-        fun fromABCDEResult(result: es.monsteraltech.skincare_tfm.analysis.ABCDEAnalyzer.ABCDEResult): ABCDEScores {
+        fun fromABCDEResult(result: ABCDEAnalyzerOpenCV.ABCDEResult): ABCDEScores {
             return ABCDEScores(
                 asymmetryScore = result.asymmetryScore,
                 borderScore = result.borderScore,

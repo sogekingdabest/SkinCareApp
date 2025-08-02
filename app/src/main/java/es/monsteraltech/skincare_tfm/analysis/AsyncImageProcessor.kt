@@ -7,13 +7,14 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
+import androidx.core.graphics.scale
 
 /**
  * Procesador asíncrono de imágenes que maneja el análisis de lunares en hilos de fondo
  * usando Kotlin Coroutines para mantener la UI responsiva.
  */
 class AsyncImageProcessor(
-    private val context: Context,
+    context: Context,
     private val progressCallback: ProgressCallback
 ) {
     companion object {
@@ -317,52 +318,6 @@ class AsyncImageProcessor(
     }
 
     /**
-     * Ejecuta el procesamiento principal con todas las etapas (método legacy)
-     */
-    private suspend fun executeProcessing(
-        bitmap: Bitmap,
-        previousBitmap: Bitmap?,
-        pixelDensity: Float
-    ): MelanomaAIDetector.CombinedAnalysisResult {
-        
-        // Etapa 1: Inicialización
-        updateProgress(ProcessingStage.INITIALIZING, 0, ProcessingStage.INITIALIZING.message)
-        ensureActive()
-        
-        // Preparar imagen si es necesario
-        val processedBitmap = preprocessImageIfNeeded(bitmap)
-        updateProgress(ProcessingStage.INITIALIZING, 50, "Imagen preparada")
-        ensureActive()
-        
-        // Etapa 2: Preprocesamiento
-        updateProgress(ProcessingStage.PREPROCESSING, 0, ProcessingStage.PREPROCESSING.message)
-        delay(100) // Simular tiempo de preprocesamiento
-        updateProgress(ProcessingStage.PREPROCESSING, 100, "Preprocesamiento completado")
-        ensureActive()
-        
-        // Etapa 3 y 4: Análisis paralelo o secuencial
-        val analysisResult = if (configuration.enableParallelProcessing && 
-                                 configuration.enableAI && 
-                                 configuration.enableABCDE) {
-            executeParallelAnalysis(processedBitmap, previousBitmap, pixelDensity)
-        } else {
-            executeSequentialAnalysis(processedBitmap, previousBitmap, pixelDensity)
-        }
-        
-        ensureActive()
-        
-        // Etapa 5: Finalización
-        updateProgress(ProcessingStage.FINALIZING, 0, ProcessingStage.FINALIZING.message)
-        delay(200) // Simular tiempo de finalización
-        updateProgress(ProcessingStage.FINALIZING, 100, "Análisis completado")
-        
-        // Notificar completado
-        progressCallback.onCompleted(analysisResult)
-        
-        return analysisResult
-    }
-
-    /**
      * Ejecuta análisis IA y ABCDE en paralelo con manejo robusto de errores
      */
     private suspend fun executeParallelAnalysisWithErrorHandling(
@@ -448,7 +403,7 @@ class AsyncImageProcessor(
         }
         
         // Combinar resultados usando el detector principal
-        combineResults(aiResult, abcdeResult, bitmap, previousBitmap, pixelDensity)
+        combineResults(aiResult, abcdeResult)
     }
 
     /**
@@ -516,114 +471,7 @@ class AsyncImageProcessor(
             ensureActive()
         }
         
-        return combineResults(aiResult, abcdeResult, bitmap, previousBitmap, pixelDensity)
-    }
-
-    /**
-     * Ejecuta análisis IA y ABCDE en paralelo para mayor eficiencia (método legacy)
-     */
-    private suspend fun executeParallelAnalysis(
-        bitmap: Bitmap,
-        previousBitmap: Bitmap?,
-        pixelDensity: Float
-    ): MelanomaAIDetector.CombinedAnalysisResult = coroutineScope {
-        
-        Log.d(TAG, "Ejecutando análisis en paralelo")
-        
-        // Crear jobs para análisis paralelo
-        val aiJob = if (configuration.enableAI) {
-            async(Dispatchers.Default) {
-                updateProgress(ProcessingStage.AI_ANALYSIS, 0, "Iniciando análisis IA...")
-                
-                withTimeout(configuration.aiTimeoutMs) {
-                    try {
-                        val result = executeAIAnalysis(bitmap)
-                        updateProgress(ProcessingStage.AI_ANALYSIS, 100, "Análisis IA completado")
-                        result
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error en análisis IA: ${e.message}")
-                        updateProgress(ProcessingStage.AI_ANALYSIS, 100, "IA no disponible, continuando...")
-                        null
-                    }
-                }
-            }
-        } else null
-        
-        val abcdeJob = if (configuration.enableABCDE) {
-            async(Dispatchers.Default) {
-                updateProgress(ProcessingStage.ABCDE_ANALYSIS, 0, "Iniciando análisis ABCDE...")
-                
-                withTimeout(configuration.abcdeTimeoutMs) {
-                    try {
-                        val result = executeABCDEAnalysis(bitmap, previousBitmap, pixelDensity)
-                        updateProgress(ProcessingStage.ABCDE_ANALYSIS, 100, "Análisis ABCDE completado")
-                        result
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error en análisis ABCDE: ${e.message}")
-                        updateProgress(ProcessingStage.ABCDE_ANALYSIS, 100, "ABCDE falló, usando valores por defecto")
-                        createDefaultABCDEResult("Error en análisis ABCDE: ${e.message}")
-                    }
-                }
-            }
-        } else null
-        // Esperar resultados
-        val aiResult = aiJob?.await()
-        val abcdeResult = abcdeJob?.await() ?: createDefaultABCDEResult("Análisis ABCDE no ejecutado")
-        
-        // Combinar resultados usando el detector principal
-        combineResults(aiResult, abcdeResult, bitmap, previousBitmap, pixelDensity)
-    }
-
-    /**
-     * Ejecuta análisis IA y ABCDE de forma secuencial
-     */
-    private suspend fun executeSequentialAnalysis(
-        bitmap: Bitmap,
-        previousBitmap: Bitmap?,
-        pixelDensity: Float
-    ): MelanomaAIDetector.CombinedAnalysisResult {
-        
-        Log.d(TAG, "Ejecutando análisis secuencial")
-        
-        var aiResult: AIAnalysisResult? = null
-        var abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult = createDefaultABCDEResult()
-        
-        // Análisis IA
-        if (configuration.enableAI) {
-            updateProgress(ProcessingStage.AI_ANALYSIS, 0, ProcessingStage.AI_ANALYSIS.message)
-            
-            try {
-                withTimeout(configuration.aiTimeoutMs) {
-                    aiResult = executeAIAnalysis(bitmap)
-                    updateProgress(ProcessingStage.AI_ANALYSIS, 100, "Análisis IA completado")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Error en análisis IA: ${e.message}")
-                updateProgress(ProcessingStage.AI_ANALYSIS, 100, "IA no disponible")
-            }
-            
-            ensureActive()
-        }
-        
-        // Análisis ABCDE
-        if (configuration.enableABCDE) {
-            updateProgress(ProcessingStage.ABCDE_ANALYSIS, 0, ProcessingStage.ABCDE_ANALYSIS.message)
-            
-            try {
-                withTimeout(configuration.abcdeTimeoutMs) {
-                    abcdeResult = executeABCDEAnalysis(bitmap, previousBitmap, pixelDensity)
-                    updateProgress(ProcessingStage.ABCDE_ANALYSIS, 100, "Análisis ABCDE completado")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Error en análisis ABCDE: ${e.message}")
-                updateProgress(ProcessingStage.ABCDE_ANALYSIS, 100, "ABCDE falló")
-                abcdeResult = createDefaultABCDEResult()
-            }
-            
-            ensureActive()
-        }
-        
-        return combineResults(aiResult, abcdeResult, bitmap, previousBitmap, pixelDensity)
+        return combineResults(aiResult, abcdeResult)
     }
 
     /**
@@ -705,43 +553,11 @@ class AsyncImageProcessor(
     }
 
     /**
-     * Ejecuta el análisis de IA de forma aislada (método legacy)
-     */
-    private suspend fun executeAIAnalysis(bitmap: Bitmap): AIAnalysisResult = withContext(Dispatchers.Default) {
-        // Simular análisis IA - en producción esto llamaría al modelo TensorFlow
-        delay(1000) // Simular tiempo de procesamiento
-        
-        // Por ahora, usar el detector existente de forma síncrona
-        val result = melanomaDetector.analyzeMole(bitmap)
-        
-        AIAnalysisResult(
-            probability = result.aiProbability,
-            riskLevel = result.aiRiskLevel,
-            confidence = result.aiConfidence
-        )
-    }
-
-    /**
-     * Ejecuta el análisis ABCDE de forma aislada (método legacy)
-     */
-    private suspend fun executeABCDEAnalysis(
-        bitmap: Bitmap,
-        previousBitmap: Bitmap?,
-        pixelDensity: Float
-    ): ABCDEAnalyzerOpenCV.ABCDEResult = withContext(Dispatchers.Default) {
-        // Ejecutar análisis ABCDE
-        abcdeAnalyzer.analyzeMole(bitmap, previousBitmap, pixelDensity)
-    }
-
-    /**
      * Combina los resultados de IA y ABCDE
      */
     private fun combineResults(
         aiResult: AIAnalysisResult?,
-        abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult,
-        bitmap: Bitmap,
-        previousBitmap: Bitmap?,
-        pixelDensity: Float
+        abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult
     ): MelanomaAIDetector.CombinedAnalysisResult {
         return if (aiResult != null) {
             // Usar el detector principal para combinar resultados
@@ -790,7 +606,7 @@ class AsyncImageProcessor(
             val scale = maxDim.toFloat() / maxOf(bitmap.width, bitmap.height)
             val newWidth = (bitmap.width * scale).toInt()
             val newHeight = (bitmap.height * scale).toInt()
-            return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+            return bitmap.scale(newWidth, newHeight)
         }
         return bitmap
     }
@@ -878,7 +694,7 @@ class AsyncImageProcessor(
         cancelProcessing()
         
         // Limpiar memoria
-        //memoryManager.cleanup()
+        // memoryManager.cleanup()
         
         // Limpiar optimizador de rendimiento
         performanceOptimizer.cleanup()
@@ -887,8 +703,4 @@ class AsyncImageProcessor(
         memoryMonitor?.stop()
     }
 
-    /**
-     * Excepción personalizada para timeouts de análisis
-     */
-    class AnalysisTimeoutException(message: String) : Exception(message)
 }
