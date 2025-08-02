@@ -20,12 +20,10 @@ class FirebaseDataManager {
     private val TAG = "FirebaseDataManager"
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
-    private val storage = FirebaseStorage.getInstance().reference
 
     // Referencias en Firestore y Storage
     private val USERS_COLLECTION = "users"
     private val MOLES_SUBCOLLECTION = "moles"
-    private val ANALYSIS_SUBCOLLECTION = "mole_analysis"
     private val USER_SETTINGS_SUBCOLLECTION = "settings"
 
     suspend fun saveImageLocally(context: Context, imagePath: String): String = suspendCoroutine { continuation ->

@@ -113,30 +113,7 @@ class ThemeManager private constructor() {
             }
         }
     }
-    
-    /**
-     * Obtiene el modo de tema actual
-     * @return Modo de tema actual
-     */
-    fun getCurrentThemeMode(): Int = currentThemeMode
-    
-    /**
-     * Verifica si el tema actual es oscuro
-     * @param context Contexto de la aplicación
-     * @return true si el tema es oscuro, false en caso contrario
-     */
-    fun isDarkTheme(context: Context): Boolean {
-        return when (currentThemeMode) {
-            AppCompatDelegate.MODE_NIGHT_YES -> true
-            AppCompatDelegate.MODE_NIGHT_NO -> false
-            AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM -> {
-                val uiMode = context.resources.configuration.uiMode
-                (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-            }
-            else -> false
-        }
-    }
-    
+
     /**
      * Actualiza el tema cuando cambia la configuración del usuario
      * @param activity Actividad donde aplicar el cambio
