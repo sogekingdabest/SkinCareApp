@@ -2,6 +2,7 @@ package es.monsteraltech.skincare_tfm.fragments
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -22,6 +23,7 @@ import es.monsteraltech.skincare_tfm.account.UserInfo
 import es.monsteraltech.skincare_tfm.account.UserProfileManager
 import es.monsteraltech.skincare_tfm.databinding.FragmentAccountBinding
 import es.monsteraltech.skincare_tfm.login.LoginActivity
+import es.monsteraltech.skincare_tfm.notifications.NotificationPermissionManager
 import es.monsteraltech.skincare_tfm.utils.UIUtils
 import kotlinx.coroutines.launch
 
@@ -35,6 +37,7 @@ class AccountFragment : Fragment() {
     private val binding get() = _binding!!
     
     private lateinit var userProfileManager: UserProfileManager
+    private lateinit var permissionManager: NotificationPermissionManager
     
     private val TAG = "AccountFragment"
     
@@ -60,8 +63,9 @@ class AccountFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        // Inicializar UserProfileManager
+        // Inicializar managers
         userProfileManager = UserProfileManager()
+        permissionManager = NotificationPermissionManager(requireContext())
         
         // Apply entrance animations to UI elements
         animateUIElements()
@@ -288,7 +292,34 @@ class AccountFragment : Fragment() {
                 // Solo procesar si no estamos cargando configuraciones iniciales
                 if (!isLoadingSettings) {
                     Log.d(TAG, "Configuración de notificaciones cambiada por el usuario: $isChecked")
-                    saveSettingChange("notifications", isChecked)
+                    
+                    if (isChecked) {
+                        // Si se intenta activar, verificar permisos primero
+                        if (!permissionManager.hasNotificationPermission()) {
+                            showPermissionDialog { granted ->
+                                if (granted) {
+                                    saveSettingChange("notifications", true)
+                                } else {
+                                    // Revertir el switch si no se conceden permisos
+                                    isLoadingSettings = true
+                                    switchNotifications.isChecked = false
+                                    isLoadingSettings = false
+                                }
+                            }
+                        } else {
+                            saveSettingChange("notifications", isChecked)
+                        }
+                    } else {
+                        // Si se desactivan las notificaciones, cancelar todas las notificaciones programadas
+                        saveSettingChange("notifications", isChecked)
+                        try {
+                            val notificationManager = es.monsteraltech.skincare_tfm.notifications.NotificationManager(requireContext())
+                            notificationManager.cancelAllNotifications()
+                            Log.d(TAG, "Notificaciones programadas canceladas")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error al cancelar notificaciones: ${e.message}", e)
+                        }
+                    }
                 } else {
                     Log.d(TAG, "Configuración de notificaciones aplicada desde carga inicial: $isChecked")
                 }
@@ -453,11 +484,73 @@ class AccountFragment : Fragment() {
                 navigateToPasswordChange()
             }
             
+            // Navegación a configuración avanzada de notificaciones
+            layoutNotificationSettings?.setOnClickListener {
+                UIUtils.bounceView(it)
+                Log.d(TAG, "Navegando a configuración de notificaciones")
+                navigateToNotificationSettings()
+            }
+            
             layoutLogout.setOnClickListener {
                 UIUtils.bounceView(it)
                 Log.d(TAG, "Opción cerrar sesión seleccionada")
                 showLogoutConfirmationDialog()
             }
+        }
+    }
+
+    /**
+     * Muestra diálogo para solicitar permisos de notificaciones
+     */
+    private fun showPermissionDialog(onResult: (Boolean) -> Unit) {
+        if (permissionManager.shouldShowRequestPermissionRationale(requireActivity())) {
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(getString(R.string.notification_permission_title))
+                .setMessage(getString(R.string.notification_permission_message))
+                .setPositiveButton("Activar") { _, _ ->
+                    requestNotificationPermission(onResult)
+                }
+                .setNegativeButton("Cancelar") { _, _ ->
+                    onResult(false)
+                }
+                .show()
+        } else {
+            requestNotificationPermission(onResult)
+        }
+    }
+    
+    /**
+     * Solicita permisos de notificaciones
+     */
+    private fun requestNotificationPermission(onResult: (Boolean) -> Unit) {
+        // Guardar el callback para usar en onRequestPermissionsResult
+        permissionCallback = onResult
+        permissionManager.requestNotificationPermission(requireActivity())
+    }
+    
+    // Variable para guardar el callback de permisos
+    private var permissionCallback: ((Boolean) -> Unit)? = null
+
+    /**
+     * Navega a la actividad de configuración de notificaciones
+     */
+    private fun navigateToNotificationSettings() {
+        try {
+            Log.d(TAG, "Iniciando navegación a NotificationSettingsActivity")
+            
+            val intent = Intent().apply {
+                setClassName(requireContext(), "es.monsteraltech.skincare_tfm.notifications.NotificationSettingsActivity")
+            }
+            startActivity(intent)
+            
+            Log.d(TAG, "NotificationSettingsActivity lanzada exitosamente")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al navegar a configuración de notificaciones: ${e.message}", e)
+            UIUtils.showErrorSnackbar(
+                binding.root,
+                "Error al abrir configuración de notificaciones"
+            )
         }
     }
 
@@ -689,6 +782,32 @@ class AccountFragment : Fragment() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error al actualizar el tema de la aplicación: ${e.message}", e)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        when (requestCode) {
+            NotificationPermissionManager.NOTIFICATION_PERMISSION_REQUEST_CODE -> {
+                val granted = grantResults.isNotEmpty() && 
+                    grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+                
+                Log.d(TAG, "Resultado de permisos de notificaciones: $granted")
+                
+                if (!granted) {
+                    Toast.makeText(requireContext(), 
+                        getString(R.string.notification_permission_denied), 
+                        Toast.LENGTH_LONG).show()
+                }
+                
+                permissionCallback?.invoke(granted)
+                permissionCallback = null
+            }
         }
     }
 

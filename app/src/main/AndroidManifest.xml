@@ -18,6 +18,9 @@
         android:required="true"
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:allowBackup="true"
@@ -66,6 +69,10 @@
             android:exported="false"
             android:theme="@style/Theme.SkinCare_TFM" />
         <activity
+            android:name=".notifications.NotificationSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SkinCare_TFM" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
@@ -99,6 +106,10 @@
             android:name=".login.RegisterActivity"
             android:exported="false"
             android:theme="@style/Theme.SkinCare_TFM" />
+
+        <receiver
+            android:name=".notifications.NotificationReceiver"
+            android:exported="false" />
 
         <meta-data
             android:name="com.google.android.gms.version"

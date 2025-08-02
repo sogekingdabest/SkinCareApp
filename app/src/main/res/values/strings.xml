@@ -171,6 +171,21 @@
     <string name="settings_title">Configuraciones</string>
     <string name="settings_notifications">Notificaciones</string>
     <string name="settings_notifications_description">Recibir notificaciones de la aplicación</string>
+    
+    <!-- Strings para configuración de notificaciones de lunares -->
+    <string name="notification_settings_title">Configuración de Notificaciones</string>
+    <string name="notification_mole_checkups">Revisiones de Lunares</string>
+    <string name="notification_mole_checkups_desc">Recordatorios para revisar tus lunares regularmente</string>
+    <string name="notification_general_settings">Configuración General</string>
+    <string name="notification_vibration">Vibración</string>
+    <string name="notification_sound">Sonido</string>
+    <string name="notification_time">Hora</string>
+    <string name="notification_frequency">Frecuencia</string>
+    <string name="notification_settings_saved">Configuración guardada</string>
+    <string name="notification_disabled_message">Las notificaciones están desactivadas en la configuración general. Actívalas desde la pantalla de cuenta para poder configurar recordatorios.</string>
+    <string name="notification_permission_title">Permisos de Notificaciones</string>
+    <string name="notification_permission_message">Para recibir recordatorios de revisión de lunares, necesitas activar los permisos de notificaciones.</string>
+    <string name="notification_permission_denied">Sin permisos de notificaciones no se pueden activar los recordatorios</string>
     <string name="settings_dark_mode">Modo Oscuro</string>
     <string name="settings_dark_mode_description">Usar tema oscuro en la aplicación</string>
     <string name="settings_language">Idioma</string>
