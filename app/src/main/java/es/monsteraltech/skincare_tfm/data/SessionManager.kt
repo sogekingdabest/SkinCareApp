@@ -31,8 +31,6 @@ class SessionManager private constructor(private val context: Context) {
         private const val TAG = "SessionManager"
         private const val SESSION_TOKEN_KEY = "session_token"
         private const val SESSION_DATA_KEY = "session_data"
-        private const val TOKEN_REFRESH_THRESHOLD_MINUTES = 5L
-        private const val NETWORK_TIMEOUT_MS = 15000L // Increased timeout for better reliability
         private const val MAX_RETRY_ATTEMPTS = 3
         private const val RETRY_DELAY_MS = 1000L
         private const val SESSION_VERIFICATION_TIMEOUT_MS = 20000L // Timeout for session verification
