@@ -22,9 +22,7 @@ import java.util.Locale
 class AnalysisHistoryAdapter(
     private val context: Context,
     private var analysisList: List<AnalysisData>,
-    private var evolutionComparisons: List<EvolutionComparison?> = emptyList(),
-    private val onItemClick: (AnalysisData) -> Unit,
-    private val onCompareClick: ((AnalysisData, AnalysisData) -> Unit)? = null
+    private val onItemClick: (AnalysisData) -> Unit
 ) : RecyclerView.Adapter<AnalysisHistoryAdapter.ViewHolder>() {
 
     private val firebaseDataManager = FirebaseDataManager()
@@ -37,11 +35,8 @@ class AnalysisHistoryAdapter(
         val riskLevelText: TextView = view.findViewById(R.id.riskLevelText)
         val aiProbabilityText: TextView = view.findViewById(R.id.aiProbabilityText)
         val dateText: TextView = view.findViewById(R.id.analysisDateText)
-        val evolutionIndicator: TextView = view.findViewById(R.id.evolutionIndicator)
-        val evolutionSummary: TextView = view.findViewById(R.id.evolutionSummary)
         val recommendationText: TextView = view.findViewById(R.id.recommendationText)
         val abcdeTotalScore: TextView = view.findViewById(R.id.abcdeTotalScore)
-        val compareButton: com.google.android.material.button.MaterialButton = view.findViewById(R.id.compareButton)
         val viewDetailsButton: com.google.android.material.button.MaterialButton = view.findViewById(R.id.viewDetailsButton)
         
         // ABCDE Progress indicators
@@ -68,13 +63,12 @@ class AnalysisHistoryAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_analysis_history, parent, false)
+            .inflate(R.layout.item_analysis_history_simple, parent, false)
         return ViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val analysis = analysisList[position]
-        val evolution = if (position < evolutionComparisons.size) evolutionComparisons[position] else null
 
         // Formatear la fecha en formato español DD/MM/YYYY
         val date = analysis.createdAt.toDate()
@@ -139,47 +133,7 @@ class AnalysisHistoryAdapter(
             holder.recommendationText.visibility = View.GONE
         }
 
-        // Configurar indicadores de evolución
-        if (evolution != null) {
-            holder.evolutionIndicator.visibility = View.VISIBLE
-            holder.evolutionSummary.visibility = View.VISIBLE
 
-            // Configurar indicador visual según la tendencia
-            when (evolution.overallTrend) {
-                EvolutionComparison.EvolutionTrend.IMPROVING -> {
-                    holder.evolutionIndicator.text = "↗"
-                    holder.evolutionIndicator.setTextColor(ContextCompat.getColor(context, android.R.color.holo_green_dark))
-                }
-                EvolutionComparison.EvolutionTrend.WORSENING -> {
-                    holder.evolutionIndicator.text = "↘"
-                    holder.evolutionIndicator.setTextColor(ContextCompat.getColor(context, android.R.color.holo_red_dark))
-                }
-                EvolutionComparison.EvolutionTrend.STABLE -> {
-                    holder.evolutionIndicator.text = "→"
-                    holder.evolutionIndicator.setTextColor(ContextCompat.getColor(context, android.R.color.darker_gray))
-                }
-                EvolutionComparison.EvolutionTrend.MIXED -> {
-                    holder.evolutionIndicator.text = "↕"
-                    holder.evolutionIndicator.setTextColor(ContextCompat.getColor(context, android.R.color.holo_orange_dark))
-                }
-            }
-
-            // Mostrar resumen de evolución
-            holder.evolutionSummary.text = "Evolución: ${evolution.getEvolutionSummary()}"
-        } else {
-            holder.evolutionIndicator.visibility = View.GONE
-            holder.evolutionSummary.visibility = View.GONE
-        }
-
-        // Configurar botón de comparación
-        if (evolution != null && onCompareClick != null) {
-            holder.compareButton.visibility = View.VISIBLE
-            holder.compareButton.setOnClickListener {
-                onCompareClick.invoke(analysis, evolution.previousAnalysis)
-            }
-        } else {
-            holder.compareButton.visibility = View.GONE
-        }
 
         // Configurar botón de ver detalles
         holder.viewDetailsButton.setOnClickListener {
@@ -289,19 +243,17 @@ class AnalysisHistoryAdapter(
 
     override fun getItemCount() = analysisList.size
 
-    fun updateData(newList: List<AnalysisData>, newEvolutions: List<EvolutionComparison?> = emptyList()) {
+    fun updateData(newList: List<AnalysisData>) {
         analysisList = newList
-        evolutionComparisons = newEvolutions
         notifyDataSetChanged()
     }
 
     /**
      * Añade nuevos elementos al final de la lista (para paginación)
      */
-    fun addData(newList: List<AnalysisData>, newEvolutions: List<EvolutionComparison?> = emptyList()) {
+    fun addData(newList: List<AnalysisData>) {
         val oldSize = analysisList.size
         analysisList = analysisList + newList
-        evolutionComparisons = evolutionComparisons + newEvolutions
         notifyItemRangeInserted(oldSize, newList.size)
     }
 

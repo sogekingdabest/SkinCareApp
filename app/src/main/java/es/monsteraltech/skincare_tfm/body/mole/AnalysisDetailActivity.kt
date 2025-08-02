@@ -3,11 +3,9 @@ package es.monsteraltech.skincare_tfm.body.mole
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
-import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.util.ImageLoadingUtil
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisDetailBinding
@@ -135,13 +133,6 @@ class AnalysisDetailActivity : AppCompatActivity() {
         val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
         binding.analysisDateText.text = "Fecha: ${dateFormat.format(date)}"
 
-        // Mostrar resultado detallado si existe
-        if (analysis.analysisResult.isNotEmpty()) {
-            binding.analysisResultText.text = analysis.analysisResult
-            binding.analysisResultCard.visibility = View.VISIBLE
-        } else {
-            binding.analysisResultCard.visibility = View.GONE
-        }
     }
 
     private fun displayRiskLevel(riskLevel: String) {

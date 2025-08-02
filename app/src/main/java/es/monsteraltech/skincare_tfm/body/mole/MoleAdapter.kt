@@ -24,6 +24,7 @@ class MoleAdapter(private val moleList: List<Mole>, private val onClick: (Mole) 
         val titleTextView: TextView = itemView.findViewById(R.id.moleTitle)
         val descriptionTextView: TextView = itemView.findViewById(R.id.moleDescription)
         val imageView: ImageView = itemView.findViewById(R.id.moleImage)
+        val analysisCountText: TextView = itemView.findViewById(R.id.analysisCountText)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MoleViewHolder {
@@ -35,7 +36,24 @@ class MoleAdapter(private val moleList: List<Mole>, private val onClick: (Mole) 
     override fun onBindViewHolder(holder: MoleViewHolder, position: Int) {
         val mole = filteredMoleList[position]
         holder.titleTextView.text = mole.title
-        holder.descriptionTextView.text = mole.description
+        
+        // Mostrar descripción o mensaje por defecto
+        if (mole.description.isNotEmpty()) {
+            holder.descriptionTextView.text = mole.description
+        } else {
+            holder.descriptionTextView.text = "Sin descripción"
+        }
+
+        // Mostrar contador de análisis
+        if (mole.analysisCount > 0) {
+            holder.analysisCountText.visibility = View.VISIBLE
+            holder.analysisCountText.text = when (mole.analysisCount) {
+                1 -> "1 análisis realizado"
+                else -> "${mole.analysisCount} análisis realizados"
+            }
+        } else {
+            holder.analysisCountText.visibility = View.GONE
+        }
 
         // Cargar imagen según la forma en que está almacenada
         if (mole.imageUrl.isNotEmpty()) {
