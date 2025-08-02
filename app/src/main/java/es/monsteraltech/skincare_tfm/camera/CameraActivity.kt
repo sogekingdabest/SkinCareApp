@@ -68,7 +68,6 @@ class CameraActivity : AppCompatActivity() {
     // Componentes de accesibilidad y retroalimentación
     private lateinit var hapticManager: HapticFeedbackManager
     private lateinit var accessibilityManager: AccessibilityManager
-    private lateinit var autoCaptureManager: AutoCaptureManager
 
     // Estado y configuración
     private var guidanceConfig = CaptureGuidanceConfig()
@@ -185,32 +184,6 @@ class CameraActivity : AppCompatActivity() {
         // Inicializar componentes de accesibilidad y retroalimentación
         hapticManager = HapticFeedbackManager(this)
         accessibilityManager = AccessibilityManager(this)
-        autoCaptureManager = AutoCaptureManager(this, hapticManager, accessibilityManager)
-        
-        // Configurar listener de captura automática
-        autoCaptureManager.setListener(object : AutoCaptureManager.AutoCaptureListener {
-            override fun onCountdownStarted(remainingSeconds: Int) {
-                runOnUiThread {
-                    // guidanceMessageText.text = "Captura automática en $remainingSeconds segundos"
-                }
-            }
-            
-            override fun onCountdownTick(remainingSeconds: Int) {
-                runOnUiThread {
-                    // guidanceMessageText.text = "Capturando en $remainingSeconds..."
-                }
-            }
-            
-            override fun onCountdownCancelled() {
-                runOnUiThread {
-                    // guidanceMessageText.text = "Captura automática cancelada"
-                }
-            }
-            
-            override fun onAutoCapture() {
-                takePhotoWithValidation()
-            }
-        })
         
         Log.d(TAG, "Componentes de guía inicializados")
     }
@@ -280,9 +253,7 @@ class CameraActivity : AppCompatActivity() {
         
         // Configurar accesibilidad inicial
         setupInitialAccessibility()
-        
-        // Configurar captura automática si está habilitada en configuración
-        autoCaptureManager.setEnabled(guidanceConfig.enableAutoCapture)
+
     }
 
     private fun initializeOpenCV() {
@@ -558,9 +529,6 @@ class CameraActivity : AppCompatActivity() {
         guidanceMessageText.text = detailedMessage
         Log.d("DEBUG", "Texto actual guidanceMessageText: ${guidanceMessageText.text}")
         
-        // Procesar para captura automática si está habilitada
-        autoCaptureManager.processValidationResult(validationResult)
-        
         // Anunciar progreso de centrado si es relevante
         if (validationResult.guideState == CaptureValidationManager.GuideState.CENTERING && moleDetection != null) {
             val guideCenter = PointF(getGuideArea().centerX(), getGuideArea().centerY())
@@ -608,9 +576,6 @@ class CameraActivity : AppCompatActivity() {
         }
 
         Log.d(TAG, "Iniciando captura validada")
-        
-        // Cancelar captura automática si está activa
-        autoCaptureManager.cancelCountdown()
         
         // Proporcionar retroalimentación de captura
         hapticManager.provideCaptureSuccessFeedback()
@@ -834,7 +799,6 @@ class CameraActivity : AppCompatActivity() {
         // Limpiar recursos de accesibilidad y retroalimentación
         hapticManager.cancelVibration()
         accessibilityManager.cleanup()
-        autoCaptureManager.cleanup()
         
         // Limpiar recursos de optimización de rendimiento
         if (::performanceManager.isInitialized) {

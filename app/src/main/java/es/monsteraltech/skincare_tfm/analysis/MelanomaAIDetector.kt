@@ -526,7 +526,7 @@ class MelanomaAIDetector(private val context: Context) {
     }
 
     private fun estimateProbabilityFromImage(bitmap: Bitmap): Float {
-        // Método simplificado de estimación
+        // Método simplificado de estimación por si falla
         return 0.1f
     }
 

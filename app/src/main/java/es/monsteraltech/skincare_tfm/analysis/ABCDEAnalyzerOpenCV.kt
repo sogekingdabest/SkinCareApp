@@ -31,19 +31,9 @@ class ABCDEAnalyzerOpenCV {
 
     companion object {
         private const val TAG = "ABCDEAnalyzerOpenCV"
-
-        // Umbrales basados en estudios dermatológicos
-        const val ASYMMETRY_THRESHOLD = 0.15f
-        const val BORDER_IRREGULARITY_THRESHOLD = 0.25f
-        const val COLOR_VARIANCE_THRESHOLD = 50f
-        const val DIAMETER_THRESHOLD_MM = 6f
-        const val PIXEL_TO_MM_RATIO = 0.0264f // Basado en 96 DPI
-
         // Parámetros de segmentación
         const val BLUR_SIZE = 5
         const val MORPH_SIZE = 5
-        const val CANNY_LOW = 50.0
-        const val CANNY_HIGH = 150.0
     }
 
     // Reutilizar las data classes existentes del ABCDEAnalyzer original
@@ -223,7 +213,7 @@ class ABCDEAnalyzerOpenCV {
         val bgModel = Mat()
         val fgModel = Mat()
 
-        // Inicializar rectángulo para GrabCut (asumiendo lunar centrado)
+        // Inicializar rectángulo para GrabCut (asumiendo que el lunar centrado)
         val rect = Rect(
             (src.cols() * 0.1).toInt(),
             (src.rows() * 0.1).toInt(),

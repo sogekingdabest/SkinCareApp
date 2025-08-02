@@ -1,7 +1,6 @@
 package es.monsteraltech.skincare_tfm.body.mole.model
 
 import com.google.firebase.Timestamp
-import es.monsteraltech.skincare_tfm.analysis.ABCDEAnalyzer
 import org.json.JSONObject
 import java.util.UUID
 
@@ -57,36 +56,6 @@ object AnalysisDataConverter {
                 analysisMetadata = mapOf("originalFormat" to "text")
             )
         }
-    }
-
-    /**
-     * Convierte un resultado de ABCDEAnalyzer a AnalysisData
-     */
-    fun fromABCDEResult(
-        abcdeResult: ABCDEAnalyzer.ABCDEResult,
-        moleId: String,
-        imageUrl: String,
-        aiProbability: Float = 0f,
-        aiConfidence: Float = 0f,
-        analysisResult: String = ""
-    ): AnalysisData {
-        return AnalysisData(
-            id = UUID.randomUUID().toString(),
-            moleId = moleId,
-            analysisResult = analysisResult.ifEmpty { formatABCDEResultAsText(abcdeResult) },
-            aiProbability = aiProbability,
-            aiConfidence = aiConfidence,
-            abcdeScores = ABCDEScores.fromABCDEResult(abcdeResult),
-            combinedScore = abcdeResult.totalScore,
-            riskLevel = abcdeResult.riskLevel.name,
-            recommendation = generateRecommendationFromABCDE(abcdeResult),
-            imageUrl = imageUrl,
-            createdAt = Timestamp.now(),
-            analysisMetadata = mapOf(
-                "abcdeVersion" to "1.0",
-                "analysisType" to "ABCDE_FULL"
-            )
-        )
     }
 
     /**
@@ -196,40 +165,5 @@ object AnalysisDataConverter {
         }
         
         return "Consulte con un dermatólogo para evaluación profesional"
-    }
-
-    private fun formatABCDEResultAsText(result: ABCDEAnalyzer.ABCDEResult): String {
-        return buildString {
-            appendLine("=== ANÁLISIS ABCDE ===")
-            appendLine("Asimetría: ${result.asymmetryScore}/2")
-            appendLine("Bordes: ${result.borderScore}/8")
-            appendLine("Color: ${result.colorScore}/6")
-            appendLine("Diámetro: ${result.diameterScore}/5")
-            result.evolutionScore?.let { 
-                appendLine("Evolución: $it/3")
-            }
-            appendLine("Score Total: ${result.totalScore}")
-            appendLine("Nivel de Riesgo: ${result.riskLevel}")
-            appendLine()
-            appendLine("=== DETALLES ===")
-            appendLine("Asimetría: ${result.details.asymmetryDetails.description}")
-            appendLine("Bordes: ${result.details.borderDetails.description}")
-            appendLine("Color: ${result.details.colorDetails.description}")
-            appendLine("Diámetro: ${result.details.diameterDetails.description}")
-            result.details.evolutionDetails?.let {
-                appendLine("Evolución: ${it.description}")
-            }
-        }
-    }
-
-    private fun generateRecommendationFromABCDE(result: ABCDEAnalyzer.ABCDEResult): String {
-        return when (result.riskLevel) {
-            ABCDEAnalyzer.RiskLevel.LOW -> 
-                "Lunar de bajo riesgo. Continúe con autoexámenes regulares y consulte si observa cambios."
-            ABCDEAnalyzer.RiskLevel.MODERATE -> 
-                "Lunar de riesgo moderado. Se recomienda evaluación dermatológica en las próximas semanas."
-            ABCDEAnalyzer.RiskLevel.HIGH -> 
-                "Lunar de alto riesgo. Consulte con un dermatólogo lo antes posible para evaluación profesional."
-        }
     }
 }

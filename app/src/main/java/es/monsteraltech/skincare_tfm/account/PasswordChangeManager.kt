@@ -33,7 +33,7 @@ class PasswordChangeManager(
      * @param currentPassword The current password to validate
      * @return PasswordValidationResult indicating if password is valid
      */
-    suspend fun validateCurrentPassword(currentPassword: String): PasswordValidationResult {
+    private suspend fun validateCurrentPassword(currentPassword: String): PasswordValidationResult {
         return withContext(Dispatchers.IO) {
             try {
                 val user = auth.currentUser
