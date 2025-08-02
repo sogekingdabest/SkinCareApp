@@ -81,8 +81,6 @@
                         android:layout_height="1dp"
                         android:layout_weight="1" />
 
-
-
                     <TextView
                         android:id="@+id/riskLevelText"
                         android:layout_width="wrap_content"
@@ -361,26 +359,13 @@
             android:lineSpacingExtra="2dp"
             tools:text="Recomendación: Monitorizar regularmente. Seguimiento normal cada 6 meses." />
 
-
-
-        <!-- Botones de acción -->
+        <!-- Botón de acción -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:orientation="horizontal"
             android:gravity="end">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/compareButton"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_marginEnd="8dp"
-                android:text="Comparar"
-                android:textSize="12sp"
-                android:visibility="gone"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                tools:visibility="visible" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/viewDetailsButton"

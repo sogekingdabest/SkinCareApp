@@ -15,7 +15,6 @@ import es.monsteraltech.skincare_tfm.body.mole.adapter.AnalysisHistoryAdapter
 import es.monsteraltech.skincare_tfm.body.mole.error.ErrorHandler
 import es.monsteraltech.skincare_tfm.body.mole.error.RetryManager
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
-import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionComparison
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
 import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
@@ -102,32 +101,6 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
                 intent.putExtra("DIAMETER_SCORE", analysis.abcdeScores.diameterScore)
                 intent.putExtra("EVOLUTION_SCORE", analysis.abcdeScores.evolutionScore ?: -1f)
                 intent.putExtra("TOTAL_SCORE", analysis.abcdeScores.totalScore)
-                
-                startActivity(intent)
-            },
-            onCompareClick = { currentAnalysis, previousAnalysis ->
-                // Abrir vista de comparación pasando datos primitivos
-                val intent = Intent(this, AnalysisComparisonActivity::class.java)
-                
-                // Current Analysis
-                intent.putExtra("CURRENT_ID", currentAnalysis.id)
-                intent.putExtra("CURRENT_RESULT", currentAnalysis.analysisResult)
-                intent.putExtra("CURRENT_AI_PROBABILITY", currentAnalysis.aiProbability)
-                intent.putExtra("CURRENT_AI_CONFIDENCE", currentAnalysis.aiConfidence)
-                intent.putExtra("CURRENT_COMBINED_SCORE", currentAnalysis.combinedScore)
-                intent.putExtra("CURRENT_RISK_LEVEL", currentAnalysis.riskLevel)
-                intent.putExtra("CURRENT_IMAGE_URL", currentAnalysis.imageUrl)
-                intent.putExtra("CURRENT_CREATED_AT", currentAnalysis.createdAt.toDate().time)
-                
-                // Previous Analysis
-                intent.putExtra("PREVIOUS_ID", previousAnalysis.id)
-                intent.putExtra("PREVIOUS_RESULT", previousAnalysis.analysisResult)
-                intent.putExtra("PREVIOUS_AI_PROBABILITY", previousAnalysis.aiProbability)
-                intent.putExtra("PREVIOUS_AI_CONFIDENCE", previousAnalysis.aiConfidence)
-                intent.putExtra("PREVIOUS_COMBINED_SCORE", previousAnalysis.combinedScore)
-                intent.putExtra("PREVIOUS_RISK_LEVEL", previousAnalysis.riskLevel)
-                intent.putExtra("PREVIOUS_IMAGE_URL", previousAnalysis.imageUrl)
-                intent.putExtra("PREVIOUS_CREATED_AT", previousAnalysis.createdAt.toDate().time)
                 
                 startActivity(intent)
             }
@@ -258,101 +231,74 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
         hideEmptyState()
 
         lifecycleScope.launch {
-            try {
-                // Usar paginación para cargar análisis
-                val paginationManager = es.monsteraltech.skincare_tfm.body.mole.performance.AnalysisPaginationManager()
-                
-                // Configurar callbacks de paginación
-                paginationManager.setCallbacks(
-                    onLoadStart = { 
-                        runOnUiThread { binding.progressBar.visibility = View.VISIBLE }
-                    },
-                    onLoadComplete = { analyses, hasMore ->
-                        runOnUiThread {
-                            binding.progressBar.visibility = View.GONE
-                            if (analyses.isNotEmpty()) {
-                                handleAnalysisLoaded(analyses, hasMore)
-                            } else if (adapter.itemCount == 0) {
-                                showEmptyState(EmptyStateView.EmptyStateType.NO_ANALYSIS)
-                            }
-                        }
-                    },
-                    onLoadError = { exception ->
-                        runOnUiThread {
-                            binding.progressBar.visibility = View.GONE
-                            val errorResult = ErrorHandler.handleError(this@MoleAnalysisHistoryActivity, exception, "Cargar historial")
-                            showErrorState(errorResult) { loadAnalysisHistory() }
-                        }
+            val retryResult = retryManager.executeWithRetry(
+                operation = "Cargar historial de análisis del lunar $moleId",
+                config = RetryManager.databaseConfig(),
+                onRetryAttempt = { attempt, exception ->
+                    isRetrying = true
+                    runOnUiThread {
+                        showRetryIndicator(attempt, RetryManager.databaseConfig().maxAttempts)
+                        Toast.makeText(
+                            this@MoleAnalysisHistoryActivity,
+                            getString(R.string.retry_attempting, attempt, RetryManager.databaseConfig().maxAttempts),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
-                )
+                }
+            ) {
+                analysisService.getAnalysisHistory(moleId)
+            }
+            
+            isRetrying = false
+            binding.progressBar.visibility = View.GONE
+            hideRetryIndicator()
+            
+            if (retryResult.result.isSuccess) {
+                val analyses = retryResult.result.getOrNull() ?: emptyList()
+                if (analyses.isNotEmpty()) {
+                    handleAnalysisLoaded(analyses, hasMore = false)
+                    
+                    if (retryResult.attemptsMade > 1) {
+                        Toast.makeText(
+                            this@MoleAnalysisHistoryActivity,
+                            getString(R.string.retry_success_after_attempts, retryResult.attemptsMade),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } else {
+                    showEmptyState(EmptyStateView.EmptyStateType.NO_ANALYSIS)
+                }
+            } else {
+                val exception = retryResult.result.exceptionOrNull() ?: Exception("Error desconocido")
+                val errorResult = ErrorHandler.handleError(this@MoleAnalysisHistoryActivity, exception, "Cargar historial")
                 
-                // Configurar scroll listener para paginación automática
-                paginationManager.setupScrollListener(binding.analysisRecyclerView) {
-                    loadNextPage(paginationManager, moleId)
+                showErrorState(errorResult) {
+                    loadAnalysisHistory()
                 }
                 
-                // Cargar primera página
-                val result = paginationManager.loadAnalysisPage(moleId, isFirstPage = true)
-                if (result.isFailure) {
-                    val exception = result.exceptionOrNull() ?: Exception("Error desconocido")
-                    val errorResult = ErrorHandler.handleError(this@MoleAnalysisHistoryActivity, exception, "Cargar historial")
-                    showErrorState(errorResult) { loadAnalysisHistory() }
+                if (retryResult.attemptsMade > 1) {
+                    Toast.makeText(
+                        this@MoleAnalysisHistoryActivity,
+                        getString(R.string.retry_failed_all_attempts, retryResult.attemptsMade),
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
-                
-            } catch (e: Exception) {
-                binding.progressBar.visibility = View.GONE
-                val errorResult = ErrorHandler.handleError(this@MoleAnalysisHistoryActivity, e, "Cargar historial")
-                showErrorState(errorResult) { loadAnalysisHistory() }
             }
         }
     }
 
-    private suspend fun loadNextPage(
-        paginationManager: es.monsteraltech.skincare_tfm.body.mole.performance.AnalysisPaginationManager,
-        moleId: String
-    ) {
-        val result = paginationManager.loadAnalysisPage(moleId, isFirstPage = false)
-        // Los callbacks del paginationManager manejarán la respuesta
-    }
+
 
     private fun handleAnalysisLoaded(analyses: List<AnalysisData>, hasMore: Boolean) {
-        // Calcular comparaciones de evolución
-        val evolutionComparisons = calculateEvolutionComparisons(analyses)
-        
-        // Si es la primera carga, actualizar datos; si no, añadir datos
-        if (adapter.itemCount == 0) {
-            analysisList = analyses
-            adapter.updateData(analyses, evolutionComparisons)
-        } else {
-            analysisList = analysisList + analyses
-            adapter.addData(analyses, evolutionComparisons)
-        }
+        // Actualizar datos del adapter
+        analysisList = analyses
+        adapter.updateData(analyses)
         
         hideEmptyState()
         binding.analysisRecyclerView.visibility = View.VISIBLE
     }
 
-    /**
-     * Calcula las comparaciones de evolución entre análisis consecutivos
-     */
-    private fun calculateEvolutionComparisons(analyses: List<AnalysisData>): List<EvolutionComparison?> {
-        val comparisons = mutableListOf<EvolutionComparison?>()
-        
-        for (i in analyses.indices) {
-            if (i == analyses.size - 1) {
-                // El análisis más antiguo no tiene comparación
-                comparisons.add(null)
-            } else {
-                // Comparar con el análisis anterior (más antiguo)
-                val current = analyses[i]
-                val previous = analyses[i + 1]
-                val comparison = EvolutionComparison.create(current, previous)
-                comparisons.add(comparison)
-            }
-        }
-        
-        return comparisons
-    }
+
 
     /**
      * Muestra estado de error con información contextual

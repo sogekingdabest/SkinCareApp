@@ -83,6 +83,7 @@ class MoleViewerActivity : AppCompatActivity() {
         retryManager = RetryManager(this)
         
         initializeViews()
+        setupToolbar()
         loadMoleData()
     }
 
@@ -129,6 +130,12 @@ class MoleViewerActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupToolbar() {
+        val toolbar = findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+    }
+
     private fun loadMoleData() {
         // Obtener los datos del intent
         val title = intent.getStringExtra("LUNAR_TITLE") ?: ""
@@ -156,6 +163,8 @@ class MoleViewerActivity : AppCompatActivity() {
             aiResult = analysisResult,
             analysisCount = analysisCount
         )
+        
+        Log.d("MoleViewerActivity", "Created currentMoleData with analysisCount: $analysisCount")
 
         // Configurar UI básica
         setupBasicUI(title, description, imageUrl)
@@ -165,10 +174,10 @@ class MoleViewerActivity : AppCompatActivity() {
             Log.d("MoleViewerActivity", "Displaying analysis from AI result")
             displayAnalysisFromAiResult(analysisResult, imageUrl ?: "")
         } else if (moleId.isNotEmpty()) {
-            Log.d("MoleViewerActivity", "Loading latest analysis from service")
+            Log.d("MoleViewerActivity", "Loading latest analysis from service for mole: $moleId")
             loadLatestAnalysisFromService(moleId)
         } else {
-            Log.d("MoleViewerActivity", "No analysis data available, showing no analysis state")
+            Log.d("MoleViewerActivity", "No analysis data available and no mole ID, showing no analysis state")
             showNoAnalysisState()
         }
     }
@@ -196,6 +205,8 @@ class MoleViewerActivity : AppCompatActivity() {
 
     private fun displayAnalysisFromAiResult(aiResult: String, imageUrl: String) {
         Log.d("MoleViewerActivity", "Displaying analysis from AI result: '$aiResult'")
+        Log.d("MoleViewerActivity", "Current analysisCount: ${currentMoleData?.analysisCount}")
+        
         try {
             // Convertir aiResult a AnalysisData estructurado
             val analysisData = AnalysisDataConverter.fromAiResultString(
@@ -243,7 +254,24 @@ class MoleViewerActivity : AppCompatActivity() {
                     }
                 }
             ) {
-                moleAnalysisService.getAnalysisHistory(moleId)
+                // Intentar obtener el análisis actual del lunar
+                val currentAnalysisResult = moleAnalysisService.getCurrentAnalysis(moleId)
+                if (currentAnalysisResult.isSuccess) {
+                    val currentAnalysis = currentAnalysisResult.getOrNull()
+                    if (currentAnalysis != null) {
+                        // Si hay análisis actual, devolverlo
+                        Log.d("MoleViewerActivity", "Análisis actual encontrado para lunar $moleId")
+                        Result.success(currentAnalysis)
+                    } else {
+                        // Si no hay análisis actual, no hay datos
+                        Log.d("MoleViewerActivity", "No hay análisis actual para lunar $moleId")
+                        Result.success(null)
+                    }
+                } else {
+                    // Si falla obtener el análisis actual, propagar el error
+                    Log.e("MoleViewerActivity", "Error al obtener análisis actual: ${currentAnalysisResult.exceptionOrNull()}")
+                    currentAnalysisResult
+                }
             }
             
             isRetrying = false
@@ -251,9 +279,10 @@ class MoleViewerActivity : AppCompatActivity() {
             emptyStateView.hideRetryIndicators()
             
             if (retryResult.result.isSuccess) {
-                val analyses = retryResult.result.getOrNull() ?: emptyList()
-                if (analyses.isNotEmpty()) {
-                    displayAnalysisData(analyses.first()) // Mostrar el más reciente
+                val analysis = retryResult.result.getOrNull()
+                if (analysis != null) {
+                    Log.d("MoleViewerActivity", "Mostrando análisis cargado desde servicio")
+                    displayAnalysisData(analysis)
                     
                     if (retryResult.attemptsMade > 1) {
                         Toast.makeText(
@@ -263,6 +292,7 @@ class MoleViewerActivity : AppCompatActivity() {
                         ).show()
                     }
                 } else {
+                    Log.d("MoleViewerActivity", "No hay análisis disponible, mostrando estado vacío")
                     showEmptyState(EmptyStateView.EmptyStateType.NO_ANALYSIS)
                 }
             } else {
@@ -285,16 +315,22 @@ class MoleViewerActivity : AppCompatActivity() {
     }
 
     private fun displayAnalysisData(analysisData: AnalysisData) {
-        Log.d("MoleViewerActivity", "Displaying analysis data:")
+        Log.d("MoleViewerActivity", "=== DISPLAYING ANALYSIS DATA ===")
+        Log.d("MoleViewerActivity", "Analysis ID: ${analysisData.id}")
+        Log.d("MoleViewerActivity", "Mole ID: ${analysisData.moleId}")
         Log.d("MoleViewerActivity", "Combined score: ${analysisData.combinedScore}")
         Log.d("MoleViewerActivity", "Risk level: '${analysisData.riskLevel}'")
         Log.d("MoleViewerActivity", "AI probability: ${analysisData.aiProbability}")
         Log.d("MoleViewerActivity", "AI confidence: ${analysisData.aiConfidence}")
         Log.d("MoleViewerActivity", "Recommendation: '${analysisData.recommendation}'")
+        Log.d("MoleViewerActivity", "Current analysisCount: ${currentMoleData?.analysisCount}")
         
+        // ASEGURAR que el contenedor de análisis sea visible
         progressBar.visibility = View.GONE
         analysisContainer.visibility = View.VISIBLE
         emptyStateView.hide()
+        
+        Log.d("MoleViewerActivity", "Analysis container made visible")
 
         // Mostrar score combinado
         val combinedScore = analysisData.combinedScore
@@ -329,14 +365,22 @@ class MoleViewerActivity : AppCompatActivity() {
         analysisDateTextView.text = "Fecha: ${formatDate(analysisData.createdAt.toDate())}"
         analysisDateTextView.visibility = View.VISIBLE
 
-        // Mostrar botón de histórico si hay múltiples análisis
+        // Mostrar botón de histórico solo si hay múltiples análisis
         val analysisCount = currentMoleData?.analysisCount ?: 0
+        Log.d("MoleViewerActivity", "Analysis count: $analysisCount")
         if (analysisCount > 1) {
             viewHistoryButton.visibility = View.VISIBLE
-            viewHistoryButton.text = "Ver Evolución ($analysisCount análisis)"
+            val numberAnalysisHistory = analysisCount - 1
+            viewHistoryButton.text = "Ver Evolución ($numberAnalysisHistory análisis)"
+            Log.d("MoleViewerActivity", "Mostrando botón de histórico con $numberAnalysisHistory análisis anteriores")
         } else {
             viewHistoryButton.visibility = View.GONE
+            Log.d("MoleViewerActivity", "Ocultando botón de histórico - solo hay $analysisCount análisis")
         }
+        
+        Log.d("MoleViewerActivity", "=== ANALYSIS DATA DISPLAY COMPLETED ===")
+        Log.d("MoleViewerActivity", "Analysis container visibility: ${if (analysisContainer.visibility == View.VISIBLE) "VISIBLE" else "HIDDEN"}")
+        Log.d("MoleViewerActivity", "History button visibility: ${if (viewHistoryButton.visibility == View.VISIBLE) "VISIBLE" else "HIDDEN"}")
     }
 
     private fun displayRiskLevel(riskLevel: String) {
@@ -403,19 +447,6 @@ class MoleViewerActivity : AppCompatActivity() {
                 diameterLayout.visibility = View.GONE
             }
             
-            // E - Evolución (opcional)
-            scores.evolutionScore?.let { evolutionScoreValue ->
-                if (evolutionScoreValue > 0f) {
-                    evolutionLayout.visibility = View.VISIBLE
-                    evolutionScore.text = "${String.format("%.1f", evolutionScoreValue)}/3"
-                    evolutionProgress.progress = ((evolutionScoreValue / 3f) * 100).toInt()
-                } else {
-                    evolutionLayout.visibility = View.GONE
-                }
-            } ?: run {
-                evolutionLayout.visibility = View.GONE
-            }
-            
             // Score total ABCDE
             if (scores.totalScore > 0f) {
                 abcdeTotalScore.text = "Score ABCDE Total: ${String.format("%.1f", scores.totalScore)}"
@@ -460,44 +491,27 @@ class MoleViewerActivity : AppCompatActivity() {
         
         analysisDateTextView.visibility = View.GONE
 
-        // Mostrar botón de histórico si hay múltiples análisis
+        // Mostrar botón de histórico solo si hay múltiples análisis
         val analysisCount = currentMoleData?.analysisCount ?: 0
+        Log.d("MoleViewerActivity", "Raw analysis - Analysis count: $analysisCount")
         if (analysisCount > 1) {
             viewHistoryButton.visibility = View.VISIBLE
-            viewHistoryButton.text = "Ver Evolución ($analysisCount análisis)"
+            val numberAnalysisHistory = analysisCount - 1
+            viewHistoryButton.text = "Ver Evolución ($numberAnalysisHistory análisis)"
+            Log.d("MoleViewerActivity", "Mostrando botón de histórico (raw) con $numberAnalysisHistory análisis anteriores")
         } else {
             viewHistoryButton.visibility = View.GONE
+            Log.d("MoleViewerActivity", "Ocultando botón de histórico (raw) - solo hay $analysisCount análisis")
         }
     }
 
     private fun showNoAnalysisState() {
         Log.d("MoleViewerActivity", "Showing no analysis state")
         progressBar.visibility = View.GONE
-        
-        // Mostrar al menos la información básica del análisis con valores por defecto
-        analysisContainer.visibility = View.VISIBLE
-        
-        // Configurar valores por defecto
-        combinedScoreText.text = "--"
-        riskLevelTextView.text = "Riesgo: --"
-        riskIndicator.visibility = View.GONE
-        aiProbabilityTextView.visibility = View.GONE
-        
-        // Mostrar mensaje en la recomendación
-        recommendationTextView.text = "No hay datos de análisis disponibles para este lunar."
-        
-        // Ocultar todos los layouts ABCDE
-        asymmetryLayout.visibility = View.GONE
-        borderLayout.visibility = View.GONE
-        colorLayout.visibility = View.GONE
-        diameterLayout.visibility = View.GONE
-        evolutionLayout.visibility = View.GONE
-        abcdeTotalScore.text = "Score ABCDE Total: --"
-        
-        analysisDateTextView.visibility = View.GONE
+        analysisContainer.visibility = View.GONE
         viewHistoryButton.visibility = View.GONE
         
-        // También mostrar el empty state como información adicional
+        // Mostrar el empty state
         showEmptyState(EmptyStateView.EmptyStateType.NO_ANALYSIS)
     }
 
@@ -582,5 +596,13 @@ class MoleViewerActivity : AppCompatActivity() {
     private fun formatDate(date: java.util.Date): String {
         val formatter = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
         return formatter.format(date)
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        if (item.itemId == android.R.id.home) {
+            onBackPressedDispatcher.onBackPressed()
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 }

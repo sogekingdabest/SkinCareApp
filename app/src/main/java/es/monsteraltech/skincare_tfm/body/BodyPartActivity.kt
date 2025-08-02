@@ -4,15 +4,21 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.widget.SearchView
+import android.view.MenuItem
+import android.view.View
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.google.android.material.search.SearchBar
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.body.mole.Mole
 import es.monsteraltech.skincare_tfm.body.mole.MoleAdapter
@@ -21,14 +27,19 @@ import es.monsteraltech.skincare_tfm.camera.CameraActivity
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import kotlinx.coroutines.launch
 
-class BodyPartActivity : ComponentActivity() {
+class BodyPartActivity : AppCompatActivity() {
 
+    private lateinit var toolbar: MaterialToolbar
+    private lateinit var searchBar: SearchBar
     private lateinit var lunarRecyclerView: RecyclerView
     private lateinit var moleAdapter: MoleAdapter
     private lateinit var addButton: FloatingActionButton
+    private lateinit var emptyStateButton: MaterialButton
     private lateinit var bodyPart: String
     private lateinit var bodyPartTitleTextView: TextView
-    private lateinit var searchView: SearchView
+    private lateinit var moleCountText: TextView
+    private lateinit var progressBar: CircularProgressIndicator
+    private lateinit var emptyStateLayout: LinearLayout
     private val firebaseDataManager = FirebaseDataManager()
     private val moleList = ArrayList<Mole>()
 
@@ -75,24 +86,47 @@ class BodyPartActivity : ComponentActivity() {
             }
         }
 
-        bodyPartTitleTextView = findViewById(R.id.bodyPartTitle)
-        bodyPartTitleTextView.text = bodyPart
+        initializeViews()
+        setupToolbar()
+        setupRecyclerView()
+        setupSearchBar()
+        setupClickListeners(color)
+        
+        loadMolesFromFirebase(color)
+    }
 
+    private fun initializeViews() {
+        toolbar = findViewById(R.id.toolbar)
+        searchBar = findViewById(R.id.searchBar)
+        bodyPartTitleTextView = findViewById(R.id.bodyPartTitle)
+        moleCountText = findViewById(R.id.moleCountText)
         lunarRecyclerView = findViewById(R.id.lunarRecyclerView)
         addButton = findViewById(R.id.addButton)
-        searchView = findViewById(R.id.moleSearch)
+        emptyStateButton = findViewById(R.id.emptyStateButton)
+        progressBar = findViewById(R.id.progressBar)
+        emptyStateLayout = findViewById(R.id.emptyStateLayout)
+        
+        bodyPartTitleTextView.text = bodyPart
+    }
 
-        setupRecyclerView()
-        loadMolesFromFirebase(color)
+    private fun setupToolbar() {
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = bodyPart
+    }
 
-        addButton.setOnClickListener {
-            val intent = Intent(this, CameraActivity::class.java)
-            // Pasamos el código de color para que se pueda usar luego en el flujo
-            intent.putExtra("BODY_PART_COLOR", color)
-            imageAnalysisLauncher.launch(intent)
+    private fun setupClickListeners(color: String?) {
+        val cameraIntent = Intent(this, CameraActivity::class.java).apply {
+            putExtra("BODY_PART_COLOR", color)
         }
 
-        setupSearchView()
+        addButton.setOnClickListener {
+            imageAnalysisLauncher.launch(cameraIntent)
+        }
+
+        emptyStateButton.setOnClickListener {
+            imageAnalysisLauncher.launch(cameraIntent)
+        }
     }
 
     private fun setupRecyclerView() {
@@ -119,6 +153,8 @@ class BodyPartActivity : ComponentActivity() {
     private fun loadMolesFromFirebase(colorCode: String?) {
         if (colorCode == null) return
 
+        showLoading(true)
+
         lifecycleScope.launch {
             try {
                 val firebaseMoles = firebaseDataManager.getMolesForBodyPart(colorCode)
@@ -131,39 +167,63 @@ class BodyPartActivity : ComponentActivity() {
                             id = fbMole.id,
                             title = fbMole.title,
                             description = fbMole.description,
-                            imageUrl = fbMole.imageUrl,  // Ahora es una ruta local
-                            analysisResult = fbMole.aiResult, // Usar aiResult del nuevo modelo
+                            imageUrl = fbMole.imageUrl,
+                            analysisResult = fbMole.aiResult,
                             analysisCount = fbMole.analysisCount
                         )
                     )
                 }
 
                 runOnUiThread {
-                    if (moleList.isEmpty()) {
-                        Toast.makeText(this@BodyPartActivity, "No hay lunares registrados en esta parte del cuerpo", Toast.LENGTH_SHORT).show()
-                    }
+                    showLoading(false)
+                    updateMoleCount()
                     moleAdapter.notifyDataSetChanged()
+                    
+                    if (moleList.isEmpty()) {
+                        showEmptyState(true)
+                    } else {
+                        showEmptyState(false)
+                    }
                 }
             } catch (e: Exception) {
                 runOnUiThread {
+                    showLoading(false)
+                    showEmptyState(true)
                     Toast.makeText(this@BodyPartActivity, "Error al cargar lunares: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
-    private fun setupSearchView() {
-        searchView.isIconified = false
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                return false
-            }
+    private fun showLoading(show: Boolean) {
+        progressBar.visibility = if (show) View.VISIBLE else View.GONE
+        lunarRecyclerView.visibility = if (show) View.GONE else View.VISIBLE
+        emptyStateLayout.visibility = View.GONE
+    }
 
-            override fun onQueryTextChange(newText: String?): Boolean {
-                moleAdapter.filter.filter(newText)
-                return false
-            }
-        })
+    private fun showEmptyState(show: Boolean) {
+        emptyStateLayout.visibility = if (show) View.VISIBLE else View.GONE
+        lunarRecyclerView.visibility = if (show) View.GONE else View.VISIBLE
+    }
+
+    private fun updateMoleCount() {
+        val count = moleList.size
+        moleCountText.text = when (count) {
+            0 -> "No hay lunares registrados"
+            1 -> "1 lunar registrado"
+            else -> "$count lunares registrados"
+        }
+    }
+
+    private fun setupSearchBar() {
+        searchBar.setOnMenuItemClickListener { menuItem ->
+            // Manejar elementos del menú si es necesario
+            false
+        }
+        
+        // Configurar búsqueda (si el SearchBar soporta texto de búsqueda)
+        // Nota: SearchBar de Material 3 funciona diferente al SearchView tradicional
+        // Aquí puedes implementar la lógica de búsqueda según tus necesidades
     }
 
     override fun onResume() {
@@ -173,5 +233,13 @@ class BodyPartActivity : ComponentActivity() {
         if (color != null) {
             loadMolesFromFirebase(color)
         }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == android.R.id.home) {
+            onBackPressedDispatcher.onBackPressed()
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 }
