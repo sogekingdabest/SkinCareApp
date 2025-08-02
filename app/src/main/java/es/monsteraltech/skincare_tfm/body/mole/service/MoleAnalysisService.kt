@@ -4,14 +4,13 @@ import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
-import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
+import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionComparison
 import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionSummary
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
-import es.monsteraltech.skincare_tfm.body.mole.validation.AnalysisDataValidator
 import es.monsteraltech.skincare_tfm.body.mole.validation.AnalysisDataSanitizer
+import es.monsteraltech.skincare_tfm.body.mole.validation.AnalysisDataValidator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -69,39 +68,38 @@ class MoleAnalysisService {
 
                     // Si ya existe un análisis en el lunar, moverlo al historial
                     if (currentCount > 0L) {
-                        val currentAnalysisResult = moleSnapshot.getString("analysisResult") ?: ""
-                        if (currentAnalysisResult.isNotEmpty()) {
-                            // Crear AnalysisData del análisis actual para moverlo al historial
-                            val currentAnalysisData = AnalysisData(
-                                id = "${moleId}_analysis_${currentCount}",
-                                moleId = moleId,
-                                analysisResult = currentAnalysisResult,
-                                aiProbability = moleSnapshot.getDouble("aiProbability")?.toFloat() ?: 0f,
-                                aiConfidence = moleSnapshot.getDouble("aiConfidence")?.toFloat() ?: 0f,
-                                abcdeScores = ABCDEScores(
-                                    asymmetryScore = moleSnapshot.getDouble("abcdeAsymmetry")?.toFloat() ?: 0f,
-                                    borderScore = moleSnapshot.getDouble("abcdeBorder")?.toFloat() ?: 0f,
-                                    colorScore = moleSnapshot.getDouble("abcdeColor")?.toFloat() ?: 0f,
-                                    diameterScore = moleSnapshot.getDouble("abcdeDiameter")?.toFloat() ?: 0f,
-                                    evolutionScore = null,
-                                    totalScore = moleSnapshot.getDouble("abcdeTotalScore")?.toFloat() ?: 0f
-                                ),
-                                combinedScore = moleSnapshot.getDouble("combinedScore")?.toFloat() ?: 0f,
-                                riskLevel = moleSnapshot.getString("riskLevel") ?: "",
-                                recommendation = moleSnapshot.getString("recommendation") ?: "",
-                                imageUrl = moleSnapshot.getString("imageUrl") ?: "",
-                                createdAt = moleSnapshot.getTimestamp("lastAnalysisDate") ?: currentTimestamp,
-                                analysisMetadata = emptyMap()
-                            )
+                        // Crear AnalysisData del análisis actual para moverlo al historial
+                        val currentAnalysisData = AnalysisData(
+                            id = "${moleId}_analysis_${currentCount}",
+                            moleId = moleId,
+                            analysisResult = currentCount.toString(),
+                            aiProbability = moleSnapshot.getDouble("aiProbability")?.toFloat() ?: 0f,
+                            aiConfidence = moleSnapshot.getDouble("aiConfidence")?.toFloat() ?: 0f,
+                            abcdeScores = ABCDEScores(
+                                asymmetryScore = moleSnapshot.getDouble("abcdeAsymmetry")?.toFloat() ?: 0f,
+                                borderScore = moleSnapshot.getDouble("abcdeBorder")?.toFloat() ?: 0f,
+                                colorScore = moleSnapshot.getDouble("abcdeColor")?.toFloat() ?: 0f,
+                                diameterScore = moleSnapshot.getDouble("abcdeDiameter")?.toFloat() ?: 0f,
+                                evolutionScore = null,
+                                totalScore = moleSnapshot.getDouble("abcdeTotalScore")?.toFloat() ?: 0f
+                            ),
+                            combinedScore = moleSnapshot.getDouble("combinedScore")?.toFloat() ?: 0f,
+                            riskLevel = moleSnapshot.getString("riskLevel") ?: "",
+                            recommendation = moleSnapshot.getString("recommendation") ?: "",
+                            imageUrl = moleSnapshot.getString("imageUrl") ?: "",
+                            createdAt = moleSnapshot.getTimestamp("lastAnalysisDate") ?: currentTimestamp,
+                            analysisMetadata = emptyMap()
+                        )
 
-                            // Guardar análisis actual en el historial
-                            val historialRef = firestore.collection(USERS_COLLECTION)
-                                .document(currentUser.uid)
-                                .collection(ANALYSIS_SUBCOLLECTION)
-                                .document(currentAnalysisData.id)
+                        // Guardar análisis actual en el historial
+                        val historialRef = firestore.collection(USERS_COLLECTION)
+                            .document(currentUser.uid)
+                            .collection(MOLES_SUBCOLLECTION)
+                            .document(moleId)
+                            .collection(ANALYSIS_SUBCOLLECTION)
+                            .document(currentAnalysisData.id)
 
-                            transaction.set(historialRef, currentAnalysisData.toMap())
-                        }
+                        transaction.set(historialRef, currentAnalysisData.toMap())
                     }
 
                     // Actualizar el lunar con el nuevo análisis

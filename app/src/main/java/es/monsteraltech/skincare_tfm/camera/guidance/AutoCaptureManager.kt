@@ -177,9 +177,9 @@ class AutoCaptureManager(
             1 -> hapticManager.vibratePattern(longArrayOf(0, 200))
         }
         
-        // Anuncio de voz
+        // Anuncio para accesibilidad (solo TalkBack)
         if (remainingSeconds <= 3) {
-            accessibilityManager.speakText(remainingSeconds.toString(), android.speech.tts.TextToSpeech.QUEUE_ADD)
+            accessibilityManager.announceForAccessibility(remainingSeconds.toString())
         }
     }
 
