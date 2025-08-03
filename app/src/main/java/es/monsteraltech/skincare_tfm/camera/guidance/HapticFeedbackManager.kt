@@ -6,7 +6,6 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
-import androidx.annotation.RequiresApi
 
 /**
  * Gestor de retroalimentación háptica para diferentes estados de guía de captura.

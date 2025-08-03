@@ -7,13 +7,12 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.QuerySnapshot
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
-import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 /**
  * Gestor de paginación para listas largas de análisis
@@ -258,61 +257,6 @@ class AnalysisPaginationManager(
             loadNextPage("mole_analysis", config, whereClause, mapper)
         }
     }
-
-    /**
-     * Carga todos los análisis paginados (sin filtro por lunar)
-     */
-    suspend fun loadAllAnalysisPage(
-        isFirstPage: Boolean = false,
-        config: PaginationConfig = PaginationConfig()
-    ): Result<List<AnalysisData>> {
-        
-        val mapper: (com.google.firebase.firestore.DocumentSnapshot) -> AnalysisData? = { doc ->
-            try {
-                AnalysisData.fromMap(doc.id, doc.data ?: emptyMap())
-            } catch (e: Exception) {
-                Log.w("AnalysisPaginationManager", "Error al parsear análisis ${doc.id}", e)
-                null
-            }
-        }
-        
-        return if (isFirstPage) {
-            loadFirstPage("mole_analysis", config, null, mapper)
-        } else {
-            loadNextPage("mole_analysis", config, null, mapper)
-        }
-    }
-
-    /**
-     * Carga análisis paginados filtrados por rango de fechas
-     */
-    suspend fun loadAnalysisByDateRange(
-        startDate: Timestamp,
-        endDate: Timestamp,
-        isFirstPage: Boolean = false,
-        config: PaginationConfig = PaginationConfig()
-    ): Result<List<AnalysisData>> {
-        
-        val whereClause: (Query) -> Query = { query ->
-            query.whereGreaterThanOrEqualTo("createdAt", startDate)
-                .whereLessThanOrEqualTo("createdAt", endDate)
-        }
-        
-        val mapper: (com.google.firebase.firestore.DocumentSnapshot) -> AnalysisData? = { doc ->
-            try {
-                AnalysisData.fromMap(doc.id, doc.data ?: emptyMap())
-            } catch (e: Exception) {
-                Log.w("AnalysisPaginationManager", "Error al parsear análisis ${doc.id}", e)
-                null
-            }
-        }
-        
-        return if (isFirstPage) {
-            loadFirstPage("mole_analysis", config, whereClause, mapper)
-        } else {
-            loadNextPage("mole_analysis", config, whereClause, mapper)
-        }
-    }
 }
 
 /**
@@ -348,33 +292,4 @@ class MolePaginationManager(
         }
     }
 
-    /**
-     * Carga lunares paginados filtrados por parte del cuerpo
-     */
-    suspend fun loadMolesByBodyPart(
-        bodyPartColorCode: String,
-        isFirstPage: Boolean = false,
-        config: PaginationConfig = PaginationConfig(orderBy = "updatedAt")
-    ): Result<List<es.monsteraltech.skincare_tfm.body.mole.model.MoleData>> {
-        
-        val whereClause: (Query) -> Query = { query ->
-            query.whereEqualTo("bodyPartColorCode", bodyPartColorCode)
-        }
-        
-        val mapper: (com.google.firebase.firestore.DocumentSnapshot) -> es.monsteraltech.skincare_tfm.body.mole.model.MoleData? = { doc ->
-            try {
-                val mole = doc.toObject(es.monsteraltech.skincare_tfm.body.mole.model.MoleData::class.java)
-                mole?.copy(id = doc.id)
-            } catch (e: Exception) {
-                Log.w("MolePaginationManager", "Error al parsear lunar ${doc.id}", e)
-                null
-            }
-        }
-        
-        return if (isFirstPage) {
-            loadFirstPage("moles", config, whereClause, mapper)
-        } else {
-            loadNextPage("moles", config, whereClause, mapper)
-        }
-    }
 }

@@ -3,6 +3,7 @@ package es.monsteraltech.skincare_tfm.analysis
 import android.graphics.Bitmap
 import android.util.Log
 import kotlinx.coroutines.delay
+import androidx.core.graphics.scale
 
 /**
  * Gestor de recuperación de errores que implementa estrategias para manejar errores comunes
@@ -103,7 +104,7 @@ class ErrorRecoveryManager {
         Log.d(TAG, "Reduciendo imagen de ${bitmap.width}x${bitmap.height} a ${newWidth}x${newHeight}")
         
         val reducedBitmap = try {
-            Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+            bitmap.scale(newWidth, newHeight)
         } catch (e: OutOfMemoryError) {
             Log.e(TAG, "Error de memoria al reducir imagen", e)
             return null

@@ -322,6 +322,13 @@
     <string name="user_abcde_default_message">Ajusta los valores para comparar con el análisis de la IA</string>
     <string name="user_abcde_weights_info">ℹ️ El score se calcula con pesos clínicos: A×1.3 + B×0.1 + C×0.5 + D×0.5</string>
 
+    <!-- Traducciones de niveles de riesgo -->
+    <string name="risk_level_very_low">Muy bajo</string>
+    <string name="risk_level_low">Bajo</string>
+    <string name="risk_level_medium">Medio</string>
+    <string name="risk_level_high">Alto</string>
+    <string name="risk_level_very_high">Muy alto</string>
+
     <!-- Información detallada de criterios ABCDE -->
     <string name="abcde_asymmetry_info_title">A - Asimetría (0-2 puntos)</string>
     <string name="abcde_asymmetry_info_content">Evalúa si el lunar es simétrico al dividirlo por la mitad:\n\n• 0 puntos: Lunar completamente simétrico\n• 1 punto: Asimetría leve (diferencia &lt; 20%)\n• 2 puntos: Asimetría marcada (diferencia ≥ 20%)\n\nUn lunar benigno típico es simétrico, mientras que los malignos tienden a ser asimétricos.</string>

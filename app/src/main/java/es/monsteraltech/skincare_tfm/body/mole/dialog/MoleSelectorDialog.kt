@@ -1,7 +1,6 @@
 package es.monsteraltech.skincare_tfm.body.mole.dialog
 
 import android.app.Dialog
-import android.content.Context
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -14,14 +13,15 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.auth.FirebaseAuth
 import es.monsteraltech.skincare_tfm.R
+import es.monsteraltech.skincare_tfm.body.mole.error.RetryManager
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
 import es.monsteraltech.skincare_tfm.databinding.DialogMoleSelectorBinding
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
 
 /**
  * Diálogo modal para seleccionar lunares existentes durante el proceso de guardado de análisis.
@@ -129,12 +129,12 @@ class MoleSelectorDialog : DialogFragment() {
         binding.molesRecyclerView.visibility = View.GONE
 
         lifecycleScope.launch {
-            val retryManager = es.monsteraltech.skincare_tfm.body.mole.error.RetryManager(requireContext())
+            val retryManager = RetryManager()
             
             val retryResult = retryManager.executeWithRetry(
                 operation = "Cargar lunares del usuario",
-                config = es.monsteraltech.skincare_tfm.body.mole.error.RetryManager.databaseConfig(),
-                onRetryAttempt = { attempt, exception ->
+                config = RetryManager.databaseConfig(),
+                onRetryAttempt = { attempt, _ ->
                     requireActivity().runOnUiThread {
                         binding.progressBar.visibility = View.VISIBLE
                         Toast.makeText(
@@ -326,30 +326,6 @@ class MoleSelectorDialog : DialogFragment() {
      */
     private fun setupSearchSuggestions() {
         binding.searchSuggestions.text = getString(R.string.mole_selector_search_suggestions)
-    }
-
-    /**
-     * Genera sugerencias de búsqueda dinámicas basadas en los lunares disponibles
-     */
-    private fun generateSearchSuggestions(): String {
-        if (allMoles.isEmpty()) return ""
-        
-        val bodyParts = allMoles.map { it.bodyPart }.distinct().take(3)
-        val suggestions = mutableListOf<String>()
-        
-        if (bodyParts.isNotEmpty()) {
-            suggestions.add("Partes del cuerpo: ${bodyParts.joinToString(", ")}")
-        }
-        
-        val recentMoles = allMoles.filter { it.lastAnalysisDate != null }
-            .sortedByDescending { it.lastAnalysisDate }
-            .take(2)
-        
-        if (recentMoles.isNotEmpty()) {
-            suggestions.add("Recientes: ${recentMoles.joinToString(", ") { it.title }}")
-        }
-        
-        return suggestions.joinToString("\n")
     }
 
     override fun onDestroyView() {

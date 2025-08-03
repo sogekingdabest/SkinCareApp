@@ -90,7 +90,7 @@ class ABCDEAnalyzerOpenCV {
     )
 
     enum class RiskLevel {
-        LOW, MODERATE, HIGH
+        VERY_LOW, LOW, MEDIUM, HIGH, VERY_HIGH
     }
 
     /**
@@ -125,10 +125,10 @@ class ABCDEAnalyzerOpenCV {
         }
 
         // Análisis ABCDE
-        val asymmetryDetails = analyzeAsymmetry(processedMat, mask, contour)
-        val borderDetails = analyzeBorder(contour, mask)
+        val asymmetryDetails = analyzeAsymmetry(mask, contour)
+        val borderDetails = analyzeBorder(contour)
         val colorDetails = analyzeColor(mat, mask)
-        val diameterDetails = analyzeDiameter(contour, mask, pixelDensity)
+        val diameterDetails = analyzeDiameter(contour, pixelDensity)
 
         val evolutionDetails = previousBitmap?.let {
             val prevMat = Mat()
@@ -149,7 +149,7 @@ class ABCDEAnalyzerOpenCV {
 
         val riskLevel = when {
             totalScore < 4.75f -> RiskLevel.LOW
-            totalScore < 6.8f -> RiskLevel.MODERATE
+            totalScore < 6.8f -> RiskLevel.MEDIUM
             else -> RiskLevel.HIGH
         }
 
@@ -357,7 +357,7 @@ class ABCDEAnalyzerOpenCV {
     /**
      * Análisis de asimetría con OpenCV
      */
-    private fun analyzeAsymmetry(src: Mat, mask: Mat, contour: MatOfPoint): AsymmetryDetails {
+    private fun analyzeAsymmetry(mask: Mat, contour: MatOfPoint): AsymmetryDetails {
         // Calcular momentos
         val moments = Imgproc.moments(contour)
 
@@ -430,7 +430,7 @@ class ABCDEAnalyzerOpenCV {
     /**
      * Análisis de bordes con OpenCV
      */
-    private fun analyzeBorder(contour: MatOfPoint, mask: Mat): BorderDetails {
+    private fun analyzeBorder(contour: MatOfPoint): BorderDetails {
         // Aproximar contorno con Douglas-Peucker
         val epsilon = 0.02 * Imgproc.arcLength(MatOfPoint2f(*contour.toArray()), true)
         val approxContour = MatOfPoint2f()
@@ -648,10 +648,7 @@ class ABCDEAnalyzerOpenCV {
     /**
      * Análisis de diámetro con OpenCV
      */
-    private fun analyzeDiameter(contour: MatOfPoint, mask: Mat, pixelDensity: Float): DiameterDetails {
-        // Calcular rectángulo delimitador
-        val boundingRect = Imgproc.boundingRect(contour)
-
+    private fun analyzeDiameter(contour: MatOfPoint, pixelDensity: Float): DiameterDetails {
         // Calcular área
         val area = Imgproc.contourArea(contour)
 

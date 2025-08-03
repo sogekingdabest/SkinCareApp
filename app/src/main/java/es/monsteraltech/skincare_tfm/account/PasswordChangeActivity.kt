@@ -15,7 +15,6 @@ import es.monsteraltech.skincare_tfm.utils.UIUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class PasswordChangeActivity : AppCompatActivity() {
 
@@ -158,19 +157,19 @@ class PasswordChangeActivity : AppCompatActivity() {
 
         // Clear errors when user starts typing - handled by RealTimeValidator
         // But we can add focus animations
-        currentPasswordEditText.setOnFocusChangeListener { view, hasFocus ->
+        currentPasswordEditText.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 UIUtils.pulseView(currentPasswordLayout, false)
             }
         }
 
-        newPasswordEditText.setOnFocusChangeListener { view, hasFocus ->
+        newPasswordEditText.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 UIUtils.pulseView(newPasswordLayout, false)
             }
         }
 
-        confirmPasswordEditText.setOnFocusChangeListener { view, hasFocus ->
+        confirmPasswordEditText.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 UIUtils.pulseView(confirmPasswordLayout, false)
             }

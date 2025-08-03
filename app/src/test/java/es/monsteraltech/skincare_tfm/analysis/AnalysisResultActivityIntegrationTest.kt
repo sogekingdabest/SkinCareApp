@@ -89,7 +89,7 @@ class AnalysisResultActivityIntegrationTest {
             aiConfidence = 0.85f,
             abcdeScores = abcdeScores,
             combinedScore = 0.80f,
-            riskLevel = "MODERATE",
+            riskLevel = "MEDIUM",
             recommendation = "Test recommendation",
             imageUrl = "test-image-url",
             analysisMetadata = mapOf("test" to "value")
@@ -101,7 +101,7 @@ class AnalysisResultActivityIntegrationTest {
         assertEquals(0.85f, analysisData.aiConfidence, 0.01f)
         assertEquals(abcdeScores, analysisData.abcdeScores)
         assertEquals(0.80f, analysisData.combinedScore, 0.01f)
-        assertEquals("MODERATE", analysisData.riskLevel)
+        assertEquals("MEDIUM", analysisData.riskLevel)
         assertEquals("Test recommendation", analysisData.recommendation)
         assertEquals("test-image-url", analysisData.imageUrl)
         assertEquals(mapOf("test" to "value"), analysisData.analysisMetadata)

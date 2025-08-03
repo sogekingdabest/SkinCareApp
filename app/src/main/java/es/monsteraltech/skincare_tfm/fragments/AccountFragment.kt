@@ -8,16 +8,15 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import es.monsteraltech.skincare_tfm.MainActivity
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.account.AccountResult
 import es.monsteraltech.skincare_tfm.account.AccountSettings
-import es.monsteraltech.skincare_tfm.MainActivity
 import es.monsteraltech.skincare_tfm.account.PasswordChangeActivity
 import es.monsteraltech.skincare_tfm.account.UserInfo
 import es.monsteraltech.skincare_tfm.account.UserProfileManager
@@ -222,7 +221,7 @@ class AccountFragment : Fragment() {
                 Log.e(TAG, "Error al cargar configuraciones de usuario: ${error.message}", error.exception)
                 
                 // Si es error de permisos, intentar crear configuraciones iniciales
-                if (error.message?.contains("PERMISSION_DENIED") == true) {
+                if (error.message.contains("PERMISSION_DENIED") == true) {
                     Log.d(TAG, "Intentando crear configuraciones iniciales para el usuario")
                     createInitialUserSettings()
                 } else {
@@ -504,7 +503,7 @@ class AccountFragment : Fragment() {
      */
     private fun showPermissionDialog(onResult: (Boolean) -> Unit) {
         if (permissionManager.shouldShowRequestPermissionRationale(requireActivity())) {
-            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            AlertDialog.Builder(requireContext())
                 .setTitle(getString(R.string.notification_permission_title))
                 .setMessage(getString(R.string.notification_permission_message))
                 .setPositiveButton("Activar") { _, _ ->
@@ -795,7 +794,7 @@ class AccountFragment : Fragment() {
         when (requestCode) {
             NotificationPermissionManager.NOTIFICATION_PERMISSION_REQUEST_CODE -> {
                 val granted = grantResults.isNotEmpty() && 
-                    grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
                 
                 Log.d(TAG, "Resultado de permisos de notificaciones: $granted")
                 

@@ -1,5 +1,8 @@
 package es.monsteraltech.skincare_tfm.camera
 
+// OpenCV 4.12.0 compatible imports
+// import org.opencv.android.BaseLoaderCallback
+// import org.opencv.android.LoaderCallbackInterface
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -16,18 +19,32 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.*
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import es.monsteraltech.skincare_tfm.R
-import es.monsteraltech.skincare_tfm.camera.guidance.*
-import kotlinx.coroutines.*
-// OpenCV 4.12.0 compatible imports
-// import org.opencv.android.BaseLoaderCallback
-// import org.opencv.android.LoaderCallbackInterface
+import es.monsteraltech.skincare_tfm.camera.guidance.AccessibilityManager
+import es.monsteraltech.skincare_tfm.camera.guidance.CaptureGuidanceConfig
+import es.monsteraltech.skincare_tfm.camera.guidance.CaptureGuidanceOverlay
+import es.monsteraltech.skincare_tfm.camera.guidance.CaptureValidationManager
+import es.monsteraltech.skincare_tfm.camera.guidance.HapticFeedbackManager
+import es.monsteraltech.skincare_tfm.camera.guidance.ImagePreprocessor
+import es.monsteraltech.skincare_tfm.camera.guidance.ImageQualityAnalyzer
+import es.monsteraltech.skincare_tfm.camera.guidance.MoleDetectionProcessor
+import es.monsteraltech.skincare_tfm.camera.guidance.PerformanceManager
+import es.monsteraltech.skincare_tfm.camera.guidance.ROIOptimizer
+import es.monsteraltech.skincare_tfm.camera.guidance.ThermalStateDetector
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.opencv.android.OpenCVLoader
 import org.opencv.core.CvType
 import org.opencv.core.Mat
@@ -168,9 +185,8 @@ class CameraActivity : AppCompatActivity() {
         
         // Configurar listeners de rendimiento
         lifecycleScope.launch {
-            performanceManager.currentPerformanceLevel.collect { level ->
-                Log.d(TAG, "Nivel de rendimiento actualizado: $level")
-                updateAnalysisFrequency(level)
+            performanceManager.currentPerformanceLevel.collect {
+                updateAnalysisFrequency()
             }
         }
         
@@ -191,9 +207,8 @@ class CameraActivity : AppCompatActivity() {
     /**
      * Actualiza la frecuencia de análisis basada en el nivel de rendimiento
      */
-    private fun updateAnalysisFrequency(level: PerformanceManager.PerformanceLevel) {
+    private fun updateAnalysisFrequency() {
         val config = performanceManager.currentConfig.value
-        val newThrottleMs = 1000L / config.processingFrequency
         
         // Actualizar throttling de análisis
         imageAnalyzer?.let { analyzer ->

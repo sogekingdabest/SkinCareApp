@@ -224,19 +224,6 @@
                             android:textStyle="bold"
                             android:textColor="?attr/colorPrimary" />
 
-                        <View
-                            android:layout_width="0dp"
-                            android:layout_height="1dp"
-                            android:layout_weight="1" />
-
-                        <TextView
-                            android:id="@+id/riskLevelText"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Riesgo: --"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-
                     </LinearLayout>
 
                     <TextView
@@ -247,6 +234,15 @@
                         android:text="IA: -- (Confianza: --)"
                         android:textSize="14sp"
                         android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/riskLevelText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Riesgo: --"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
 
                     <View
                         android:layout_width="match_parent"

@@ -6,8 +6,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
-import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionComparison
-import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionSummary
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
 import es.monsteraltech.skincare_tfm.body.mole.validation.AnalysisDataSanitizer
 import es.monsteraltech.skincare_tfm.body.mole.validation.AnalysisDataValidator
@@ -384,71 +382,6 @@ class MoleAnalysisService {
                                 Log.e(
                                         "MoleAnalysisService",
                                         "Error al obtener historial de análisis",
-                                        e
-                                )
-                                Result.failure(e)
-                        }
-                }
-
-        /** Compara dos análisis consecutivos para calcular evolución */
-        suspend fun compareAnalyses(
-                current: AnalysisData,
-                previous: AnalysisData
-        ): Result<EvolutionComparison> =
-                withContext(Dispatchers.IO) {
-                        try {
-                                // Validar que ambos análisis pertenezcan al mismo lunar
-                                if (current.moleId != previous.moleId) {
-                                        return@withContext Result.failure(
-                                                Exception(
-                                                        "Los análisis no pertenecen al mismo lunar"
-                                                )
-                                        )
-                                }
-
-                                // Validar datos de análisis
-                                val currentValidation =
-                                        AnalysisDataValidator.validateAnalysisData(current)
-                                val previousValidation =
-                                        AnalysisDataValidator.validateAnalysisData(previous)
-
-                                if (!currentValidation.isValid || !previousValidation.isValid) {
-                                        return@withContext Result.failure(
-                                                Exception(
-                                                        "Datos de análisis inválidos para comparación"
-                                                )
-                                        )
-                                }
-
-                                val comparison = EvolutionComparison.create(current, previous)
-                                Result.success(comparison)
-                        } catch (e: Exception) {
-                                Log.e("MoleAnalysisService", "Error al comparar análisis", e)
-                                Result.failure(e)
-                        }
-                }
-
-        /** Obtiene un resumen de evolución completo de un lunar específico */
-        suspend fun getEvolutionSummary(moleId: String): Result<EvolutionSummary> =
-                withContext(Dispatchers.IO) {
-                        try {
-                                // Obtener histórico completo
-                                val historyResult = getAnalysisHistory(moleId)
-                                if (historyResult.isFailure) {
-                                        return@withContext Result.failure(
-                                                historyResult.exceptionOrNull()
-                                                        ?: Exception("Error al obtener histórico")
-                                        )
-                                }
-
-                                val analyses = historyResult.getOrNull() ?: emptyList()
-                                val summary = EvolutionSummary.create(moleId, analyses)
-
-                                Result.success(summary)
-                        } catch (e: Exception) {
-                                Log.e(
-                                        "MoleAnalysisService",
-                                        "Error al generar resumen de evolución",
                                         e
                                 )
                                 Result.failure(e)

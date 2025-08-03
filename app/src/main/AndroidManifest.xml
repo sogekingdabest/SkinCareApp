@@ -61,10 +61,6 @@
             android:exported="false"
             android:theme="@style/Theme.SkinCare_TFM" />
         <activity
-            android:name=".body.mole.AnalysisComparisonActivity"
-            android:exported="false"
-            android:theme="@style/Theme.SkinCare_TFM" />
-        <activity
             android:name=".account.PasswordChangeActivity"
             android:exported="false"
             android:theme="@style/Theme.SkinCare_TFM" />

@@ -42,11 +42,4 @@ enum class ProcessingStage(val message: String, val weight: Int) {
     fun getProgressIncludingStage(): Int {
         return getProgressUpToStage() + weight
     }
-    
-    companion object {
-        /**
-         * Peso total de todas las etapas (debería sumar 100)
-         */
-        val TOTAL_WEIGHT = values().sumOf { it.weight }
-    }
 }

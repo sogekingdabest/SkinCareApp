@@ -1,8 +1,8 @@
 package es.monsteraltech.skincare_tfm.data
 
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
-import android.util.Log
 
 /**
  * Clase de datos para almacenar información de sesión del usuario

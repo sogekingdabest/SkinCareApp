@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
 import es.monsteraltech.skincare_tfm.account.AccountSettings
 import es.monsteraltech.skincare_tfm.account.UserInfo
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData

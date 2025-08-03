@@ -16,7 +16,7 @@ class MoleDetailActivity : AppCompatActivity() {
         // Redirigir a la nueva MoleViewerActivity con todos los datos
         val intent = Intent(this, MoleViewerActivity::class.java).apply {
             // Pasar todos los extras del intent original
-            putExtras(getIntent().extras ?: Bundle())
+            putExtras(intent.extras ?: Bundle())
         }
         
         startActivity(intent)

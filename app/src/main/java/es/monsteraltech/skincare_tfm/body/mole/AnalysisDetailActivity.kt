@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.util.ImageLoadingUtil
+import es.monsteraltech.skincare_tfm.body.mole.util.RiskLevelTranslator
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisDetailBinding
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -153,16 +154,13 @@ class AnalysisDetailActivity : AppCompatActivity() {
 
     private fun displayRiskLevel(riskLevel: String) {
         if (riskLevel.isNotEmpty()) {
-            binding.riskLevelText.text = "Riesgo: $riskLevel"
+            // Traducir el nivel de riesgo al español
+            val translatedRiskLevel = RiskLevelTranslator.translateRiskLevel(this, riskLevel)
+            binding.riskLevelText.text = "Riesgo: $translatedRiskLevel"
             binding.riskIndicator.visibility = View.VISIBLE
             
-            // Cambiar color según el nivel de riesgo
-            val colorRes = when (riskLevel.uppercase()) {
-                "LOW", "BAJO" -> android.R.color.holo_green_dark
-                "MODERATE", "MODERADO" -> android.R.color.holo_orange_dark
-                "HIGH", "ALTO" -> android.R.color.holo_red_dark
-                else -> android.R.color.darker_gray
-            }
+            // Cambiar color según el nivel de riesgo usando la función de utilidad
+            val colorRes = RiskLevelTranslator.getRiskLevelColor(riskLevel)
             val color = ContextCompat.getColor(this, colorRes)
             binding.riskLevelText.setTextColor(color)
             binding.riskIndicator.setBackgroundColor(color)

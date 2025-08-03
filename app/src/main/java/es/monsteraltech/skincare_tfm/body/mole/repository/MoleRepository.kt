@@ -5,10 +5,10 @@ import android.graphics.Bitmap
 import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
+import es.monsteraltech.skincare_tfm.body.mole.performance.OptimizedFirebaseQueries
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import id.zelory.compressor.Compressor
 import id.zelory.compressor.constraint.format
@@ -143,9 +143,7 @@ class MoleRepository {
     suspend fun getAllMolesForUser(userId: String): Result<List<MoleData>> = withContext(Dispatchers.IO) {
         try {
             // Usar consultas optimizadas con caché
-            val optimizedQueries = es.monsteraltech.skincare_tfm.body.mole.performance.OptimizedFirebaseQueries()
-            // Nota: LocalCacheManager requiere contexto, pero no está disponible en este nivel
-            // Se puede implementar una versión que no requiera contexto o pasar el contexto como parámetro
+            OptimizedFirebaseQueries()
             
             val querySnapshot = firestore.collection(USERS_COLLECTION)
                 .document(userId)

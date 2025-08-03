@@ -8,6 +8,7 @@ import android.view.MenuItem
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import es.monsteraltech.skincare_tfm.account.UserProfileManager
 import es.monsteraltech.skincare_tfm.camera.CameraActivity
@@ -22,7 +23,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.lifecycle.lifecycleScope
 import org.opencv.android.OpenCVLoader
 
 /*
@@ -104,8 +104,6 @@ class MainActivity : AppCompatActivity() {
                 Log.w("MainActivity", "Error al aplicar tema: ${e.message}")
             }
         }
-
-        val bottomNavigationView: BottomNavigationView = binding.navigation
 
         if (!OpenCVLoader.initLocal()) {
             Log.d("OpenCV", "Unable to load OpenCV!")

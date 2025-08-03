@@ -9,13 +9,12 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.View
-import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Button
-import com.google.android.material.progressindicator.LinearProgressIndicator
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import es.monsteraltech.skincare_tfm.R
 
 /**
@@ -72,7 +71,7 @@ class ProgressManager(
             statusText?.text = message
             
             // Animar la barra de progreso si existe
-            progressBar?.let { bar ->
+            progressBar?.let {
                 animateProgressTo(progress)
             }
             
@@ -427,7 +426,6 @@ class ProgressManager(
      */
     private fun isHighContrastEnabled(): Boolean {
         return try {
-            val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
             (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         } catch (e: Exception) {
             false
@@ -499,7 +497,7 @@ class ProgressManager(
         if (vibrator?.hasVibrator() != true) return
         
         // Patrón de vibración específico para cambios de etapa importantes
-        val pattern = when (stage) {
+        when (stage) {
             ProcessingStage.AI_ANALYSIS, ProcessingStage.ABCDE_ANALYSIS -> {
                 // Doble vibración para etapas de análisis principales
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {

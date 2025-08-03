@@ -9,7 +9,7 @@ import kotlin.math.pow
  * Gestor de reintentos automáticos para operaciones fallidas
  * Implementa backoff exponencial con jitter para optimizar la recuperación
  */
-class RetryManager(private val context: Context) {
+class RetryManager() {
 
     /**
      * Configuración de reintentos para una operación
@@ -142,14 +142,6 @@ class RetryManager(private val context: Context) {
             maxDelayMs = 8000L,
             backoffMultiplier = 2.0,
             jitterMs = 750L
-        )
-        
-        fun quickConfig() = RetryConfig(
-            maxAttempts = 2,
-            baseDelayMs = 500L,
-            maxDelayMs = 2000L,
-            backoffMultiplier = 2.0,
-            jitterMs = 250L
         )
     }
 }

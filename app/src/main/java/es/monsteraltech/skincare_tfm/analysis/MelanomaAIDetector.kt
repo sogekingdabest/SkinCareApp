@@ -51,7 +51,7 @@ class MelanomaAIDetector(private val context: Context) {
     )
 
     enum class RiskLevel {
-        VERY_LOW, LOW, MODERATE, HIGH, VERY_HIGH
+        VERY_LOW, LOW, MEDIUM, HIGH, VERY_HIGH
     }
 
     enum class UrgencyLevel {
@@ -333,13 +333,13 @@ class MelanomaAIDetector(private val context: Context) {
 
         if (interpreter == null) {
             Log.e(TAG, "Interpreter es null, usando análisis basado en ABCDE únicamente")
-            val fallbackProbability = estimateProbabilityFromImage(bitmap)
+            val fallbackProbability = estimateProbabilityFromImage()
             return AIAnalysisResult(
                 probability = fallbackProbability,
                 riskLevel = when {
                     fallbackProbability < 0.2f -> RiskLevel.VERY_LOW
                     fallbackProbability < 0.4f -> RiskLevel.LOW
-                    fallbackProbability < 0.6f -> RiskLevel.MODERATE
+                    fallbackProbability < 0.6f -> RiskLevel.MEDIUM
                     fallbackProbability < 0.8f -> RiskLevel.HIGH
                     else -> RiskLevel.VERY_HIGH
                 },
@@ -391,7 +391,7 @@ class MelanomaAIDetector(private val context: Context) {
             val riskLevel = when {
                 probability < 0.2f -> RiskLevel.VERY_LOW
                 probability < 0.4f -> RiskLevel.LOW
-                probability < 0.6f -> RiskLevel.MODERATE
+                probability < 0.6f -> RiskLevel.MEDIUM
                 probability < 0.8f -> RiskLevel.HIGH
                 else -> RiskLevel.VERY_HIGH
             }
@@ -432,7 +432,7 @@ class MelanomaAIDetector(private val context: Context) {
         return when {
             combinedScore < 0.2f -> RiskLevel.VERY_LOW
             combinedScore < 0.4f -> RiskLevel.LOW
-            combinedScore < 0.6f -> RiskLevel.MODERATE
+            combinedScore < 0.6f -> RiskLevel.MEDIUM
             combinedScore < 0.8f -> RiskLevel.HIGH
             else -> RiskLevel.VERY_HIGH
         }
@@ -452,7 +452,7 @@ class MelanomaAIDetector(private val context: Context) {
                 "👀 Lunar de bajo riesgo. Fotografíe mensualmente para detectar cambios."
             }
 
-            RiskLevel.MODERATE -> {
+            RiskLevel.MEDIUM -> {
                 buildString {
                     append("⚠️ Riesgo moderado detectado. ")
                     if (abcdeResult.evolutionScore != null && abcdeResult.evolutionScore > 1) {
@@ -499,7 +499,7 @@ class MelanomaAIDetector(private val context: Context) {
             riskLevel == RiskLevel.HIGH || (criticalFactors >= 2 && highAIProbability) ->
                 UrgencyLevel.CONSULT
 
-            riskLevel == RiskLevel.MODERATE || criticalFactors >= 1 ->
+            riskLevel == RiskLevel.MEDIUM || criticalFactors >= 1 ->
                 UrgencyLevel.MONITOR
 
             else ->
@@ -513,8 +513,8 @@ class MelanomaAIDetector(private val context: Context) {
             val model = FileUtil.loadMappedFile(context, MODEL_PATH)
 
             val options = Interpreter.Options().apply {
-                setNumThreads(4)
-                setUseNNAPI(false)
+                numThreads = 4
+                useNNAPI = false
             }
 
             interpreter = Interpreter(model, options)
@@ -525,7 +525,7 @@ class MelanomaAIDetector(private val context: Context) {
         }
     }
 
-    private fun estimateProbabilityFromImage(bitmap: Bitmap): Float {
+    private fun estimateProbabilityFromImage(): Float {
         // Método simplificado de estimación por si falla
         return 0.1f
     }

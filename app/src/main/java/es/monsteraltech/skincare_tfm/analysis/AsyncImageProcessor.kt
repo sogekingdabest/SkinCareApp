@@ -3,11 +3,19 @@ package es.monsteraltech.skincare_tfm.analysis
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
-import kotlinx.coroutines.*
+import androidx.core.graphics.scale
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicBoolean
-import androidx.core.graphics.scale
 
 /**
  * Procesador asíncrono de imágenes que maneja el análisis de lunares en hilos de fondo
@@ -19,11 +27,6 @@ class AsyncImageProcessor(
 ) {
     companion object {
         private const val TAG = "AsyncImageProcessor"
-        
-        // Configuración por defecto para timeouts
-        private const val DEFAULT_TIMEOUT_MS = 30000L
-        private const val AI_TIMEOUT_MS = 15000L
-        private const val ABCDE_TIMEOUT_MS = 10000L
     }
 
     // Detector de IA y analizador ABCDE
@@ -211,7 +214,7 @@ class AsyncImageProcessor(
         
         // Si no se puede recuperar, crear resultado de fallback
         Log.w(TAG, "No se pudo recuperar del error, creando resultado de fallback")
-        return createFallbackResult(error, bitmap)
+        return createFallbackResult(error)
     }
 
     /**
@@ -236,8 +239,7 @@ class AsyncImageProcessor(
      * Crea un resultado de fallback cuando no se puede recuperar del error
      */
     private fun createFallbackResult(
-        error: AnalysisError,
-        bitmap: Bitmap
+        error: AnalysisError
     ): MelanomaAIDetector.CombinedAnalysisResult {
         
         val fallbackResult = createDefaultABCDEResult()
@@ -575,7 +577,7 @@ class AsyncImageProcessor(
         val combinedScore = abcdeResult.totalScore / 10.0f // Normalizar a 0-1
         val combinedRiskLevel = when {
             combinedScore < 0.3f -> MelanomaAIDetector.RiskLevel.LOW
-            combinedScore < 0.6f -> MelanomaAIDetector.RiskLevel.MODERATE
+            combinedScore < 0.6f -> MelanomaAIDetector.RiskLevel.MEDIUM
             else -> MelanomaAIDetector.RiskLevel.HIGH
         }
         
@@ -590,7 +592,7 @@ class AsyncImageProcessor(
             shouldMonitor = combinedScore > 0.4f,
             urgencyLevel = when (combinedRiskLevel) {
                 MelanomaAIDetector.RiskLevel.LOW -> MelanomaAIDetector.UrgencyLevel.ROUTINE
-                MelanomaAIDetector.RiskLevel.MODERATE -> MelanomaAIDetector.UrgencyLevel.MONITOR
+                MelanomaAIDetector.RiskLevel.MEDIUM -> MelanomaAIDetector.UrgencyLevel.MONITOR
                 else -> MelanomaAIDetector.UrgencyLevel.CONSULT
             },
             explanations = listOf("Análisis realizado solo con criterios ABCDE")

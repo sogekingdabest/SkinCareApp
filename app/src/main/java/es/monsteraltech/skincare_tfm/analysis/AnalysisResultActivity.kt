@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.auth.FirebaseAuth
@@ -22,6 +23,7 @@ import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
 import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
+import es.monsteraltech.skincare_tfm.body.mole.util.RiskLevelTranslator
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisResultEnhancedBinding
 import kotlinx.coroutines.launch
 import java.io.File
@@ -29,7 +31,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
-import androidx.core.view.isVisible
 
 class AnalysisResultActivity : AppCompatActivity() {
 
@@ -238,7 +239,7 @@ class AnalysisResultActivity : AppCompatActivity() {
         val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, bodyPartsList)
         binding.bodyPartSpinner.setAdapter(adapter)
 
-        binding.bodyPartSpinner.setOnItemClickListener { parent, view, position, id ->
+        binding.bodyPartSpinner.setOnItemClickListener { _, _, position, _ ->
             if (position > 0) {
                 selectedBodyPart = bodyPartsList[position]
                 bodyPartColorCode = bodyPartToColorMap[selectedBodyPart]
@@ -396,9 +397,7 @@ class AnalysisResultActivity : AppCompatActivity() {
                     val matrix = Matrix()
                     matrix.preScale(-1.0f, 1.0f)
                     val flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-                    if (flippedBitmap != null) {
-                        bitmap = flippedBitmap
-                    }
+                    bitmap = flippedBitmap
                 }
 
                 // Mostrar imagen inmediatamente
@@ -414,7 +413,7 @@ class AnalysisResultActivity : AppCompatActivity() {
 
                 // Realizar análisis asíncrono usando AsyncImageProcessor
                 android.util.Log.d("AnalysisResultActivity", "Iniciando análisis asíncrono...")
-                val result = asyncImageProcessor.processImage(
+                asyncImageProcessor.processImage(
                     bitmap = bitmap,
                     previousBitmap = previousBitmap,
                     pixelDensity = resources.displayMetrics.density,
@@ -468,21 +467,24 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun updateRiskIndicator(riskLevel: MelanomaAIDetector.RiskLevel) {
-        val (color, text) = when (riskLevel) {
-            MelanomaAIDetector.RiskLevel.VERY_LOW ->
-                Pair(getColor(R.color.risk_very_low), "Muy Bajo")
-            MelanomaAIDetector.RiskLevel.LOW ->
-                Pair(getColor(R.color.risk_low), "LOW")
-            MelanomaAIDetector.RiskLevel.MODERATE ->
-                Pair(getColor(R.color.risk_moderate), "MODERATE")
-            MelanomaAIDetector.RiskLevel.HIGH ->
-                Pair(getColor(R.color.risk_high), "HIGH")
-            MelanomaAIDetector.RiskLevel.VERY_HIGH ->
-                Pair(getColor(R.color.risk_very_high), "Muy Alto")
+        // Convertir el enum a string para usar con el traductor
+        val riskLevelString = when (riskLevel) {
+            MelanomaAIDetector.RiskLevel.VERY_LOW -> "VERY_LOW"
+            MelanomaAIDetector.RiskLevel.LOW -> "LOW"
+            MelanomaAIDetector.RiskLevel.MEDIUM -> "MEDIUM"
+            MelanomaAIDetector.RiskLevel.HIGH -> "HIGH"
+            MelanomaAIDetector.RiskLevel.VERY_HIGH -> "VERY_HIGH"
         }
-
+        
+        // Traducir el nivel de riesgo
+        val translatedText = RiskLevelTranslator.translateRiskLevel(this, riskLevelString)
+        
+        // Obtener el color usando la función de utilidad
+        val colorRes = RiskLevelTranslator.getRiskLevelColor(riskLevelString)
+        val color = getColor(colorRes)
+        binding.riskLevelText.setTextColor(color)
         binding.riskIndicator.setBackgroundColor(color)
-        binding.riskLevelText.text = "Riesgo: $text"
+        binding.riskLevelText.text = "Riesgo: $translatedText"
     }
 
     private fun updateCardColor(urgencyLevel: MelanomaAIDetector.UrgencyLevel) {

@@ -1,11 +1,8 @@
 package es.monsteraltech.skincare_tfm.utils
 
 import android.app.Activity
-import android.content.Context
-import android.content.res.Configuration
 import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
-import es.monsteraltech.skincare_tfm.account.AccountSettings
 import es.monsteraltech.skincare_tfm.account.UserProfileManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
