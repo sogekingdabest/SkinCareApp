@@ -14,8 +14,8 @@ import androidx.lifecycle.lifecycleScope
 import es.monsteraltech.skincare_tfm.MainActivity
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.data.SessionManager
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Actividad para verificar la sesión del usuario al inicio de la aplicación

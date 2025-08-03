@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.util.Log
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
+import androidx.core.graphics.scale
 
 /**
  * Gestor de memoria para optimizar el uso de recursos durante el procesamiento de imágenes
@@ -113,7 +114,7 @@ class MemoryManager {
         
         Log.i(TAG, "Optimizando imagen: ${bitmap.width}x${bitmap.height} -> ${newWidth}x${newHeight} (memoria: ${memoryInfo.usagePercentage * 100}%)")
         
-        val optimizedBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+        val optimizedBitmap = bitmap.scale(newWidth, newHeight)
         
         // Registrar el bitmap optimizado para gestión de memoria
         registerBitmap("optimized_${System.currentTimeMillis()}", optimizedBitmap)

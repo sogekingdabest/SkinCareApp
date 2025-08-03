@@ -1,11 +1,15 @@
 package es.monsteraltech.skincare_tfm.camera.guidance
 
 import android.graphics.Bitmap
-import org.opencv.android.Utils
-import org.opencv.core.*
-import org.opencv.imgproc.Imgproc
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.opencv.android.Utils
+import org.opencv.core.Core
+import org.opencv.core.CvType
+import org.opencv.core.Mat
+import org.opencv.core.MatOfDouble
+import org.opencv.core.Size
+import org.opencv.imgproc.Imgproc
 import kotlin.system.measureTimeMillis
 
 /**
@@ -87,12 +91,12 @@ class ImagePreprocessor {
                 }
                 
                 if (config.enableContrastEnhancement) {
-                    enhanceContrast(processedMat, config)
+                    enhanceContrast(processedMat)
                     appliedFilters.add("Mejora de contraste")
                 }
                 
                 if (config.enableNoiseReduction) {
-                    reduceNoise(processedMat, config)
+                    reduceNoise(processedMat)
                     appliedFilters.add("Reducción de ruido")
                 }
                 
@@ -158,7 +162,7 @@ class ImagePreprocessor {
     /**
      * Mejora el contraste de la imagen
      */
-    private fun enhanceContrast(mat: Mat, config: PreprocessingConfig) {
+    private fun enhanceContrast(mat: Mat) {
         // Convertir a escala de grises para análisis
         val grayMat = Mat()
         Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_BGR2GRAY)
@@ -189,7 +193,7 @@ class ImagePreprocessor {
     /**
      * Reduce el ruido de la imagen manteniendo los detalles importantes
      */
-    private fun reduceNoise(mat: Mat, config: PreprocessingConfig) {
+    private fun reduceNoise(mat: Mat) {
         // Usar filtro bilateral para reducir ruido preservando bordes
         val denoised = Mat()
         Imgproc.bilateralFilter(

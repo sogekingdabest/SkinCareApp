@@ -113,7 +113,7 @@ class MoleAdapter(private val moleList: List<Mole>, private val onClick: (Mole) 
                 val oldList = filteredMoleList
                 filteredMoleList = filterResults?.values as List<Mole>
 
-                // Usa DiffUtil para calcular los cambios
+                // Se usa DiffUtil para calcular los cambios
                 val diffCallback = MoleDiffCallback(oldList, filteredMoleList)
                 val diffResult = DiffUtil.calculateDiff(diffCallback)
 

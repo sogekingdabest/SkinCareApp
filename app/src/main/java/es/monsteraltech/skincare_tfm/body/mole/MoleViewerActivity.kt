@@ -12,8 +12,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import es.monsteraltech.skincare_tfm.R
 import com.google.firebase.auth.FirebaseAuth
+import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.body.mole.error.ErrorHandler
 import es.monsteraltech.skincare_tfm.body.mole.error.RetryManager
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
@@ -23,6 +23,7 @@ import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
 import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
 import es.monsteraltech.skincare_tfm.body.mole.util.ImageLoadingUtil
+import es.monsteraltech.skincare_tfm.body.mole.util.RiskLevelTranslator
 import es.monsteraltech.skincare_tfm.body.mole.view.EmptyStateView
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -85,7 +86,7 @@ class MoleViewerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_mole_viewer)
 
         moleAnalysisService = MoleAnalysisService()
-        retryManager = RetryManager(this)
+        retryManager = RetryManager()
         
         initializeViews()
         setupToolbar()
@@ -362,7 +363,7 @@ class MoleViewerActivity : AppCompatActivity() {
                 config = RetryManager.databaseConfig(),
                 onRetryAttempt = { attempt, exception ->
                     isRetrying = true
-                    val errorResult = ErrorHandler.handleError(this@MoleViewerActivity, exception, "Cargar análisis")
+                    ErrorHandler.handleError(this@MoleViewerActivity, exception, "Cargar análisis")
                     
                     runOnUiThread {
                         emptyStateView.showRetryIndicators(attempt, RetryManager.databaseConfig().maxAttempts)
@@ -508,16 +509,13 @@ class MoleViewerActivity : AppCompatActivity() {
 
     private fun displayRiskLevel(riskLevel: String) {
         if (riskLevel.isNotEmpty()) {
-            riskLevelTextView.text = "Riesgo: $riskLevel"
+            // Traducir el nivel de riesgo al español
+            val translatedRiskLevel = RiskLevelTranslator.translateRiskLevel(this, riskLevel)
+            riskLevelTextView.text = "Riesgo: $translatedRiskLevel"
             riskIndicator.visibility = View.VISIBLE
             
-            // Cambiar color según el nivel de riesgo
-            val colorRes = when (riskLevel.uppercase()) {
-                "LOW", "BAJO" -> android.R.color.holo_green_dark
-                "MODERATE", "MODERADO" -> android.R.color.holo_orange_dark
-                "HIGH", "ALTO" -> android.R.color.holo_red_dark
-                else -> android.R.color.darker_gray
-            }
+            // Cambiar color según el nivel de riesgo usando la función de utilidad
+            val colorRes = RiskLevelTranslator.getRiskLevelColor(riskLevel)
             val color = getColor(colorRes)
             riskLevelTextView.setTextColor(color)
             riskIndicator.setBackgroundColor(color)
@@ -811,7 +809,7 @@ class MoleViewerActivity : AppCompatActivity() {
             // Debug: mostrar tipos de datos
             metadata.forEach { (key, value) ->
                 if (key.startsWith("user")) {
-                    Log.d("MoleViewerActivity", "Metadata[$key] = $value (type: ${value?.javaClass?.simpleName})")
+                    Log.d("MoleViewerActivity", "Metadata[$key] = $value (type: ${value.javaClass.simpleName})")
                 }
             }
             

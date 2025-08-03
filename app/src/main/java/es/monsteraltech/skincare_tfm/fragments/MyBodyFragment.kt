@@ -11,7 +11,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.body.BodyPartActivity

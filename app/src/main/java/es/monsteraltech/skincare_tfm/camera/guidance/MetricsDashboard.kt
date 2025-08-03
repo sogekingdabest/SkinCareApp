@@ -2,9 +2,15 @@ package es.monsteraltech.skincare_tfm.camera.guidance
 
 import android.content.Context
 import android.util.Log
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -109,7 +115,7 @@ class MetricsDashboard(
         }
         
         // Verificar alertas de rendimiento
-        checkPerformanceAlerts(summary, stats)
+        checkPerformanceAlerts(summary)
         
         // Log periódico para debugging
         if (summary.detectionAttempts > 0) {
@@ -209,7 +215,7 @@ class MetricsDashboard(
     /**
      * Verifica alertas de rendimiento
      */
-    private suspend fun checkPerformanceAlerts(summary: MetricsSummary, stats: DashboardStats) {
+    private suspend fun checkPerformanceAlerts(summary: MetricsSummary) {
         val alerts = mutableListOf<PerformanceAlert>()
         
         // Alerta por uso alto de memoria

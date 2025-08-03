@@ -87,9 +87,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
 
     private fun loadSettings() {
         lifecycleScope.launch {
-            val result = userProfileManager.getUserSettings()
-
-            when (result) {
+            when (val result = userProfileManager.getUserSettings()) {
                 is AccountResult.Success<*> -> {
                     Log.d(TAG, "Configuraciones cargadas desde Firebase")
                     currentAccountSettings = result.data as AccountSettings
@@ -296,9 +294,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
 
                 val updatedAccountSettings =
                         currentSettings.toAccountSettings(currentAccountSettings)
-                val result = userProfileManager.updateUserSettings(updatedAccountSettings)
-
-                when (result) {
+                when (val result = userProfileManager.updateUserSettings(updatedAccountSettings)) {
                     is AccountResult.Success<*> -> {
                         Log.d(TAG, "Configuraciones guardadas exitosamente")
                         currentAccountSettings = updatedAccountSettings

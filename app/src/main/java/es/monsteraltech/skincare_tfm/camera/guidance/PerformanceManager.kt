@@ -8,8 +8,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.opencv.core.Mat
 import java.util.concurrent.ConcurrentLinkedQueue
-import kotlin.math.max
-import kotlin.math.min
 
 /**
  * Gestor de rendimiento que ajusta el procesamiento según las condiciones del dispositivo

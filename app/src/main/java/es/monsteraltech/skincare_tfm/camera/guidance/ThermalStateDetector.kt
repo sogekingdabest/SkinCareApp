@@ -5,7 +5,6 @@ import android.os.Build
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.lang.reflect.Method
 
 /**
  * Detector de estado térmico del dispositivo para ajustar el rendimiento
@@ -264,26 +263,6 @@ class ThermalStateDetector(private val context: Context) {
      */
     fun getCurrentAdjustments(): ThermalAdjustments = _currentAdjustments.value
 
-    /**
-     * Verifica si el dispositivo está en un estado térmico que requiere restricciones
-     */
-    fun shouldApplyThermalRestrictions(): Boolean {
-        return _currentThermalState.value != ThermalState.NONE
-    }
-
-    /**
-     * Obtiene el factor de calidad de procesamiento actual
-     */
-    fun getProcessingQualityFactor(): Float {
-        return _currentAdjustments.value.processingQuality
-    }
-
-    /**
-     * Obtiene la tasa de salto de frames actual
-     */
-    fun getFrameSkipRate(): Int {
-        return _currentAdjustments.value.frameSkipRate
-    }
 
     /**
      * Calcula la frecuencia ajustada basada en el multiplicador térmico
@@ -324,21 +303,6 @@ class ThermalStateDetector(private val context: Context) {
         
         return recommendations
     }
-
-    /**
-     * Agrega un listener para cambios de estado térmico
-     */
-    fun addThermalStateListener(listener: (ThermalState) -> Unit) {
-        // Implementación básica - en una implementación real usarías una lista de listeners
-    }
-
-    /**
-     * Remueve un listener de estado térmico
-     */
-    fun removeThermalStateListener(listener: (ThermalState) -> Unit) {
-        // Implementación básica - en una implementación real usarías una lista de listeners
-    }
-
     /**
      * Obtiene el multiplicador de frecuencia actual
      */

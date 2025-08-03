@@ -4,7 +4,6 @@ import android.text.Editable
 import android.text.TextWatcher
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import es.monsteraltech.skincare_tfm.R
 
 /**
  * Utilidad para validación en tiempo real de formularios
@@ -65,7 +64,7 @@ class RealTimeValidator {
             }
         }
 
-        fun passwordStrength(errorMessage: String? = null): Validator {
+        fun passwordStrength(): Validator {
             return object : Validator {
                 override fun validate(text: String): ValidationResult {
                     val hasMinLength = text.length >= 8

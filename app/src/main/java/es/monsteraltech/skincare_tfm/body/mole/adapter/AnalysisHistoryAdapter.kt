@@ -1,7 +1,6 @@
 package es.monsteraltech.skincare_tfm.body.mole.adapter
 
 import android.content.Context
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,8 +11,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
-import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionComparison
 import es.monsteraltech.skincare_tfm.body.mole.performance.LazyImageLoader
+import es.monsteraltech.skincare_tfm.body.mole.util.RiskLevelTranslator
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import java.io.File
 import java.text.SimpleDateFormat
@@ -148,16 +147,13 @@ class AnalysisHistoryAdapter(
 
     private fun displayRiskLevel(holder: ViewHolder, riskLevel: String) {
         if (riskLevel.isNotEmpty()) {
-            holder.riskLevelText.text = "Riesgo: $riskLevel"
+            // Traducir el nivel de riesgo al español
+            val translatedRiskLevel = RiskLevelTranslator.translateRiskLevel(context, riskLevel)
+            holder.riskLevelText.text = "Riesgo: $translatedRiskLevel"
             holder.riskIndicator.visibility = View.VISIBLE
             
-            // Cambiar color según el nivel de riesgo
-            val colorRes = when (riskLevel.uppercase()) {
-                "LOW", "BAJO" -> android.R.color.holo_green_dark
-                "MODERATE", "MODERADO" -> android.R.color.holo_orange_dark
-                "HIGH", "ALTO" -> android.R.color.holo_red_dark
-                else -> android.R.color.darker_gray
-            }
+            // Cambiar color según el nivel de riesgo usando la función de utilidad
+            val colorRes = RiskLevelTranslator.getRiskLevelColor(riskLevel)
             val color = ContextCompat.getColor(context, colorRes)
             holder.riskLevelText.setTextColor(color)
             holder.riskIndicator.setBackgroundColor(color)
@@ -246,21 +242,5 @@ class AnalysisHistoryAdapter(
     fun updateData(newList: List<AnalysisData>) {
         analysisList = newList
         notifyDataSetChanged()
-    }
-
-    /**
-     * Añade nuevos elementos al final de la lista (para paginación)
-     */
-    fun addData(newList: List<AnalysisData>) {
-        val oldSize = analysisList.size
-        analysisList = analysisList + newList
-        notifyItemRangeInserted(oldSize, newList.size)
-    }
-
-    /**
-     * Limpia la caché de imágenes cuando el adapter se destruye
-     */
-    fun onDestroy() {
-        lazyImageLoader.cancelAllLoads()
     }
 }

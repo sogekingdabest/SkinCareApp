@@ -2,7 +2,6 @@ package es.monsteraltech.skincare_tfm.login
 
 import android.app.ActivityOptions
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper

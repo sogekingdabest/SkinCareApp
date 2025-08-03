@@ -1,10 +1,16 @@
 package es.monsteraltech.skincare_tfm.camera.guidance
 
-import org.opencv.core.*
-import org.opencv.imgproc.Imgproc
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.math.sqrt
+import org.opencv.core.Core
+import org.opencv.core.CvType
+import org.opencv.core.Mat
+import org.opencv.core.MatOfDouble
+import org.opencv.core.MatOfFloat
+import org.opencv.core.MatOfInt
+import org.opencv.core.Scalar
+import org.opencv.core.Size
+import org.opencv.imgproc.Imgproc
 
 /**
  * Analiza la calidad de imagen en tiempo real para determinar si es adecuada para captura.
@@ -64,7 +70,6 @@ class ImageQualityAnalyzer(
         val grayFrame = performanceManager.borrowMat()
         
         try {
-            val performanceConfig = performanceManager.currentConfig.value
             
             // Convertir a escala de grises para análisis
             if (frame.channels() > 1) {

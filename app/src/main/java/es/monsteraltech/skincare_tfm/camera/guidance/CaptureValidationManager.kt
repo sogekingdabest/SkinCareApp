@@ -3,7 +3,8 @@ package es.monsteraltech.skincare_tfm.camera.guidance
 import android.graphics.PointF
 import android.graphics.RectF
 import android.util.Log
-import kotlin.math.*
+import kotlin.math.abs
+import kotlin.math.sqrt
 
 /**
  * Gestor de validación de captura que coordina todas las validaciones
@@ -196,7 +197,6 @@ class CaptureValidationManager {
         
         // 1. Verificar centrado
         val distanceFromCenter = calculateDistance(moleCenter, guideCenter)
-        val isCentered = true // Siempre aceptar como centrado
         Log.d(TAG, "Validación de centrado desactivada: siempre centrado")
         
         // 2. Verificar distancia (tamaño del lunar en relación al área de guía)

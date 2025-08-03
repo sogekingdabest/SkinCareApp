@@ -9,8 +9,8 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -214,16 +214,12 @@ class BodyPartActivity : AppCompatActivity() {
             else -> "$count lunares registrados"
         }
     }
-
+    //Revisar que el searchBar funcione correctamente
     private fun setupSearchBar() {
-        searchBar.setOnMenuItemClickListener { menuItem ->
+        searchBar.setOnMenuItemClickListener {
             // Manejar elementos del menú si es necesario
             false
         }
-        
-        // Configurar búsqueda (si el SearchBar soporta texto de búsqueda)
-        // Nota: SearchBar de Material 3 funciona diferente al SearchView tradicional
-        // Aquí puedes implementar la lógica de búsqueda según tus necesidades
     }
 
     override fun onResume() {

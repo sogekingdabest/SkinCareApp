@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.body.mole.adapter.AnalysisHistoryAdapter
@@ -20,11 +19,9 @@ import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
 import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
 import es.monsteraltech.skincare_tfm.body.mole.util.ImageLoadingUtil
 import es.monsteraltech.skincare_tfm.body.mole.view.EmptyStateView
-import es.monsteraltech.skincare_tfm.body.mole.performance.AnalysisPaginationManager
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisHistoryBinding
 import kotlinx.coroutines.launch
-import java.io.File
 
 class MoleAnalysisHistoryActivity : AppCompatActivity() {
 
@@ -52,7 +49,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         // Inicializar retry manager
-        retryManager = RetryManager(this)
+        retryManager = RetryManager()
 
         // Obtener el ID del lunar
         moleId = intent.getStringExtra("MOLE_ID") ?: ""
@@ -116,7 +113,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             val retryResult = retryManager.executeWithRetry(
                 operation = "Cargar datos del lunar $moleId",
                 config = RetryManager.databaseConfig(),
-                onRetryAttempt = { attempt, exception ->
+                onRetryAttempt = { attempt, _ ->
                     isRetrying = true
                     runOnUiThread {
                         Toast.makeText(
@@ -215,7 +212,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             val retryResult = retryManager.executeWithRetry(
                 operation = "Cargar historial de análisis del lunar $moleId",
                 config = RetryManager.databaseConfig(),
-                onRetryAttempt = { attempt, exception ->
+                onRetryAttempt = { attempt, _ ->
                     isRetrying = true
                     runOnUiThread {
                         showRetryIndicator(attempt, RetryManager.databaseConfig().maxAttempts)
@@ -237,7 +234,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             if (retryResult.result.isSuccess) {
                 val analyses = retryResult.result.getOrNull() ?: emptyList()
                 if (analyses.isNotEmpty()) {
-                    handleAnalysisLoaded(analyses, hasMore = false)
+                    handleAnalysisLoaded(analyses)
                     
                     if (retryResult.attemptsMade > 1) {
                         Toast.makeText(
@@ -270,7 +267,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
 
 
 
-    private fun handleAnalysisLoaded(analyses: List<AnalysisData>, hasMore: Boolean) {
+    private fun handleAnalysisLoaded(analyses: List<AnalysisData>) {
         // Actualizar datos del adapter
         analysisList = analyses
         adapter.updateData(analyses)

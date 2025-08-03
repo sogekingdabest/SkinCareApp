@@ -7,7 +7,6 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
-import java.util.*
 
 /**
  * Gestor de accesibilidad que proporciona soporte para TalkBack y otras tecnologías de asistencia.
@@ -21,7 +20,7 @@ class AccessibilityManager(private val context: Context) {
 
     private val accessibilityManager =
             context.getSystemService(Context.ACCESSIBILITY_SERVICE) as
-                    android.view.accessibility.AccessibilityManager
+                    AccessibilityManager
     private var lastAnnouncementTime = 0L
     private val announcementThrottleMs = 1000L // Evitar anuncios excesivos
 

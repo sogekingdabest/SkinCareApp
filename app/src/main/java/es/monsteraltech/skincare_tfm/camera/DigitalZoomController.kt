@@ -75,7 +75,7 @@ class DigitalZoomController(private val lifecycleOwner: LifecycleOwner) {
         val clampedLevel = level.coerceIn(MIN_ZOOM_RATIO, _maxZoomRatio.value)
         
         return try {
-            val future = cameraControl.setZoomRatio(clampedLevel)
+            cameraControl.setZoomRatio(clampedLevel)
             Log.d(TAG, "Zoom establecido a ${clampedLevel}x")
             true
         } catch (e: Exception) {

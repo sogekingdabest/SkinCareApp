@@ -4,7 +4,10 @@ import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import android.widget.*
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -157,11 +160,10 @@ class LoginActivity : AppCompatActivity() {
         if (user != null) {
             // Inicializar configuraciones del usuario y guardar sesión en background
             CoroutineScope(Dispatchers.IO).launch {
-                var sessionSaved = false
-                
+
                 try {
                     // Intentar guardar la sesión primero
-                    sessionSaved = sessionManager.saveSession(user)
+                    val sessionSaved = sessionManager.saveSession(user)
                     if (sessionSaved) {
                         android.util.Log.d("LoginActivity", "Sesión guardada exitosamente para usuario: ${user.uid}")
                     } else {

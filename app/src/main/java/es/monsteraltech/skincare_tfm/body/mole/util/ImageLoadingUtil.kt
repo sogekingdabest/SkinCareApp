@@ -76,8 +76,7 @@ object ImageLoadingUtil {
                             imageView = imageView,
                             imageUrl = imageUrl,
                             config = config,
-                            coroutineScope = coroutineScope,
-                            exception = (e ?: Exception("Error desconocido al cargar imagen")) as Exception
+                            coroutineScope = coroutineScope
                         )
                     } else {
                         config.onLoadError?.invoke(e ?: Exception("Error al cargar imagen"))
@@ -122,11 +121,10 @@ object ImageLoadingUtil {
         imageView: ImageView,
         imageUrl: String,
         config: ImageLoadConfig,
-        coroutineScope: CoroutineScope,
-        exception: Exception
+        coroutineScope: CoroutineScope
     ) {
         coroutineScope.launch(Dispatchers.Main) {
-            val retryManager = RetryManager(context)
+            val retryManager = RetryManager()
             
             val retryResult = retryManager.executeWithRetry(
                 operation = "Carga de imagen: $imageUrl",
@@ -159,7 +157,7 @@ object ImageLoadingUtil {
     /**
      * Carga una imagen de forma síncrona para reintentos
      */
-    private suspend fun loadImageSynchronously(context: Context, imageUrl: String): Result<Unit> {
+    private fun loadImageSynchronously(context: Context, imageUrl: String): Result<Unit> {
         return try {
             val imageSource = getImageSource(context, imageUrl)
             
@@ -201,28 +199,6 @@ object ImageLoadingUtil {
         Glide.with(imageView.context)
             .load(placeholderRes)
             .into(imageView)
-    }
-
-    /**
-     * Limpia la caché de Glide para una imagen específica
-     */
-    fun clearImageCache(context: Context, imageUrl: String) {
-        val imageSource = getImageSource(context, imageUrl)
-        // Nota: Glide.clear() requiere un Target o View, no un Object
-        // Esta función se puede usar para limpiar la caché completa si es necesario
-        Glide.get(context).clearMemory()
-    }
-
-    /**
-     * Precarga una imagen en la caché
-     */
-    fun preloadImage(context: Context, imageUrl: String) {
-        if (imageUrl.isNotEmpty()) {
-            val imageSource = getImageSource(context, imageUrl)
-            Glide.with(context)
-                .load(imageSource)
-                .preload()
-        }
     }
 
     /**

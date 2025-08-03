@@ -2,7 +2,15 @@ package es.monsteraltech.skincare_tfm.camera.guidance
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.*
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PointF
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.Rect
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -244,10 +252,10 @@ class CaptureGuidanceOverlay @JvmOverloads constructor(
         // Rayos del sol
         for (i in 0..7) {
             val angle = i * 45f * Math.PI / 180
-            val startX = centerPoint.x + 20f * kotlin.math.cos(angle).toFloat()
-            val startY = sunY + 20f * kotlin.math.sin(angle).toFloat()
-            val endX = centerPoint.x + 30f * kotlin.math.cos(angle).toFloat()
-            val endY = sunY + 30f * kotlin.math.sin(angle).toFloat()
+            val startX = centerPoint.x + 20f * cos(angle).toFloat()
+            val startY = sunY + 20f * sin(angle).toFloat()
+            val endX = centerPoint.x + 30f * cos(angle).toFloat()
+            val endY = sunY + 30f * sin(angle).toFloat()
             
             canvas.drawLine(startX, startY, endX, endY, indicatorPaint)
         }

@@ -2,11 +2,13 @@ package es.monsteraltech.skincare_tfm.analysis
 
 import android.graphics.Bitmap
 import android.util.Log
-import kotlinx.coroutines.*
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadPoolExecutor
 import kotlin.system.measureTimeMillis
+import androidx.core.graphics.scale
 
 /**
  * Optimizador de rendimiento para el procesamiento de imágenes
@@ -190,7 +192,7 @@ class PerformanceOptimizer {
         
         Log.d(TAG, "Optimizando bitmap para rendimiento: ${bitmap.width}x${bitmap.height} -> ${newWidth}x${newHeight}")
         
-        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+        return bitmap.scale(newWidth, newHeight)
     }
     
     /**

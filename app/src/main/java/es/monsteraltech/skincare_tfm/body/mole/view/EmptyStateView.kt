@@ -233,20 +233,5 @@ class EmptyStateView @JvmOverloads constructor(
         visibility = View.GONE
         hideRetryIndicators()
     }
-
-    /**
-     * Actualiza el mensaje de reintento
-     */
-    fun updateRetryMessage(message: String) {
-        retryText.text = message
-        retryText.visibility = View.VISIBLE
-    }
-
-    /**
-     * Actualiza el mensaje de reintento con formato
-     */
-    fun updateRetryMessage(@StringRes messageRes: Int, vararg formatArgs: Any) {
-        retryText.text = context.getString(messageRes, *formatArgs)
-        retryText.visibility = View.VISIBLE
-    }
+    
 }

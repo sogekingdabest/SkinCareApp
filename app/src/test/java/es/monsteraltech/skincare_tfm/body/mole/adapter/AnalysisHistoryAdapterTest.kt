@@ -5,7 +5,6 @@ import androidx.test.core.app.ApplicationProvider
 import com.google.firebase.Timestamp
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
-import es.monsteraltech.skincare_tfm.body.mole.model.EvolutionComparison
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -73,21 +72,5 @@ class AnalysisHistoryAdapterTest {
     fun testAdapterInitialization() {
         assertNotNull(adapter)
         assertEquals(2, adapter.itemCount)
-    }
-
-    @Test
-    fun testUpdateData() {
-        val newAnalysisList = listOf(sampleAnalysisList[0])
-        val evolutionComparisons = listOf<EvolutionComparison?>(null)
-        
-        adapter.updateData(newAnalysisList, evolutionComparisons)
-        
-        assertEquals(1, adapter.itemCount)
-    }
-
-    @Test
-    fun testEmptyList() {
-        adapter.updateData(emptyList(), emptyList())
-        assertEquals(0, adapter.itemCount)
     }
 }

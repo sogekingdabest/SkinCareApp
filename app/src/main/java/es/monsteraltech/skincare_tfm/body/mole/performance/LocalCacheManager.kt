@@ -3,7 +3,6 @@ package es.monsteraltech.skincare_tfm.body.mole.performance
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
-import com.google.firebase.Timestamp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
@@ -11,12 +10,13 @@ import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
+import androidx.core.content.edit
 
 /**
  * Gestor de caché local para análisis y lunares recientes
  * Implementa estrategias de caché en memoria y persistente
  */
-class LocalCacheManager private constructor(private val context: Context) {
+class LocalCacheManager private constructor(context: Context) {
     
     private val gson = Gson()
     private val sharedPrefs: SharedPreferences = context.getSharedPreferences(CACHE_PREFS_NAME, Context.MODE_PRIVATE)
@@ -87,7 +87,7 @@ class LocalCacheManager private constructor(private val context: Context) {
             if (config.enablePersistentCache) {
                 val cacheKey = "analysis_$analysisId"
                 val jsonData = gson.toJson(cacheEntry)
-                sharedPrefs.edit().putString(cacheKey, jsonData).apply()
+                sharedPrefs.edit() { putString(cacheKey, jsonData) }
                 cleanupPersistentCache("analysis_")
             } else {
                 // No hacer nada si el caché persistente está deshabilitado
@@ -134,7 +134,7 @@ class LocalCacheManager private constructor(private val context: Context) {
                         return@withContext entry.data
                     } else {
                         // Eliminar entrada expirada
-                        sharedPrefs.edit().remove(cacheKey).apply()
+                        sharedPrefs.edit() { remove(cacheKey) }
                     }
                 }
             }
@@ -167,7 +167,7 @@ class LocalCacheManager private constructor(private val context: Context) {
             if (config.enablePersistentCache && analysisList.size <= 20) {
                 val persistentKey = "analysis_list_$cacheKey"
                 val jsonData = gson.toJson(cacheEntry)
-                sharedPrefs.edit().putString(persistentKey, jsonData).apply()
+                sharedPrefs.edit() { putString(persistentKey, jsonData) }
             } else {
                 // No hacer nada si el caché persistente está deshabilitado o la lista es muy grande
             }
@@ -213,7 +213,7 @@ class LocalCacheManager private constructor(private val context: Context) {
                         return@withContext entry.data
                     } else {
                         // Eliminar entrada expirada
-                        sharedPrefs.edit().remove(persistentKey).apply()
+                        sharedPrefs.edit() { remove(persistentKey) }
                     }
                 }
             }
@@ -248,7 +248,7 @@ class LocalCacheManager private constructor(private val context: Context) {
             if (config.enablePersistentCache) {
                 val cacheKey = "mole_$moleId"
                 val jsonData = gson.toJson(cacheEntry)
-                sharedPrefs.edit().putString(cacheKey, jsonData).apply()
+                sharedPrefs.edit() { putString(cacheKey, jsonData) }
                 cleanupPersistentCache("mole_")
             } else {
                 // No hacer nada si el caché persistente está deshabilitado
@@ -295,7 +295,7 @@ class LocalCacheManager private constructor(private val context: Context) {
                         return@withContext entry.data
                     } else {
                         // Eliminar entrada expirada
-                        sharedPrefs.edit().remove(cacheKey).apply()
+                        sharedPrefs.edit() { remove(cacheKey) }
                     }
                 }
             }
@@ -347,13 +347,13 @@ class LocalCacheManager private constructor(private val context: Context) {
                 
                 // Eliminar las más antiguas
                 val toRemove = keyTimestamps.take(allKeys.size - MAX_PERSISTENT_CACHE_SIZE + 5)
-                val editor = sharedPrefs.edit()
-                
-                toRemove.forEach { (key, _) ->
-                    editor.remove(key)
+                sharedPrefs.edit() {
+
+                    toRemove.forEach { (key, _) ->
+                        remove(key)
+                    }
+
                 }
-                
-                editor.apply()
             }
         } catch (e: Exception) {
             Log.w("LocalCacheManager", "Error al limpiar caché persistente", e)
@@ -365,32 +365,7 @@ class LocalCacheManager private constructor(private val context: Context) {
      */
     suspend fun invalidateAnalysis(analysisId: String) = withContext(Dispatchers.IO) {
         analysisMemoryCache.remove(analysisId)
-        sharedPrefs.edit().remove("analysis_$analysisId").apply()
-    }
-
-    /**
-     * Invalida un lunar específico del caché
-     */
-    suspend fun invalidateMole(moleId: String) = withContext(Dispatchers.IO) {
-        moleMemoryCache.remove(moleId)
-        sharedPrefs.edit().remove("mole_$moleId").apply()
-        
-        // También invalidar listas que puedan contener este lunar
-        analysisListCache.clear()
-    }
-
-    /**
-     * Invalida todas las listas de análisis en caché
-     */
-    suspend fun invalidateAnalysisLists() = withContext(Dispatchers.IO) {
-        analysisListCache.clear()
-        
-        // Eliminar listas persistentes
-        val editor = sharedPrefs.edit()
-        sharedPrefs.all.keys.filter { it.startsWith("analysis_list_") }.forEach { key ->
-            editor.remove(key)
-        }
-        editor.apply()
+        sharedPrefs.edit() { remove("analysis_$analysisId") }
     }
 
     /**
@@ -400,7 +375,7 @@ class LocalCacheManager private constructor(private val context: Context) {
         analysisMemoryCache.clear()
         moleMemoryCache.clear()
         analysisListCache.clear()
-        sharedPrefs.edit().clear().apply()
+        sharedPrefs.edit() { clear() }
     }
 
     /**
@@ -443,18 +418,6 @@ class LocalCacheManager private constructor(private val context: Context) {
         
         fun longTerm() = CacheConfig(
             enableMemoryCache = true,
-            enablePersistentCache = true,
-            cacheExpirationMs = EXTENDED_CACHE_DURATION_MS
-        )
-        
-        fun memoryOnly() = CacheConfig(
-            enableMemoryCache = true,
-            enablePersistentCache = false,
-            cacheExpirationMs = DEFAULT_CACHE_DURATION_MS
-        )
-        
-        fun persistentOnly() = CacheConfig(
-            enableMemoryCache = false,
             enablePersistentCache = true,
             cacheExpirationMs = EXTENDED_CACHE_DURATION_MS
         )

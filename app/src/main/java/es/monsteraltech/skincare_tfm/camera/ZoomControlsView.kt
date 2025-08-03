@@ -6,11 +6,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageButton
 import android.widget.LinearLayout
-import com.google.android.material.slider.Slider
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import com.google.android.material.slider.Slider
 import es.monsteraltech.skincare_tfm.R
-import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Vista de controles de zoom digital integrada para la interfaz de cámara
@@ -86,7 +85,7 @@ class ZoomControlsView @JvmOverloads constructor(
             zoomListener?.onZoomOptimal()
         }
         
-        zoomSeekBar.addOnChangeListener { slider, value, fromUser ->
+        zoomSeekBar.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 val zoomInfo = currentZoomInfo ?: return@addOnChangeListener
                 val zoomRange = zoomInfo.maxLevel - zoomInfo.minLevel

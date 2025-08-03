@@ -7,7 +7,6 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
 import es.monsteraltech.skincare_tfm.R
-import es.monsteraltech.skincare_tfm.body.mole.util.ImageLoadingUtil
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -73,7 +72,7 @@ class LazyImageLoader(private val context: Context) {
         if (!isImageViewVisible(imageView, recyclerView)) {
             // Si no está visible, solo precargar si está habilitado
             if (config.enablePreload) {
-                schedulePreload(imageUrl, config)
+                schedulePreload(imageUrl)
             }
             return
         }
@@ -159,7 +158,7 @@ class LazyImageLoader(private val context: Context) {
     /**
      * Programa precarga de imagen
      */
-    private fun schedulePreload(imageUrl: String, config: LazyLoadConfig) {
+    private fun schedulePreload(imageUrl: String) {
         if (preloadedImages.containsKey(imageUrl)) {
             return // Ya está precargada
         }
@@ -219,28 +218,6 @@ class LazyImageLoader(private val context: Context) {
     }
 
     /**
-     * Precarga imágenes para posiciones específicas
-     */
-    fun preloadImagesForPositions(
-        imageUrls: List<String>,
-        startPosition: Int,
-        count: Int,
-        config: LazyLoadConfig = LazyLoadConfig()
-    ) {
-        val endPosition = minOf(startPosition + count, imageUrls.size)
-        
-        CoroutineScope(Dispatchers.IO).launch {
-            for (i in startPosition until endPosition) {
-                val imageUrl = imageUrls[i]
-                if (imageUrl.isNotEmpty() && !preloadedImages.containsKey(imageUrl)) {
-                    schedulePreload(imageUrl, config)
-                    delay(10) // Pequeño delay entre precargas
-                }
-            }
-        }
-    }
-
-    /**
      * Cancela todas las cargas pendientes
      */
     fun cancelAllLoads() {
@@ -282,12 +259,6 @@ class LazyImageLoader(private val context: Context) {
             loadDelay = 200L, // Mayor delay para scroll rápido
             diskCacheStrategy = DiskCacheStrategy.AUTOMATIC
         )
-        
-        fun forSlowConnection() = LazyLoadConfig(
-            enablePreload = false,
-            thumbnailFirst = true,
-            loadDelay = 0L,
-            diskCacheStrategy = DiskCacheStrategy.ALL
-        )
+
     }
 }

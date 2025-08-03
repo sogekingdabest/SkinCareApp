@@ -2,9 +2,12 @@ package es.monsteraltech.skincare_tfm.camera.guidance
 
 import android.app.ActivityManager
 import android.content.Context
-import android.os.Debug
 import android.util.Log
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Integración completa del sistema de métricas con los componentes de guías de captura
@@ -58,17 +61,6 @@ class MetricsIntegration(
         monitoringJob?.cancel()
         
         Log.i(TAG, "Metrics integration stopped")
-    }
-    
-    /**
-     * Integración con MoleDetectionProcessor
-     */
-    fun integrateWithMoleDetection(processor: MoleDetectionProcessor) {
-        // Wrapper para detectMole que incluye métricas
-        val originalDetectMole = processor::class.java.getDeclaredMethod("detectMole", org.opencv.core.Mat::class.java)
-        
-        // En una implementación real, usaríamos AOP o proxy pattern
-        // Por simplicidad, proporcionamos métodos helper
     }
     
     /**

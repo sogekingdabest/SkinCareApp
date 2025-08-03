@@ -3,9 +3,17 @@ package es.monsteraltech.skincare_tfm.camera.guidance
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.opencv.core.*
+import org.opencv.core.Core
+import org.opencv.core.CvType
+import org.opencv.core.Mat
+import org.opencv.core.MatOfInt
+import org.opencv.core.MatOfPoint
+import org.opencv.core.MatOfPoint2f
+import org.opencv.core.Point
+import org.opencv.core.Rect
+import org.opencv.core.Scalar
+import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
-import kotlin.math.*
 
 /**
  * Procesador de detección de lunares en tiempo real usando OpenCV
@@ -51,7 +59,7 @@ class MoleDetectionProcessor(
      */
     data class MoleDetection(
         val boundingBox: Rect,
-        val centerPoint: org.opencv.core.Point,
+        val centerPoint: Point,
         val confidence: Float,
         val area: Double,
         val contour: MatOfPoint,
@@ -80,7 +88,7 @@ class MoleDetectionProcessor(
             // Aplicar optimizaciones de ROI si está habilitado
             val thermalAdjustments = thermalDetector.getCurrentAdjustments()
             val workingFrame = if (thermalAdjustments.enableROI) {
-                val imageSize = org.opencv.core.Size(frame.cols().toDouble(), frame.rows().toDouble())
+                val imageSize = Size(frame.cols().toDouble(), frame.rows().toDouble())
                 val roiResult = roiOptimizer.calculateROI(imageSize, thermalAdjustments.roiScale)
                 roiOptimizer.extractROI(frame, roiResult)
             } else {
@@ -101,7 +109,7 @@ class MoleDetectionProcessor(
             
             // Ajustar coordenadas si se usó ROI
             if (thermalAdjustments.enableROI && detection != null && workingFrame != frame) {
-                val imageSize = org.opencv.core.Size(frame.cols().toDouble(), frame.rows().toDouble())
+                val imageSize = Size(frame.cols().toDouble(), frame.rows().toDouble())
                 val roiResult = roiOptimizer.calculateROI(imageSize, thermalAdjustments.roiScale)
                 detection = adjustDetectionForROI(detection, roiResult)
             }
@@ -146,7 +154,7 @@ class MoleDetectionProcessor(
      */
     private fun detectMolePrimary(frame: Mat): MoleDetection? {
         var mask: Mat? = null
-        var contours: List<MatOfPoint>? = null
+        var contours: List<MatOfPoint>?
         
         try {
             // Convertir a espacio HSV para mejor segmentación de color
@@ -164,7 +172,7 @@ class MoleDetectionProcessor(
             mask = Mat()
             if (frame.channels() == 1) {
                 // Segmentación por brillo: lunares más oscuros que la piel
-                org.opencv.core.Core.inRange(frame, Scalar(0.0), Scalar(90.0), mask)
+                Core.inRange(frame, Scalar(0.0), Scalar(90.0), mask)
             } else {
                 // Rango mucho más amplio y permisivo para lunares de cualquier color
                 val lowerBound = Scalar(0.0, 10.0, 0.0)
@@ -367,7 +375,7 @@ class MoleDetectionProcessor(
         val moments = Imgproc.moments(contour)
         val centerX = moments.m10 / moments.m00
         val centerY = moments.m01 / moments.m00
-        val centerPoint = org.opencv.core.Point(centerX, centerY)
+        val centerPoint = Point(centerX, centerY)
         
         // Calcular área
         val area = Imgproc.contourArea(contour)
