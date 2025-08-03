@@ -81,27 +81,8 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             context = this,
             analysisList = emptyList(),
             onItemClick = { analysis ->
-                // Abrir vista detallada del análisis pasando datos primitivos
-                val intent = Intent(this, AnalysisDetailActivity::class.java)
-                intent.putExtra("ANALYSIS_ID", analysis.id)
-                intent.putExtra("MOLE_ID", analysis.moleId)
-                intent.putExtra("ANALYSIS_RESULT", analysis.analysisResult)
-                intent.putExtra("AI_PROBABILITY", analysis.aiProbability)
-                intent.putExtra("AI_CONFIDENCE", analysis.aiConfidence)
-                intent.putExtra("COMBINED_SCORE", analysis.combinedScore)
-                intent.putExtra("RISK_LEVEL", analysis.riskLevel)
-                intent.putExtra("RECOMMENDATION", analysis.recommendation)
-                intent.putExtra("IMAGE_URL", analysis.imageUrl)
-                intent.putExtra("CREATED_AT", analysis.createdAt.toDate().time)
-                
-                // ABCDE Scores
-                intent.putExtra("ASYMMETRY_SCORE", analysis.abcdeScores.asymmetryScore)
-                intent.putExtra("BORDER_SCORE", analysis.abcdeScores.borderScore)
-                intent.putExtra("COLOR_SCORE", analysis.abcdeScores.colorScore)
-                intent.putExtra("DIAMETER_SCORE", analysis.abcdeScores.diameterScore)
-                intent.putExtra("EVOLUTION_SCORE", analysis.abcdeScores.evolutionScore ?: -1f)
-                intent.putExtra("TOTAL_SCORE", analysis.abcdeScores.totalScore)
-                
+                // Usar MoleViewerActivity para mostrar análisis pasados
+                val intent = createMoleViewerIntentForHistoricalAnalysis(analysis)
                 startActivity(intent)
             }
         )
@@ -371,6 +352,55 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
      */
     private fun hideRetryIndicator() {
         binding.emptyView.hideRetryIndicators()
+    }
+
+    /**
+     * Crea un Intent para abrir MoleViewerActivity con datos de un análisis histórico
+     */
+    private fun createMoleViewerIntentForHistoricalAnalysis(analysis: AnalysisData): Intent {
+        return Intent(this, MoleViewerActivity::class.java).apply {
+            // Datos básicos del lunar
+            putExtra("MOLE_ID", analysis.moleId)
+            putExtra("LUNAR_TITLE", moleData?.title ?: "Análisis Histórico")
+            putExtra("LUNAR_DESCRIPTION", moleData?.description ?: "")
+            putExtra("LUNAR_IMAGE_URL", analysis.imageUrl)
+            
+            // Marcar como análisis histórico para deshabilitar botón de evolución
+            putExtra("IS_HISTORICAL_ANALYSIS", true)
+            putExtra("ANALYSIS_COUNT", 1) // Solo este análisis para evitar mostrar botón de evolución
+            
+            // Datos del análisis específico
+            putExtra("HISTORICAL_ANALYSIS_ID", analysis.id)
+            putExtra("HISTORICAL_ANALYSIS_RESULT", analysis.analysisResult)
+            putExtra("HISTORICAL_AI_PROBABILITY", analysis.aiProbability)
+            putExtra("HISTORICAL_AI_CONFIDENCE", analysis.aiConfidence)
+            putExtra("HISTORICAL_COMBINED_SCORE", analysis.combinedScore)
+            putExtra("HISTORICAL_RISK_LEVEL", analysis.riskLevel)
+            putExtra("HISTORICAL_RECOMMENDATION", analysis.recommendation)
+            putExtra("HISTORICAL_CREATED_AT", analysis.createdAt.toDate().time)
+            
+            // ABCDE Scores históricos
+            putExtra("HISTORICAL_ASYMMETRY_SCORE", analysis.abcdeScores.asymmetryScore)
+            putExtra("HISTORICAL_BORDER_SCORE", analysis.abcdeScores.borderScore)
+            putExtra("HISTORICAL_COLOR_SCORE", analysis.abcdeScores.colorScore)
+            putExtra("HISTORICAL_DIAMETER_SCORE", analysis.abcdeScores.diameterScore)
+            putExtra("HISTORICAL_EVOLUTION_SCORE", analysis.abcdeScores.evolutionScore ?: -1f)
+            putExtra("HISTORICAL_TOTAL_SCORE", analysis.abcdeScores.totalScore)
+            
+            // Metadatos del análisis histórico
+            val metadataBundle = Bundle()
+            analysis.analysisMetadata.forEach { (key, value) ->
+                when (value) {
+                    is String -> metadataBundle.putString(key, value)
+                    is Float -> metadataBundle.putFloat(key, value)
+                    is Int -> metadataBundle.putInt(key, value)
+                    is Boolean -> metadataBundle.putBoolean(key, value)
+                    is Long -> metadataBundle.putLong(key, value)
+                    is Double -> metadataBundle.putDouble(key, value)
+                }
+            }
+            putExtra("HISTORICAL_ANALYSIS_METADATA", metadataBundle)
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

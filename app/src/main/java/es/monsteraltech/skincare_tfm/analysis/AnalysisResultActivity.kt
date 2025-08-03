@@ -29,6 +29,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import androidx.core.view.isVisible
 
 class AnalysisResultActivity : AppCompatActivity() {
 
@@ -709,8 +710,9 @@ class AnalysisResultActivity : AppCompatActivity() {
         )
 
         // Crear metadatos del análisis incluyendo valores del usuario si existen
-        val userValues = if (binding.userInputContainer.visibility == View.VISIBLE) {
-            mapOf(
+        val userValues = if (binding.userInputContainer.isVisible) {
+            android.util.Log.d("AnalysisResultActivity", "Guardando valores del usuario - Container visible")
+            val values = mapOf(
                 "userAsymmetry" to binding.userAsymmetrySlider.value,
                 "userBorder" to binding.userBorderSlider.value,
                 "userColor" to binding.userColorSlider.value,
@@ -718,7 +720,10 @@ class AnalysisResultActivity : AppCompatActivity() {
                 "userEvolution" to binding.userEvolutionSlider.value,
                 "userTotal" to calculateUserTotalScore()
             )
+            android.util.Log.d("AnalysisResultActivity", "Valores del usuario: $values")
+            values
         } else {
+            android.util.Log.d("AnalysisResultActivity", "Container del usuario no visible - No se guardan valores")
             emptyMap()
         }
 

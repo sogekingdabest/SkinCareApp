@@ -13,11 +13,14 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import es.monsteraltech.skincare_tfm.R
+import com.google.firebase.auth.FirebaseAuth
 import es.monsteraltech.skincare_tfm.body.mole.error.ErrorHandler
 import es.monsteraltech.skincare_tfm.body.mole.error.RetryManager
+import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisDataConverter
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
+import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
 import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
 import es.monsteraltech.skincare_tfm.body.mole.util.ImageLoadingUtil
 import es.monsteraltech.skincare_tfm.body.mole.view.EmptyStateView
@@ -33,6 +36,8 @@ class MoleViewerActivity : AppCompatActivity() {
 
     private lateinit var moleAnalysisService: MoleAnalysisService
     private lateinit var retryManager: RetryManager
+    private val auth = FirebaseAuth.getInstance()
+    private val moleRepository = MoleRepository()
     
     // UI Components
     private lateinit var titleTextView: TextView
@@ -137,7 +142,16 @@ class MoleViewerActivity : AppCompatActivity() {
     }
 
     private fun loadMoleData() {
-        // Obtener los datos del intent
+        // Verificar si es un análisis histórico
+        val isHistoricalAnalysis = intent.getBooleanExtra("IS_HISTORICAL_ANALYSIS", false)
+        
+        if (isHistoricalAnalysis) {
+            Log.d("MoleViewerActivity", "Loading historical analysis data")
+            loadHistoricalAnalysisData()
+            return
+        }
+
+        // Obtener los datos del intent (comportamiento normal)
         val title = intent.getStringExtra("LUNAR_TITLE") ?: ""
         val description = intent.getStringExtra("LUNAR_DESCRIPTION") ?: ""
         val analysisResult = intent.getStringExtra("LUNAR_ANALYSIS_RESULT") ?: ""
@@ -174,8 +188,8 @@ class MoleViewerActivity : AppCompatActivity() {
             Log.d("MoleViewerActivity", "Displaying analysis from AI result")
             displayAnalysisFromAiResult(analysisResult, imageUrl ?: "")
         } else if (moleId.isNotEmpty()) {
-            Log.d("MoleViewerActivity", "Loading latest analysis from service for mole: $moleId")
-            loadLatestAnalysisFromService(moleId)
+            Log.d("MoleViewerActivity", "Loading complete mole data from Firebase for mole: $moleId")
+            loadCompleteMoleData(moleId)
         } else {
             Log.d("MoleViewerActivity", "No analysis data available and no mole ID, showing no analysis state")
             showNoAnalysisState()
@@ -201,6 +215,112 @@ class MoleViewerActivity : AppCompatActivity() {
             config = ImageLoadingUtil.Configs.fullSize(),
             coroutineScope = lifecycleScope
         )
+    }
+
+    /**
+     * Carga y muestra datos de un análisis histórico específico
+     */
+    private fun loadHistoricalAnalysisData() {
+        Log.d("MoleViewerActivity", "Loading historical analysis data")
+        
+        // Obtener datos básicos del lunar
+        val title = intent.getStringExtra("LUNAR_TITLE") ?: "Análisis Histórico"
+        val description = intent.getStringExtra("LUNAR_DESCRIPTION") ?: ""
+        val imageUrl = intent.getStringExtra("LUNAR_IMAGE_URL") ?: ""
+        val moleId = intent.getStringExtra("MOLE_ID") ?: ""
+        
+        // Configurar UI básica
+        setupBasicUI(title, description, imageUrl)
+        
+        // Crear objeto MoleData temporal (sin botón de evolución)
+        currentMoleData = MoleData(
+            id = moleId,
+            title = title,
+            description = description,
+            imageUrl = imageUrl,
+            aiResult = "",
+            analysisCount = 1 // Solo 1 para evitar mostrar botón de evolución
+        )
+        
+        // Reconstruir AnalysisData desde los datos históricos del intent
+        val historicalAnalysis = reconstructHistoricalAnalysisFromIntent()
+        if (historicalAnalysis != null) {
+            Log.d("MoleViewerActivity", "Successfully reconstructed historical analysis")
+            displayAnalysisData(historicalAnalysis)
+        } else {
+            Log.e("MoleViewerActivity", "Failed to reconstruct historical analysis")
+            showNoAnalysisState()
+        }
+    }
+
+    /**
+     * Reconstruye un objeto AnalysisData desde los datos históricos del intent
+     */
+    private fun reconstructHistoricalAnalysisFromIntent(): AnalysisData? {
+        return try {
+            val analysisId = intent.getStringExtra("HISTORICAL_ANALYSIS_ID") ?: return null
+            val moleId = intent.getStringExtra("MOLE_ID") ?: ""
+            val analysisResult = intent.getStringExtra("HISTORICAL_ANALYSIS_RESULT") ?: ""
+            val aiProbability = intent.getFloatExtra("HISTORICAL_AI_PROBABILITY", 0f)
+            val aiConfidence = intent.getFloatExtra("HISTORICAL_AI_CONFIDENCE", 0f)
+            val combinedScore = intent.getFloatExtra("HISTORICAL_COMBINED_SCORE", 0f)
+            val riskLevel = intent.getStringExtra("HISTORICAL_RISK_LEVEL") ?: ""
+            val recommendation = intent.getStringExtra("HISTORICAL_RECOMMENDATION") ?: ""
+            val imageUrl = intent.getStringExtra("LUNAR_IMAGE_URL") ?: ""
+            val createdAtMillis = intent.getLongExtra("HISTORICAL_CREATED_AT", System.currentTimeMillis())
+            
+            // Reconstruir ABCDE Scores
+            val asymmetryScore = intent.getFloatExtra("HISTORICAL_ASYMMETRY_SCORE", 0f)
+            val borderScore = intent.getFloatExtra("HISTORICAL_BORDER_SCORE", 0f)
+            val colorScore = intent.getFloatExtra("HISTORICAL_COLOR_SCORE", 0f)
+            val diameterScore = intent.getFloatExtra("HISTORICAL_DIAMETER_SCORE", 0f)
+            val evolutionScore = intent.getFloatExtra("HISTORICAL_EVOLUTION_SCORE", -1f).let { 
+                if (it == -1f) null else it 
+            }
+            val totalScore = intent.getFloatExtra("HISTORICAL_TOTAL_SCORE", 0f)
+            
+            val abcdeScores = ABCDEScores(
+                asymmetryScore = asymmetryScore,
+                borderScore = borderScore,
+                colorScore = colorScore,
+                diameterScore = diameterScore,
+                evolutionScore = evolutionScore,
+                totalScore = totalScore
+            )
+            
+            // Crear Timestamp desde milisegundos
+            val createdAt = com.google.firebase.Timestamp(java.util.Date(createdAtMillis))
+            
+            // Reconstruir metadatos del análisis
+            val metadataBundle = intent.getBundleExtra("HISTORICAL_ANALYSIS_METADATA")
+            val analysisMetadata = metadataBundle?.let { bundle ->
+                val map = mutableMapOf<String, Any>()
+                for (key in bundle.keySet()) {
+                    bundle.get(key)?.let { value ->
+                        map[key] = value
+                    }
+                }
+                map.toMap()
+            } ?: emptyMap()
+            
+            AnalysisData(
+                id = analysisId,
+                moleId = moleId,
+                analysisResult = analysisResult,
+                aiProbability = aiProbability,
+                aiConfidence = aiConfidence,
+                abcdeScores = abcdeScores,
+                combinedScore = combinedScore,
+                riskLevel = riskLevel,
+                recommendation = recommendation,
+                imageUrl = imageUrl,
+                createdAt = createdAt,
+                analysisMetadata = analysisMetadata
+            )
+        } catch (e: Exception) {
+            Log.e("MoleViewerActivity", "Error reconstructing historical analysis", e)
+            null
+        }
     }
 
     private fun displayAnalysisFromAiResult(aiResult: String, imageUrl: String) {
@@ -377,6 +497,9 @@ class MoleViewerActivity : AppCompatActivity() {
             viewHistoryButton.visibility = View.GONE
             Log.d("MoleViewerActivity", "Ocultando botón de histórico - solo hay $analysisCount análisis")
         }
+        
+        // Mostrar valores ABCDE del usuario si existen
+        displayUserABCDEValues(analysisData)
         
         Log.d("MoleViewerActivity", "=== ANALYSIS DATA DISPLAY COMPLETED ===")
         Log.d("MoleViewerActivity", "Analysis container visibility: ${if (analysisContainer.visibility == View.VISIBLE) "VISIBLE" else "HIDDEN"}")
@@ -587,6 +710,194 @@ class MoleViewerActivity : AppCompatActivity() {
                 isRetryable = false
             )
             showErrorState(errorResult) { loadMoleData() }
+        }
+    }
+
+    private fun loadCompleteMoleData(moleId: String) {
+        progressBar.visibility = View.VISIBLE
+        analysisContainer.visibility = View.GONE
+        emptyStateView.hide()
+
+        lifecycleScope.launch {
+            try {
+                val currentUser = auth.currentUser
+                if (currentUser == null) {
+                    Log.e("MoleViewerActivity", "User not authenticated")
+                    showErrorState(ErrorHandler.ErrorResult(
+                        type = ErrorHandler.ErrorType.AUTHENTICATION_ERROR,
+                        userMessage = "Usuario no autenticado",
+                        technicalMessage = "FirebaseAuth.currentUser is null",
+                        isRetryable = false,
+                        suggestedAction = "Inicia sesión para ver los datos"
+                    )) {}
+                    return@launch
+                }
+
+                // Cargar el MoleData completo desde Firebase
+                val result = moleRepository.getMoleById(currentUser.uid, moleId)
+                
+                if (result.isSuccess) {
+                    val completeMoleData = result.getOrNull()
+                    if (completeMoleData != null) {
+                        Log.d("MoleViewerActivity", "Complete mole data loaded successfully")
+                        Log.d("MoleViewerActivity", "Metadata keys: ${completeMoleData.analysisMetadata.keys}")
+                        
+                        // Actualizar currentMoleData con los datos completos
+                        currentMoleData = completeMoleData
+                        
+                        // Crear AnalysisData desde MoleData para mostrar
+                        val analysisData = createAnalysisDataFromMoleData(completeMoleData)
+                        displayAnalysisData(analysisData)
+                    } else {
+                        Log.e("MoleViewerActivity", "Mole data is null")
+                        showErrorState(ErrorHandler.ErrorResult(
+                            type = ErrorHandler.ErrorType.DATA_NOT_FOUND,
+                            userMessage = "No se pudieron cargar los datos del lunar",
+                            technicalMessage = "MoleData is null after successful query",
+                            isRetryable = true
+                        )) {}
+                    }
+                } else {
+                    Log.e("MoleViewerActivity", "Failed to load mole data: ${result.exceptionOrNull()?.message}")
+                    showErrorState(ErrorHandler.ErrorResult(
+                        type = ErrorHandler.ErrorType.UNKNOWN_ERROR,
+                        userMessage = "Error al cargar los datos del lunar",
+                        technicalMessage = result.exceptionOrNull()?.message ?: "Unknown error",
+                        isRetryable = true
+                    )) {}
+                }
+            } catch (e: Exception) {
+                Log.e("MoleViewerActivity", "Exception loading complete mole data", e)
+                showErrorState(ErrorHandler.ErrorResult(
+                    type = ErrorHandler.ErrorType.UNKNOWN_ERROR,
+                    userMessage = "Error inesperado al cargar los datos",
+                    technicalMessage = e.message ?: "Unknown exception",
+                    isRetryable = true
+                )) {}
+            }
+        }
+    }
+
+    private fun createAnalysisDataFromMoleData(moleData: MoleData): AnalysisData {
+        return AnalysisData(
+            id = "${moleData.id}_current",
+            moleId = moleData.id,
+            analysisResult = moleData.aiResult,
+            aiProbability = moleData.aiProbability?.toFloat() ?: 0f,
+            aiConfidence = moleData.aiConfidence?.toFloat() ?: 0f,
+            abcdeScores = ABCDEScores(
+                asymmetryScore = moleData.abcdeAsymmetry?.toFloat() ?: 0f,
+                borderScore = moleData.abcdeBorder?.toFloat() ?: 0f,
+                colorScore = moleData.abcdeColor?.toFloat() ?: 0f,
+                diameterScore = moleData.abcdeDiameter?.toFloat() ?: 0f,
+                evolutionScore = null, // No se guarda en MoleData
+                totalScore = moleData.abcdeTotalScore?.toFloat() ?: 0f
+            ),
+            combinedScore = moleData.combinedScore?.toFloat() ?: 0f,
+            riskLevel = moleData.riskLevel,
+            recommendation = moleData.recommendation,
+            imageUrl = moleData.imageUrl,
+            createdAt = moleData.lastAnalysisDate ?: moleData.createdAt,
+            analysisMetadata = moleData.analysisMetadata // ¡Aquí están los metadatos con los valores del usuario!
+        )
+    }
+
+    private fun displayUserABCDEValues(analysisData: AnalysisData) {
+        try {
+            Log.d("MoleViewerActivity", "=== DISPLAYING USER ABCDE VALUES ===")
+            val metadata = analysisData.analysisMetadata
+            Log.d("MoleViewerActivity", "Metadata keys: ${metadata.keys}")
+            
+            // Debug: mostrar tipos de datos
+            metadata.forEach { (key, value) ->
+                if (key.startsWith("user")) {
+                    Log.d("MoleViewerActivity", "Metadata[$key] = $value (type: ${value?.javaClass?.simpleName})")
+                }
+            }
+            
+            // Verificar si existen valores del usuario en los metadatos
+            // Usar casting robusto porque Firebase puede devolver Double en lugar de Float
+            val userAsymmetry = (metadata["userAsymmetry"] as? Number)?.toFloat()
+            val userBorder = (metadata["userBorder"] as? Number)?.toFloat()
+            val userColor = (metadata["userColor"] as? Number)?.toFloat()
+            val userDiameter = (metadata["userDiameter"] as? Number)?.toFloat()
+            val userEvolution = (metadata["userEvolution"] as? Number)?.toFloat()
+            val userTotal = (metadata["userTotal"] as? Number)?.toFloat()
+            
+            Log.d("MoleViewerActivity", "User values - A:$userAsymmetry, B:$userBorder, C:$userColor, D:$userDiameter, E:$userEvolution, Total:$userTotal")
+            
+            // Solo mostrar la sección si hay valores del usuario
+            if (userAsymmetry != null || userBorder != null || userColor != null || 
+                userDiameter != null || userEvolution != null) {
+                
+                Log.d("MoleViewerActivity", "User values found, showing user ABCDE card")
+                
+                // Mostrar la tarjeta del usuario
+                findViewById<View>(R.id.userAbcdeCard)?.visibility = View.VISIBLE
+                
+                // Mostrar valores individuales usando findViewById
+                userAsymmetry?.let { value ->
+                    findViewById<View>(R.id.userAsymmetryLayout)?.visibility = View.VISIBLE
+                    findViewById<TextView>(R.id.userAsymmetryScore)?.text = "${String.format("%.1f", value)}/2"
+                    findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.userAsymmetryProgress)?.progress = ((value / 2f) * 100).toInt()
+                }
+                
+                userBorder?.let { value ->
+                    findViewById<View>(R.id.userBorderLayout)?.visibility = View.VISIBLE
+                    findViewById<TextView>(R.id.userBorderScore)?.text = "${String.format("%.1f", value)}/8"
+                    findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.userBorderProgress)?.progress = ((value / 8f) * 100).toInt()
+                }
+                
+                userColor?.let { value ->
+                    findViewById<View>(R.id.userColorLayout)?.visibility = View.VISIBLE
+                    findViewById<TextView>(R.id.userColorScore)?.text = "${String.format("%.1f", value)}/6"
+                    findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.userColorProgress)?.progress = ((value / 6f) * 100).toInt()
+                }
+                
+                userDiameter?.let { value ->
+                    findViewById<View>(R.id.userDiameterLayout)?.visibility = View.VISIBLE
+                    findViewById<TextView>(R.id.userDiameterScore)?.text = "${String.format("%.1f", value)}/5"
+                    findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.userDiameterProgress)?.progress = ((value / 5f) * 100).toInt()
+                }
+                
+                userEvolution?.let { value ->
+                    if (value > 0f) {
+                        findViewById<View>(R.id.userEvolutionLayout)?.visibility = View.VISIBLE
+                        findViewById<TextView>(R.id.userEvolutionScore)?.text = "${String.format("%.1f", value)}/3"
+                        findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.userEvolutionProgress)?.progress = ((value / 3f) * 100).toInt()
+                    }
+                }
+                
+                // Mostrar score total del usuario
+                userTotal?.let { total ->
+                    findViewById<TextView>(R.id.userAbcdeTotalScore)?.text = "Score ABCDE Total (Usuario): ${String.format("%.1f", total)}"
+                    
+                    // Calcular y mostrar comparación con la app
+                    val appTotal = analysisData.abcdeScores.totalScore
+                    val difference = kotlin.math.abs(appTotal - total)
+                    
+                    val comparisonMessage = when {
+                        difference < 1.0f -> "¡Muy similar! Diferencia: ${String.format("%.1f", difference)} puntos"
+                        difference < 3.0f -> "Bastante similar. Diferencia: ${String.format("%.1f", difference)} puntos"
+                        difference < 5.0f -> "Algunas diferencias. Diferencia: ${String.format("%.1f", difference)} puntos"
+                        else -> "Diferencias significativas. Diferencia: ${String.format("%.1f", difference)} puntos"
+                    }
+                    
+                    findViewById<TextView>(R.id.userComparisonText)?.text = comparisonMessage
+                    Log.d("MoleViewerActivity", "Comparison: App=$appTotal, User=$total, Diff=$difference")
+                }
+                
+                Log.d("MoleViewerActivity", "User ABCDE values displayed successfully")
+                
+            } else {
+                // Ocultar la sección si no hay valores del usuario
+                findViewById<View>(R.id.userAbcdeCard)?.visibility = View.GONE
+                Log.d("MoleViewerActivity", "No user values found, hiding user ABCDE card")
+            }
+        } catch (e: Exception) {
+            Log.e("MoleViewerActivity", "Error displaying user ABCDE values", e)
+            // En caso de error, simplemente ocultar la sección
+            findViewById<View>(R.id.userAbcdeCard)?.visibility = View.GONE
         }
     }
 

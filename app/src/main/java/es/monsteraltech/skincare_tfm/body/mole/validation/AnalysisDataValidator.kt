@@ -83,7 +83,7 @@ object AnalysisDataValidator {
      * Valida el nivel de riesgo
      */
     private fun validateRiskLevel(riskLevel: String): List<String> {
-        val validRiskLevels = listOf("VERY LOW","LOW", "MEDIUM", "HIGH")
+        val validRiskLevels = listOf("VERY_LOW","LOW", "MEDIUM", "HIGH", "VERY_HIGH")
         return if (riskLevel.uppercase() !in validRiskLevels) {
             listOf("Nivel de riesgo debe ser uno de: ${validRiskLevels.joinToString(", ")}")
         } else {
