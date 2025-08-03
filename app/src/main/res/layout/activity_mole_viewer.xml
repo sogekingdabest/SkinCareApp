@@ -503,6 +503,245 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- Valores ABCDE del Usuario -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/userAbcdeCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:visibility="gone"
+                    style="@style/Widget.SkinCare_TFM.Card">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Tus Valores ABCDE"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="12dp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Valores que introdujiste durante el análisis:"
+                            android:textSize="14sp"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_marginBottom="16dp" />
+
+                        <!-- A - Asimetría Usuario -->
+                        <LinearLayout
+                            android:id="@+id/userAsymmetryLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="A - Asimetría:"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/userAsymmetryProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="center_vertical"
+                                android:max="100"
+                                app:indicatorColor="?attr/colorSecondary"
+                                app:trackColor="?attr/colorSurfaceVariant" />
+
+                            <TextView
+                                android:id="@+id/userAsymmetryScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="0.0/2" />
+
+                        </LinearLayout>
+
+                        <!-- B - Bordes Usuario -->
+                        <LinearLayout
+                            android:id="@+id/userBorderLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="B - Bordes:"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/userBorderProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="center_vertical"
+                                android:max="100"
+                                app:indicatorColor="?attr/colorSecondary"
+                                app:trackColor="?attr/colorSurfaceVariant" />
+
+                            <TextView
+                                android:id="@+id/userBorderScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="0.0/8" />
+
+                        </LinearLayout>
+
+                        <!-- C - Color Usuario -->
+                        <LinearLayout
+                            android:id="@+id/userColorLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="C - Color:"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/userColorProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="center_vertical"
+                                android:max="100"
+                                app:indicatorColor="?attr/colorSecondary"
+                                app:trackColor="?attr/colorSurfaceVariant" />
+
+                            <TextView
+                                android:id="@+id/userColorScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="0.0/6" />
+
+                        </LinearLayout>
+
+                        <!-- D - Diámetro Usuario -->
+                        <LinearLayout
+                            android:id="@+id/userDiameterLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="D - Diámetro:"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/userDiameterProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="center_vertical"
+                                android:max="100"
+                                app:indicatorColor="?attr/colorSecondary"
+                                app:trackColor="?attr/colorSurfaceVariant" />
+
+                            <TextView
+                                android:id="@+id/userDiameterScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="0.0/5" />
+
+                        </LinearLayout>
+
+                        <!-- E - Evolución Usuario -->
+                        <LinearLayout
+                            android:id="@+id/userEvolutionLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="E - Evolución:"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/userEvolutionProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="center_vertical"
+                                android:max="100"
+                                app:indicatorColor="?attr/colorSecondary"
+                                app:trackColor="?attr/colorSurfaceVariant" />
+
+                            <TextView
+                                android:id="@+id/userEvolutionScore"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="0.0/3" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginVertical="8dp"
+                            android:background="?attr/colorOutline" />
+
+                        <TextView
+                            android:id="@+id/userAbcdeTotalScore"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Score ABCDE Total (Usuario): --"
+                            android:textStyle="bold"
+                            android:textSize="16sp" />
+
+                        <!-- Comparación -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginTop="12dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Comparación con la App"
+                                android:textStyle="bold"
+                                android:textSize="14sp"
+                                android:layout_marginBottom="4dp" />
+
+                            <TextView
+                                android:id="@+id/userComparisonText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="12sp"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
             </LinearLayout>
 
         </LinearLayout>

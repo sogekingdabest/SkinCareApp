@@ -58,6 +58,9 @@ class MoleAnalysisService {
                                                 analysis.copy(moleId = moleId)
                                         )
 
+                                // Log para debug
+                                Log.d("MoleAnalysisService", "Saving new analysis with metadata keys: ${sanitizedAnalysis.analysisMetadata.keys}")
+
                                 // Ejecutar transacción para mover análisis actual al historial y
                                 // actualizar
                                 // lunar
@@ -180,8 +183,13 @@ class MoleAnalysisService {
                                                                                         )
                                                                                         ?: currentTimestamp,
                                                                         analysisMetadata =
-                                                                                emptyMap()
+                                                                                moleSnapshot
+                                                                                        .get("analysisMetadata") as? Map<String, Any>
+                                                                                        ?: emptyMap()
                                                                 )
+
+                                                        // Log para debug
+                                                        Log.d("MoleAnalysisService", "Moving current analysis to history with metadata keys: ${currentAnalysisData.analysisMetadata.keys}")
 
                                                         // Guardar análisis actual en el historial
                                                         val historialRef =
@@ -260,7 +268,9 @@ class MoleAnalysisService {
                                                                         (currentCount + 1),
                                                                 "lastAnalysisDate" to
                                                                         currentTimestamp,
-                                                                "updatedAt" to currentTimestamp
+                                                                "updatedAt" to currentTimestamp,
+                                                                "analysisMetadata" to
+                                                                        sanitizedAnalysis.analysisMetadata
                                                         )
 
                                                 // Si es el primer análisis, establecer también

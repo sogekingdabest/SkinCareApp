@@ -35,11 +35,14 @@ data class MoleData(
     
     // Recomendación y urgencia
     val recommendation: String = "", // Texto de recomendación
-    val urgency: String = "" // MONITOR, CONSULT, URGENT
+    val urgency: String = "", // MONITOR, CONSULT, URGENT
+    
+    // Metadatos del análisis (incluyendo valores del usuario)
+    val analysisMetadata: Map<String, Any> = emptyMap()
 ) {
     // Constructor vacío requerido por Firestore
     constructor() : this("", "", "", "", "", "", "", "", Timestamp.now(), Timestamp.now(), 0, null, null,
-        null, null, "", null, null, null, null, null, null, "", "")
+        null, null, "", null, null, null, null, null, null, "", "", emptyMap())
 
     // Método para convertir a Map para Firestore
     fun toMap(): Map<String, Any> {
@@ -74,6 +77,11 @@ data class MoleData(
         abcdeColor?.let { map["abcdeColor"] = it }
         abcdeDiameter?.let { map["abcdeDiameter"] = it }
         abcdeTotalScore?.let { map["abcdeTotalScore"] = it }
+        
+        // Metadatos del análisis
+        if (analysisMetadata.isNotEmpty()) {
+            map["analysisMetadata"] = analysisMetadata
+        }
         
         return map
     }
@@ -113,7 +121,10 @@ data class MoleData(
                 
                 // Recomendación y urgencia
                 recommendation = data["recommendation"] as? String ?: "",
-                urgency = data["urgency"] as? String ?: ""
+                urgency = data["urgency"] as? String ?: "",
+                
+                // Metadatos del análisis
+                analysisMetadata = data["analysisMetadata"] as? Map<String, Any> ?: emptyMap()
             )
         }
     }
