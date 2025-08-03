@@ -132,6 +132,9 @@ class AnalysisResultActivity : AppCompatActivity() {
 
         // Configurar spinner de partes del cuerpo
         setupBodyPartSpinner()
+        
+        // Configurar sección de valores del usuario
+        setupUserInputSection()
     }
 
     private fun setupAsyncProcessing() {
@@ -245,6 +248,124 @@ class AnalysisResultActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupUserInputSection() {
+        // Configurar botón de toggle
+        binding.toggleUserInputButton.setOnClickListener {
+            val isVisible = binding.userInputContainer.visibility == View.VISIBLE
+            if (isVisible) {
+                binding.userInputContainer.visibility = View.GONE
+                binding.toggleUserInputButton.text = getString(R.string.user_abcde_add_button)
+            } else {
+                binding.userInputContainer.visibility = View.VISIBLE
+                binding.toggleUserInputButton.text = getString(R.string.user_abcde_hide_button)
+            }
+        }
+
+        // Configurar sliders con listeners
+        setupSliderListener(binding.userAsymmetrySlider, binding.userAsymmetryValue, 2.0f)
+        setupSliderListener(binding.userBorderSlider, binding.userBorderValue, 8.0f)
+        setupSliderListener(binding.userColorSlider, binding.userColorValue, 6.0f)
+        setupSliderListener(binding.userDiameterSlider, binding.userDiameterValue, 5.0f)
+        setupSliderListener(binding.userEvolutionSlider, binding.userEvolutionValue, 3.0f)
+        
+        // Configurar botones de información
+        setupInfoButtons()
+    }
+
+    private fun setupSliderListener(slider: com.google.android.material.slider.Slider, valueText: android.widget.TextView, maxValue: Float) {
+        slider.addOnChangeListener { _, value, _ ->
+            valueText.text = String.format("%.1f/%.0f", value, maxValue)
+            updateUserTotalScore()
+            updateComparison()
+        }
+    }
+
+    private fun setupInfoButtons() {
+        binding.asymmetryInfoButton.setOnClickListener {
+            showABCDECriterionInfo(
+                getString(R.string.abcde_asymmetry_info_title),
+                getString(R.string.abcde_asymmetry_info_content)
+            )
+        }
+        
+        binding.borderInfoButton.setOnClickListener {
+            showABCDECriterionInfo(
+                getString(R.string.abcde_border_info_title),
+                getString(R.string.abcde_border_info_content)
+            )
+        }
+        
+        binding.colorInfoButton.setOnClickListener {
+            showABCDECriterionInfo(
+                getString(R.string.abcde_color_info_title),
+                getString(R.string.abcde_color_info_content)
+            )
+        }
+        
+        binding.diameterInfoButton.setOnClickListener {
+            showABCDECriterionInfo(
+                getString(R.string.abcde_diameter_info_title),
+                getString(R.string.abcde_diameter_info_content)
+            )
+        }
+        
+        binding.evolutionInfoButton.setOnClickListener {
+            showABCDECriterionInfo(
+                getString(R.string.abcde_evolution_info_title),
+                getString(R.string.abcde_evolution_info_content)
+            )
+        }
+    }
+
+    private fun showABCDECriterionInfo(title: String, content: String) {
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(content)
+            .setPositiveButton("Entendido", null)
+            .setIcon(R.drawable.ic_info)
+            .show()
+    }
+
+    private fun calculateUserTotalScore(): Float {
+        val userAsymmetry = binding.userAsymmetrySlider.value
+        val userBorder = binding.userBorderSlider.value
+        val userColor = binding.userColorSlider.value
+        val userDiameter = binding.userDiameterSlider.value
+        val userEvolution = binding.userEvolutionSlider.value
+
+        // Aplicar los mismos pesos que usa la app en ABCDEAnalyzerOpenCV.calculateTotalScore()
+        var userTotal = (userAsymmetry * 1.3f) + (userBorder * 0.1f) + (userColor * 0.5f) + (userDiameter * 0.5f)
+        
+        // Si hay evolución, aplicar el multiplicador como en la app
+        if (userEvolution > 0) {
+            userTotal *= (1 + userEvolution * 0.2f)
+        }
+        
+        return userTotal
+    }
+
+    private fun updateUserTotalScore() {
+        val userTotal = calculateUserTotalScore()
+        binding.userTotalScore.text = String.format("%.1f", userTotal)
+    }
+
+    private fun updateComparison() {
+        val analysisResult = this.analysisResult ?: return
+        
+        val aiTotal = analysisResult.abcdeResult.totalScore
+        val userTotal = calculateUserTotalScore()
+        val difference = kotlin.math.abs(aiTotal - userTotal)
+
+        val comparisonMessage = when {
+            difference < 1.0 -> getString(R.string.user_abcde_comparison_similar, difference)
+            difference < 3.0 -> getString(R.string.user_abcde_comparison_somewhat, difference)
+            difference < 5.0 -> getString(R.string.user_abcde_comparison_different, difference)
+            else -> getString(R.string.user_abcde_comparison_very_different, difference)
+        }
+
+        binding.comparisonText.text = comparisonMessage
+    }
+
     private fun processImage(photoPath: String, isFrontCamera: Boolean) {
         android.util.Log.d("AnalysisResultActivity", "Iniciando processImage asíncrono - photoPath: $photoPath")
         
@@ -337,6 +458,12 @@ class AnalysisResultActivity : AppCompatActivity() {
         // Mostrar/ocultar botón de historial si hay evolución
         binding.historyButton.visibility =
             if (result.abcdeResult.evolutionScore != null) View.VISIBLE else View.GONE
+
+        // Actualizar score ABCDE de la app en la comparación
+        binding.aiTotalScore.text = String.format("%.1f", result.abcdeResult.totalScore)
+        
+        // Inicializar comparación
+        updateComparison()
     }
 
     private fun updateRiskIndicator(riskLevel: MelanomaAIDetector.RiskLevel) {
@@ -530,7 +657,7 @@ class AnalysisResultActivity : AppCompatActivity() {
             appendLine("- Probabilidad: ${(result.aiProbability * 100).toInt()}%")
             appendLine("- Confianza: ${(result.aiConfidence * 100).toInt()}%")
             appendLine()
-            appendLine("ANÁLISIS ABCDE:")
+            appendLine("ANÁLISIS ABCDE (IA):")
             appendLine("- Asimetría: ${result.abcdeResult.asymmetryScore}/2")
             appendLine("- Bordes: ${result.abcdeResult.borderScore}/8")
             appendLine("- Color: ${result.abcdeResult.colorScore}/6")
@@ -538,8 +665,26 @@ class AnalysisResultActivity : AppCompatActivity() {
             result.abcdeResult.evolutionScore?.let {
                 appendLine("- Evolución: $it/3")
             }
-            appendLine("- Score Total ABCDE: ${result.abcdeResult.totalScore}")
+            appendLine("- Score Total ABCDE (IA): ${result.abcdeResult.totalScore}")
             appendLine()
+            
+            // Añadir valores del usuario si existen
+            if (binding.userInputContainer.visibility == View.VISIBLE) {
+                appendLine("ANÁLISIS ABCDE (USUARIO):")
+                appendLine("- Asimetría: ${String.format("%.1f", binding.userAsymmetrySlider.value)}/2")
+                appendLine("- Bordes: ${String.format("%.1f", binding.userBorderSlider.value)}/8")
+                appendLine("- Color: ${String.format("%.1f", binding.userColorSlider.value)}/6")
+                appendLine("- Diámetro: ${String.format("%.1f", binding.userDiameterSlider.value)}/5")
+                appendLine("- Evolución: ${String.format("%.1f", binding.userEvolutionSlider.value)}/3")
+                val userTotal = calculateUserTotalScore()
+                appendLine("- Score Total ABCDE (Usuario): ${String.format("%.1f", userTotal)}")
+                appendLine()
+                val difference = kotlin.math.abs(result.abcdeResult.totalScore - userTotal)
+                appendLine("COMPARACIÓN:")
+                appendLine("- Diferencia entre IA y Usuario: ${String.format("%.1f", difference)} puntos")
+                appendLine()
+            }
+            
             appendLine("RESULTADO COMBINADO:")
             appendLine("- Score: ${(result.combinedScore * 100).toInt()}%")
             appendLine("- Nivel de Riesgo: ${result.combinedRiskLevel}")
@@ -563,7 +708,20 @@ class AnalysisResultActivity : AppCompatActivity() {
             totalScore = result.abcdeResult.totalScore
         )
 
-        // Crear metadatos del análisis
+        // Crear metadatos del análisis incluyendo valores del usuario si existen
+        val userValues = if (binding.userInputContainer.visibility == View.VISIBLE) {
+            mapOf(
+                "userAsymmetry" to binding.userAsymmetrySlider.value,
+                "userBorder" to binding.userBorderSlider.value,
+                "userColor" to binding.userColorSlider.value,
+                "userDiameter" to binding.userDiameterSlider.value,
+                "userEvolution" to binding.userEvolutionSlider.value,
+                "userTotal" to calculateUserTotalScore()
+            )
+        } else {
+            emptyMap()
+        }
+
         val metadata = mapOf(
             "title" to title,
             "description" to description,
@@ -571,7 +729,7 @@ class AnalysisResultActivity : AppCompatActivity() {
             "bodyPartColorCode" to (bodyPartColorCode ?: ""),
             "urgencyLevel" to result.urgencyLevel.name,
             "explanations" to result.explanations
-        )
+        ) + userValues
 
         return AnalysisData(
             moleId = moleId,

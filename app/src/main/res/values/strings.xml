@@ -307,4 +307,35 @@
     <string name="empty_state_no_data_title">Sin datos</string>
     <string name="empty_state_no_data_message">No hay información disponible en este momento.</string>
 
+    <!-- Strings para valores ABCDE del usuario -->
+    <string name="user_abcde_title">Tus Valores ABCDE</string>
+    <string name="user_abcde_description">Introduce tus propios valores observados:</string>
+    <string name="user_abcde_add_button">Añadir</string>
+    <string name="user_abcde_hide_button">Ocultar</string>
+    <string name="user_abcde_comparison_title">Comparación de Resultados</string>
+    <string name="user_abcde_ai_label">ABCDE (App)</string>
+    <string name="user_abcde_user_label">Tus Valores</string>
+    <string name="user_abcde_comparison_similar">¡Muy similar! Diferencia: %.1f puntos</string>
+    <string name="user_abcde_comparison_somewhat">Bastante similar. Diferencia: %.1f puntos</string>
+    <string name="user_abcde_comparison_different">Algunas diferencias. Diferencia: %.1f puntos</string>
+    <string name="user_abcde_comparison_very_different">Diferencias significativas. Diferencia: %.1f puntos</string>
+    <string name="user_abcde_default_message">Ajusta los valores para comparar con el análisis de la IA</string>
+    <string name="user_abcde_weights_info">ℹ️ El score se calcula con pesos clínicos: A×1.3 + B×0.1 + C×0.5 + D×0.5</string>
+
+    <!-- Información detallada de criterios ABCDE -->
+    <string name="abcde_asymmetry_info_title">A - Asimetría (0-2 puntos)</string>
+    <string name="abcde_asymmetry_info_content">Evalúa si el lunar es simétrico al dividirlo por la mitad:\n\n• 0 puntos: Lunar completamente simétrico\n• 1 punto: Asimetría leve (diferencia &lt; 20%)\n• 2 puntos: Asimetría marcada (diferencia ≥ 20%)\n\nUn lunar benigno típico es simétrico, mientras que los malignos tienden a ser asimétricos.</string>
+    
+    <string name="abcde_border_info_title">B - Bordes (0-8 puntos)</string>
+    <string name="abcde_border_info_content">Evalúa la regularidad de los bordes del lunar:\n\n• 0-2 puntos: Bordes lisos y bien definidos\n• 3-5 puntos: Bordes ligeramente irregulares\n• 6-8 puntos: Bordes muy irregulares, dentados o borrosos\n\nLos lunares benignos tienen bordes regulares, mientras que los malignos presentan bordes irregulares y mal definidos.</string>
+    
+    <string name="abcde_color_info_title">C - Color (0-6 puntos)</string>
+    <string name="abcde_color_info_content">Evalúa la variedad y distribución de colores:\n\n• 0-1 puntos: Color uniforme (marrón claro/oscuro)\n• 2-3 puntos: Dos colores diferentes\n• 4-6 puntos: Múltiples colores o colores preocupantes\n\n+1 punto adicional por:\n• Presencia de azul o blanco\n• Combinación rojo-azul\n\nLos lunares benignos suelen tener color uniforme.</string>
+    
+    <string name="abcde_diameter_info_title">D - Diámetro (0-5 puntos)</string>
+    <string name="abcde_diameter_info_content">Evalúa el tamaño del lunar:\n\n• 0 puntos: &lt; 6mm (tamaño de borrador de lápiz)\n• 2 puntos: 6-10mm\n• 3 puntos: 10-15mm\n• 5 puntos: &gt; 15mm\n\nLunares mayores a 6mm requieren mayor atención, especialmente si han crecido recientemente.</string>
+    
+    <string name="abcde_evolution_info_title">E - Evolución (0-3 puntos)</string>
+    <string name="abcde_evolution_info_content">Evalúa cambios en el tiempo:\n\n• 0 puntos: Sin cambios significativos\n• 1 punto: Cambios leves (&lt; 50%)\n• 2 puntos: Cambios moderados (50-80%)\n• 3 puntos: Cambios significativos (&gt; 80%)\n\nSe consideran cambios en:\n• Tamaño • Color • Forma • Textura • Síntomas\n\nCualquier cambio en un lunar existente es motivo de consulta médica.</string>
+
 </resources>
