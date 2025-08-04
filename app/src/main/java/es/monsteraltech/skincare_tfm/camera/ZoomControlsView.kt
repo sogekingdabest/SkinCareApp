@@ -157,24 +157,6 @@ class ZoomControlsView @JvmOverloads constructor(
     }
     
     /**
-     * Muestra u oculta los controles de zoom
-     */
-    fun setControlsVisible(visible: Boolean) {
-        visibility = if (visible) View.VISIBLE else View.GONE
-    }
-    
-    /**
-     * Habilita o deshabilita todos los controles
-     */
-    fun setControlsEnabled(enabled: Boolean) {
-        zoomInButton.isEnabled = enabled && (currentZoomInfo?.currentLevel ?: 1f) < (currentZoomInfo?.maxLevel ?: 5f)
-        zoomOutButton.isEnabled = enabled && (currentZoomInfo?.currentLevel ?: 1f) > (currentZoomInfo?.minLevel ?: 1f)
-        zoomResetButton.isEnabled = enabled
-        zoomOptimalButton.isEnabled = enabled
-        zoomSeekBar.isEnabled = enabled
-    }
-    
-    /**
      * Interface para eventos de control de zoom
      */
     interface ZoomControlListener {
