@@ -55,8 +55,6 @@ class RegisterActivity : AppCompatActivity() {
         passwordEditText.editText?.setText(password)
 
         registerButton.setOnClickListener {
-            //val firstName = firstNameEditText.text.toString()
-            //val lastName = lastNameEditText.text.toString()
             val email = emailEditText.editText?.text.toString()
             val confirmEmail = confirmEmailEditText.editText?.text.toString()
             val password = passwordEditText.editText?.text.toString()

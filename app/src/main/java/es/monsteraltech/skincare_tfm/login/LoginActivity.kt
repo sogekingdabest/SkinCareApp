@@ -42,6 +42,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var passwordEditText: TextInputLayout
     private lateinit var loginButton: Button
     private lateinit var registerButton: TextView
+    private lateinit var forgotPasswordTextView: TextView
     private lateinit var googleSignInButton: com.google.android.gms.common.SignInButton
     private lateinit var logoImageView: ImageView
 
@@ -63,6 +64,7 @@ class LoginActivity : AppCompatActivity() {
         passwordEditText = findViewById(R.id.passwordEditText)
         loginButton = findViewById(R.id.loginButton)
         registerButton = findViewById(R.id.registerButton)
+        forgotPasswordTextView = findViewById(R.id.forgotPasswordTextView)
         googleSignInButton = findViewById(R.id.googleSignInButton)
 
         emailEditText.editText?.setText(email)
@@ -97,6 +99,23 @@ class LoginActivity : AppCompatActivity() {
             )
 
 
+
+            val options = ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity, *pairs)
+            startActivity(intent, options.toBundle())
+        }
+
+        forgotPasswordTextView.setOnClickListener {
+            val intent = Intent(this@LoginActivity, ForgotPasswordActivity::class.java)
+            intent.putExtra("email", emailEditText.editText?.text.toString())
+
+            val pairs = arrayOf(
+                UtilPair<View, String>(logoImageView, "logoImageView"),
+                UtilPair<View, String>(welcomeTextView, "textTrans"),
+                UtilPair<View, String>(instructionsTextView, "instructionsTextView"),
+                UtilPair<View, String>(emailEditText, "emailEditText"),
+                UtilPair<View, String>(loginButton, "registerOrLoginButton"),
+                UtilPair<View, String>(registerButton, "registerOrLoginEditText")
+            )
 
             val options = ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity, *pairs)
             startActivity(intent, options.toBundle())

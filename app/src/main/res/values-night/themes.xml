@@ -6,22 +6,22 @@
         <item name="colorOnPrimary">@color/md_theme_onPrimary</item>
         <item name="colorPrimaryContainer">@color/md_theme_primaryContainer</item>
         <item name="colorOnPrimaryContainer">@color/md_theme_onPrimaryContainer</item>
-        
+
         <item name="colorSecondary">@color/md_theme_secondary</item>
         <item name="colorOnSecondary">@color/md_theme_onSecondary</item>
         <item name="colorSecondaryContainer">@color/md_theme_secondaryContainer</item>
         <item name="colorOnSecondaryContainer">@color/md_theme_onSecondaryContainer</item>
-        
+
         <item name="colorTertiary">@color/md_theme_tertiary</item>
         <item name="colorOnTertiary">@color/md_theme_onTertiary</item>
         <item name="colorTertiaryContainer">@color/md_theme_tertiaryContainer</item>
         <item name="colorOnTertiaryContainer">@color/md_theme_onTertiaryContainer</item>
-        
+
         <item name="colorError">@color/md_theme_error</item>
         <item name="colorOnError">@color/md_theme_onError</item>
         <item name="colorErrorContainer">@color/md_theme_errorContainer</item>
         <item name="colorOnErrorContainer">@color/md_theme_onErrorContainer</item>
-        
+
         <item name="android:colorBackground">@color/md_theme_background</item>
         <item name="colorOnBackground">@color/md_theme_onBackground</item>
         <item name="colorSurface">@color/md_theme_surface</item>
@@ -52,17 +52,20 @@
         <item name="colorSurfaceContainer">@color/md_theme_surfaceContainer</item>
         <item name="colorSurfaceContainerHigh">@color/md_theme_surfaceContainerHigh</item>
         <item name="colorSurfaceContainerHighest">@color/md_theme_surfaceContainerHighest</item>
-        
+
         <!-- Configuraciones adicionales de Material Design 3 para modo oscuro -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
-        
+
         <!-- Configuraciones de tipografía -->
-        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.Material3.HeadlineLarge</item>
-        <item name="textAppearanceHeadlineMedium">@style/TextAppearance.Material3.HeadlineMedium</item>
-        <item name="textAppearanceHeadlineSmall">@style/TextAppearance.Material3.HeadlineSmall</item>
+        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.Material3.HeadlineLarge
+        </item>
+        <item name="textAppearanceHeadlineMedium">@style/TextAppearance.Material3.HeadlineMedium
+        </item>
+        <item name="textAppearanceHeadlineSmall">@style/TextAppearance.Material3.HeadlineSmall
+        </item>
         <item name="textAppearanceTitleLarge">@style/TextAppearance.Material3.TitleLarge</item>
         <item name="textAppearanceTitleMedium">@style/TextAppearance.Material3.TitleMedium</item>
         <item name="textAppearanceTitleSmall">@style/TextAppearance.Material3.TitleSmall</item>
