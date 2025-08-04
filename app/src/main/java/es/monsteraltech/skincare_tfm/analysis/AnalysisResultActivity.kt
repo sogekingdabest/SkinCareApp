@@ -22,7 +22,6 @@ import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
-import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
 import es.monsteraltech.skincare_tfm.body.mole.util.RiskLevelTranslator
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisResultEnhancedBinding
 import kotlinx.coroutines.launch
@@ -48,7 +47,6 @@ class AnalysisResultActivity : AppCompatActivity() {
     private var analysisResult: MelanomaAIDetector.CombinedAnalysisResult? = null
 
     private val moleRepository = MoleRepository()
-    private val moleAnalysisService = MoleAnalysisService()
     private val auth = FirebaseAuth.getInstance()
 
     // Mapeo entre nombres de partes del cuerpo y códigos de color
@@ -589,9 +587,9 @@ class AnalysisResultActivity : AppCompatActivity() {
             try {
                 // Crear AnalysisData desde el resultado actual
                 val analysisData = createAnalysisDataFromResult(mole.id, title, description)
-                
-                // Guardar usando MoleAnalysisService
-                val result = moleAnalysisService.saveAnalysisToMole(mole.id, analysisData)
+
+                // Guardar usando MoleRepository
+                val result = moleRepository.saveAnalysisToMole(applicationContext, mole.id, analysisData, photoFile!!)
                 
                 progressDialog.dismiss()
 
@@ -747,7 +745,7 @@ class AnalysisResultActivity : AppCompatActivity() {
             combinedScore = result.combinedScore,
             riskLevel = result.combinedRiskLevel.name,
             recommendation = result.recommendation,
-            imageUrl = photoFile?.absolutePath ?: "", // Por ahora usar la ruta local
+            imageData = photoFile!!, // Por ahora usar la ruta local
             analysisMetadata = metadata
         )
     }

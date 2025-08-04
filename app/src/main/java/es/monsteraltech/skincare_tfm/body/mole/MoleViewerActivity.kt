@@ -21,7 +21,6 @@ import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisDataConverter
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
-import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
 import es.monsteraltech.skincare_tfm.body.mole.util.ImageLoadingUtil
 import es.monsteraltech.skincare_tfm.body.mole.util.RiskLevelTranslator
 import es.monsteraltech.skincare_tfm.body.mole.view.EmptyStateView
@@ -35,7 +34,6 @@ import java.util.Locale
  */
 class MoleViewerActivity : AppCompatActivity() {
 
-    private lateinit var moleAnalysisService: MoleAnalysisService
     private lateinit var retryManager: RetryManager
     private val auth = FirebaseAuth.getInstance()
     private val moleRepository = MoleRepository()
@@ -85,7 +83,6 @@ class MoleViewerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_mole_viewer)
 
-        moleAnalysisService = MoleAnalysisService()
         retryManager = RetryManager()
         
         initializeViews()
@@ -376,7 +373,7 @@ class MoleViewerActivity : AppCompatActivity() {
                 }
             ) {
                 // Intentar obtener el análisis actual del lunar
-                val currentAnalysisResult = moleAnalysisService.getCurrentAnalysis(moleId)
+                val currentAnalysisResult = moleRepository.getCurrentAnalysis(moleId)
                 if (currentAnalysisResult.isSuccess) {
                     val currentAnalysis = currentAnalysisResult.getOrNull()
                     if (currentAnalysis != null) {

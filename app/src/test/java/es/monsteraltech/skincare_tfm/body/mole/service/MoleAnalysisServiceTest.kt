@@ -3,7 +3,6 @@ package es.monsteraltech.skincare_tfm.body.mole.service
 import com.google.firebase.Timestamp
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
-import es.monsteraltech.skincare_tfm.body.mole.validation.AnalysisDataSanitizer
 import es.monsteraltech.skincare_tfm.body.mole.validation.AnalysisDataValidator
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

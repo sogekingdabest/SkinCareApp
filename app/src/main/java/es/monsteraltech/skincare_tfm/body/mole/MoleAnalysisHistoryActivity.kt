@@ -16,7 +16,6 @@ import es.monsteraltech.skincare_tfm.body.mole.error.RetryManager
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
-import es.monsteraltech.skincare_tfm.body.mole.service.MoleAnalysisService
 import es.monsteraltech.skincare_tfm.body.mole.util.ImageLoadingUtil
 import es.monsteraltech.skincare_tfm.body.mole.view.EmptyStateView
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
@@ -29,7 +28,6 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
     private lateinit var adapter: AnalysisHistoryAdapter
 
     private val moleRepository = MoleRepository()
-    private val analysisService = MoleAnalysisService()
     private val firebaseDataManager = FirebaseDataManager()
     private val auth = FirebaseAuth.getInstance()
     private lateinit var retryManager: RetryManager
@@ -224,7 +222,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
                     }
                 }
             ) {
-                analysisService.getAnalysisHistory(moleId)
+                moleRepository.getAnalysisHistory(moleId)
             }
             
             isRetrying = false
