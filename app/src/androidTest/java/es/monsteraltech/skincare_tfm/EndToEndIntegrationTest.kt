@@ -17,7 +17,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import es.monsteraltech.skincare_tfm.data.SessionData
 import es.monsteraltech.skincare_tfm.data.SessionManager
-import es.monsteraltech.skincare_tfm.login.InicioActivity
+
 import es.monsteraltech.skincare_tfm.login.LoginActivity
 import es.monsteraltech.skincare_tfm.login.SessionCheckActivity
 import io.mockk.*

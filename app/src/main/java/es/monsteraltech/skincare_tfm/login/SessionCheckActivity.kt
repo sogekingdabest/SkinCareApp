@@ -3,8 +3,12 @@ package es.monsteraltech.skincare_tfm.login
 import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -26,6 +30,7 @@ class SessionCheckActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "SessionCheckActivity"
         private const val MIN_LOADING_TIME_MS = 1500L // Tiempo mínimo de carga para UX
+        private const val SPLASH_ANIMATION_DURATION = 4000L // Duración de la animación inicial
     }
 
     private lateinit var sessionManager: SessionManager
@@ -33,6 +38,7 @@ class SessionCheckActivity : AppCompatActivity() {
     // Views
     private lateinit var logoImageView: ImageView
     private lateinit var skinCareTextView: TextView
+    private lateinit var deTextView: TextView
     private lateinit var loadingProgressBar: ProgressBar
     private lateinit var statusTextView: TextView
     private lateinit var errorMessageTextView: TextView
@@ -48,8 +54,8 @@ class SessionCheckActivity : AppCompatActivity() {
         initializeSessionManager()
         setupRetryButton()
         
-        // Iniciar verificación de sesión
-        checkSession()
+        // Iniciar animación de splash y luego verificación de sesión
+        startSplashAnimation()
     }
 
     /**
@@ -58,13 +64,14 @@ class SessionCheckActivity : AppCompatActivity() {
     private fun initializeViews() {
         logoImageView = findViewById(R.id.logoImageView)
         skinCareTextView = findViewById(R.id.skinCareTextView)
+        deTextView = findViewById(R.id.deTextView)
         loadingProgressBar = findViewById(R.id.loadingProgressBar)
         statusTextView = findViewById(R.id.statusTextView)
         errorMessageTextView = findViewById(R.id.errorMessageTextView)
         retryButton = findViewById(R.id.retryButton)
         
-        // Configurar estado inicial
-        showLoadingState()
+        // Configurar estado inicial - ocultar elementos de carga durante splash
+        showSplashState()
     }
 
     /**
@@ -82,6 +89,39 @@ class SessionCheckActivity : AppCompatActivity() {
             Log.d(TAG, "Usuario solicitó reintentar verificación de sesión")
             checkSession()
         }
+    }
+
+    /**
+     * Inicia la animación de splash inicial
+     */
+    private fun startSplashAnimation() {
+        Log.d(TAG, "Iniciando animación de splash")
+        
+        // Cargar animaciones
+        val animacion1: Animation = AnimationUtils.loadAnimation(this, R.anim.desplazamiento_arriba)
+        val animacion2: Animation = AnimationUtils.loadAnimation(this, R.anim.desplazamiento_abajo)
+        
+        // Aplicar animaciones
+        deTextView.animation = animacion2
+        skinCareTextView.animation = animacion2
+        logoImageView.animation = animacion1
+        
+        // Después de la animación, iniciar verificación de sesión
+        Handler(Looper.getMainLooper()).postDelayed({
+            Log.d(TAG, "Animación de splash completada, iniciando verificación de sesión")
+            checkSession()
+        }, SPLASH_ANIMATION_DURATION)
+    }
+
+    /**
+     * Muestra el estado inicial durante la animación de splash
+     */
+    private fun showSplashState() {
+        Log.d(TAG, "Mostrando estado de splash")
+        loadingProgressBar.visibility = View.GONE
+        statusTextView.visibility = View.GONE
+        errorMessageTextView.visibility = View.GONE
+        retryButton.visibility = View.GONE
     }
 
     /**

@@ -79,21 +79,18 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".login.InicioActivity"
-            android:exported="true">
+        <activity 
+            android:name=".login.SessionCheckActivity"
+            android:exported="true"
+            android:theme="@style/Theme.SkinCare_TFM"
+            android:noHistory="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity 
-            android:name=".login.SessionCheckActivity"
-            android:exported="false"
-            android:theme="@style/Theme.SkinCare_TFM"
-            android:noHistory="true"
-            android:screenOrientation="portrait" />
         <activity 
             android:name=".login.LoginActivity"
             android:exported="false"
