@@ -72,43 +72,47 @@ class PasswordChangeManager(
      * @return PasswordValidationResult indicating if new password meets criteria
      */
     fun validateNewPassword(newPassword: String, currentPassword: String? = null): PasswordValidationResult {
-        if (newPassword.isBlank()) {
-            return PasswordValidationResult(false, "La nueva contraseña no puede estar vacía")
-        }
-
-        // Check minimum length
-        if (newPassword.length < 8) {
-            return PasswordValidationResult(false, "La contraseña debe tener al menos 8 caracteres")
-        }
-
-        // Check for uppercase letter
-        if (!newPassword.any { it.isUpperCase() }) {
-            return PasswordValidationResult(false, "La contraseña debe tener al menos una mayúscula")
-        }
-
-        // Check for lowercase letter
-        if (!newPassword.any { it.isLowerCase() }) {
-            return PasswordValidationResult(false, "La contraseña debe tener al menos una minúscula")
-        }
-
-        // Check for digit
-        if (!newPassword.any { it.isDigit() }) {
-            return PasswordValidationResult(false, "La contraseña debe tener al menos un número")
-        }
 
         // Check if new password is different from current
         if (currentPassword != null && newPassword == currentPassword) {
             return PasswordValidationResult(false, "La nueva contraseña debe ser diferente a la actual")
         }
 
-        // Check for common weak passwords
-        val commonPasswords = listOf(
-            "12345678", "password", "password123", "123456789", "qwerty123",
-            "abc123456", "password1", "12345678a", "Password1", "contraseña"
-        )
-        
-        if (commonPasswords.any { it.equals(newPassword, ignoreCase = true) }) {
-            return PasswordValidationResult(false, "Esta contraseña es muy común. Elige una más segura")
+        return validatePassword(newPassword)
+    }
+
+    /**
+     * Validates password according to security criteria
+     * @param password The new password to validate
+     * @return PasswordValidationResult indicating if new password meets criteria
+     */
+    fun validatePassword(password: String? = null): PasswordValidationResult {
+        if (password == null) {
+            return PasswordValidationResult(false, "La contraseña no puede ser nula")
+        }
+
+        if (password.isBlank()) {
+            return PasswordValidationResult(false, "La nueva contraseña no puede estar vacía")
+        }
+
+        // Check minimum length
+        if (password.length < 8) {
+            return PasswordValidationResult(false, "La contraseña debe tener al menos 8 caracteres")
+        }
+
+        // Check for uppercase letter
+        if (!password.any { it.isUpperCase() }) {
+            return PasswordValidationResult(false, "La contraseña debe tener al menos una mayúscula")
+        }
+
+        // Check for lowercase letter
+        if (!password.any { it.isLowerCase() }) {
+            return PasswordValidationResult(false, "La contraseña debe tener al menos una minúscula")
+        }
+
+        // Check for digit
+        if (!password.any { it.isDigit() }) {
+            return PasswordValidationResult(false, "La contraseña debe tener al menos un número")
         }
 
         return PasswordValidationResult(true)
