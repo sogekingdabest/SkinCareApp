@@ -19,6 +19,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
@@ -314,6 +315,7 @@ class CameraActivity : AppCompatActivity() {
 
             // Configurar Preview
             val preview = Preview.Builder()
+                .setTargetRotation(previewView.display.rotation)
                 .build()
                 .also {
                     it.surfaceProvider = previewView.surfaceProvider
@@ -322,6 +324,7 @@ class CameraActivity : AppCompatActivity() {
             // Configurar ImageCapture
             imageCapture = ImageCapture.Builder()
                 .setFlashMode(if (isFlashEnabled) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF)
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
                 .setTargetRotation(previewView.display.rotation)
                 .build()
 
@@ -350,6 +353,9 @@ class CameraActivity : AppCompatActivity() {
                 ).also { camera ->
                     // Inicializar el controlador de zoom con la cámara
                     digitalZoomController.initialize(camera)
+
+                    setupStabilization(camera)
+
                 }
 
                 Log.d(TAG, "Cámara iniciada con análisis en tiempo real")
@@ -359,6 +365,25 @@ class CameraActivity : AppCompatActivity() {
                 Toast.makeText(this, "Error iniciando cámara: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    /**
+     * Configuración de estabilización
+     */
+    private fun setupStabilization(camera: Camera) {
+        // Configurar el controlador de zoom digital para manejar estabilización
+        lifecycleScope.launch {
+            digitalZoomController.currentZoomLevel.collect { zoomLevel ->
+                // Ajustar tiempo de exposición cuando hay zoom alto
+                if (zoomLevel >= 2.0f) {
+                    // Reducir exposición para minimizar blur por movimiento
+                    camera.cameraControl.setExposureCompensationIndex(-1)
+                } else {
+                    // Exposición normal
+                    camera.cameraControl.setExposureCompensationIndex(0)
+                }
+            }
+        }
     }
 
     /**

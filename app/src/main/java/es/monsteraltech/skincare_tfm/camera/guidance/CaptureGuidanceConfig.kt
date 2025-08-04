@@ -18,8 +18,8 @@ data class CaptureGuidanceConfig(
  * Umbrales de calidad para validación de imagen
  */
 data class QualityThresholds(
-    val minSharpness: Float = 0.3f,
-    val minBrightness: Float = 80f,
-    val maxBrightness: Float = 180f,
-    val minContrast: Float = 0.2f
+    val minSharpness: Float = 0.25f,
+    val minBrightness: Float = 70f,
+    val maxBrightness: Float = 200f,
+    val minContrast: Float = 0.15f
 )
