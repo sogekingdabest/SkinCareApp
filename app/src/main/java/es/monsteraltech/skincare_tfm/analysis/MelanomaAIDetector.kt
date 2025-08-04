@@ -20,8 +20,8 @@ class MelanomaAIDetector(private val context: Context) {
         private const val IMAGE_SIZE = 224
 
         // Umbrales del modelo entrenado
-        private const val AI_THRESHOLD_LOW = 0.327f
         private const val AI_THRESHOLD_HIGH = 0.5f
+        private const val OPTIMAL_THRESHOLD = 0.327f
 
         // Pesos para combinar IA + ABCDE
         private const val AI_WEIGHT = 0.6f
@@ -360,13 +360,13 @@ class MelanomaAIDetector(private val context: Context) {
             resizedBitmap.getPixels(pixels, 0, IMAGE_SIZE, 0, 0, IMAGE_SIZE, IMAGE_SIZE)
 
             for (pixel in pixels) {
-                val r = ((pixel shr 16) and 0xFF) / 255.0f
-                val g = ((pixel shr 8) and 0xFF) / 255.0f
-                val b = (pixel and 0xFF) / 255.0f
+                val r = (pixel shr 16) and 0xFF
+                val g = (pixel shr 8) and 0xFF
+                val b = pixel and 0xFF
 
-                inputBuffer.putFloat(r)
-                inputBuffer.putFloat(g)
-                inputBuffer.putFloat(b)
+                inputBuffer.putFloat((r / 127.5f) - 1.0f)
+                inputBuffer.putFloat((g / 127.5f) - 1.0f)
+                inputBuffer.putFloat((b / 127.5f) - 1.0f)
             }
 
             inputBuffer.rewind()
@@ -415,18 +415,34 @@ class MelanomaAIDetector(private val context: Context) {
     }
 
     private fun calculateConfidence(probability: Float): Float {
-        val distanceFromThreshold = minOf(
-            abs(probability - AI_THRESHOLD_LOW),
-            abs(probability - AI_THRESHOLD_HIGH)
-        )
 
-        return when {
-            distanceFromThreshold > 0.3f -> 0.9f
-            distanceFromThreshold > 0.2f -> 0.8f
-            distanceFromThreshold > 0.1f -> 0.7f
-            else -> 0.6f
+        // Calcular distancia al umbral óptimo
+        val distanceFromThreshold = abs(probability - OPTIMAL_THRESHOLD)
+
+        // Considerar también la distancia a los extremos
+        val distanceFromExtremes = minOf(probability, 1f - probability)
+
+        // Combinar ambos factores
+        val confidence = when {
+            // Alta confianza: lejos del umbral Y cerca de los extremos
+            distanceFromThreshold > 0.4f && distanceFromExtremes < 0.1f -> 0.90f
+
+            // Confianza media-alta
+            distanceFromThreshold > 0.3f -> 0.80f
+
+            // Confianza media
+            distanceFromThreshold > 0.2f -> 0.75f
+
+            // Confianza baja
+            distanceFromThreshold > 0.1f -> 0.70f
+
+            // Muy baja confianza
+            else -> 0.40f
         }
+
+        return confidence
     }
+
 
     private fun calculateCombinedRiskLevel(combinedScore: Float): RiskLevel {
         return when {

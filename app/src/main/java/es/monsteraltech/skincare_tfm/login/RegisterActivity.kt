@@ -10,17 +10,20 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseUser
 import es.monsteraltech.skincare_tfm.MainActivity
 import es.monsteraltech.skincare_tfm.R
+import es.monsteraltech.skincare_tfm.account.PasswordChangeManager
 
 
 class RegisterActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
+    private lateinit var passwordChangeManager: PasswordChangeManager
     private lateinit var logoImageView: ImageView
     private lateinit var welcomeTextView: TextView
     private lateinit var instructionsTextView: TextView
@@ -40,6 +43,8 @@ class RegisterActivity : AppCompatActivity() {
 
         // Initialize Firebase Auth
         auth = FirebaseAuth.getInstance()
+
+        passwordChangeManager = PasswordChangeManager()
 
         logoImageView = findViewById(R.id.logoImageView)
         welcomeTextView = findViewById(R.id.welcomeTextView)
@@ -62,6 +67,12 @@ class RegisterActivity : AppCompatActivity() {
 
             if (email.isNotEmpty() &&
                 confirmEmail.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty()) {
+
+                if (validateEmail()) Snackbar.make(it, R.string.error_invalid_email, Snackbar.LENGTH_LONG).show()
+                val validPassword = passwordChangeManager.validatePassword(password)
+                if (!validPassword.isValid) {
+                    validPassword.errorMessage?.let { it1 -> Snackbar.make(it, it1, Snackbar.LENGTH_LONG).show() }
+                }
 
                 if (email == confirmEmail && password == confirmPassword) {
                     auth.createUserWithEmailAndPassword(email, password)
@@ -126,6 +137,13 @@ class RegisterActivity : AppCompatActivity() {
 
         val options = ActivityOptions.makeSceneTransitionAnimation(this@RegisterActivity, *pairs)
         startActivity(intent, options.toBundle())
+    }
+
+
+
+    private fun validateEmail(): Boolean {
+        val email = emailEditText.editText?.text.toString().trim()
+        return email.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
 
     private fun updateUI(user: FirebaseUser?) {
