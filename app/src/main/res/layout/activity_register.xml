@@ -18,7 +18,7 @@
             android:layout_height="80dp"
             android:src="@drawable/logo_skincare"
             android:transitionName="logoImageView"
-            android:layout_gravity="left"/>
+            android:layout_gravity="start"/>
 
         <TextView
             android:id="@+id/welcomeTextView"
@@ -130,7 +130,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textAlignment="center"
-                android:textSize="20dp"
+                android:textSize="13dp"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorPrimary"
                 android:background="?attr/selectableItemBackground"
