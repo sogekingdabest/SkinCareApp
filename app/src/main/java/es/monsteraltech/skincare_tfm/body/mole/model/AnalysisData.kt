@@ -2,6 +2,7 @@ package es.monsteraltech.skincare_tfm.body.mole.model
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
+import java.io.File
 import java.io.Serializable
 import java.util.UUID
 
@@ -21,11 +22,12 @@ data class AnalysisData(
     val riskLevel: String = "",
     val recommendation: String = "",
     val imageUrl: String = "", // Imagen específica del análisis
+    val imageData: File? = null,
     val createdAt: Timestamp = Timestamp.now(),
     val analysisMetadata: Map<String, Any> = emptyMap()
 ) : Serializable {
     // Constructor vacío requerido por Firestore
-    constructor() : this("", "", "", 0f, 0f, ABCDEScores(), 0f, "", "", "", Timestamp.now(), emptyMap())
+    constructor() : this("", "", "", 0f, 0f, ABCDEScores(), 0f, "", "", "", null, Timestamp.now(), emptyMap())
 
     /**
      * Convierte el objeto a Map para almacenamiento en Firestore
