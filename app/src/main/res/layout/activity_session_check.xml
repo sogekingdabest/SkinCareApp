@@ -16,12 +16,13 @@
         android:layout_marginTop="80dp"
         android:layout_marginEnd="100dp"
         android:layout_marginBottom="40dp"
+        android:transitionName="logoImageView"
         android:contentDescription="@string/app_logo_description"
         app:layout_constraintBottom_toTopOf="@+id/loadingProgressBar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/dinosaur" />
+        app:srcCompat="@drawable/logo_skincare" />
 
     <!-- Indicador de progreso -->
     <ProgressBar
