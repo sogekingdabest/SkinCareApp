@@ -1,5 +1,4 @@
 package es.monsteraltech.skincare_tfm.body.mole.service
-
 import com.google.firebase.Timestamp
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
@@ -9,16 +8,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
-
-/**
- * Tests unitarios para MoleAnalysisService
- * Verifica la funcionalidad de validación y sanitización
- */
 class MoleAnalysisServiceTest {
-
     @Test
     fun testValidAnalysisDataValidation() {
-        // Crear datos de análisis válidos
         val validAnalysis = AnalysisData(
             id = UUID.randomUUID().toString(),
             moleId = "test-mole-id",
@@ -40,90 +32,68 @@ class MoleAnalysisServiceTest {
             createdAt = Timestamp.now(),
             analysisMetadata = mapOf("source" to "test")
         )
-
-        // Validar
         val result = AnalysisDataValidator.validateAnalysisData(validAnalysis)
-        
-        // Verificar que es válido
         assertTrue("Los datos válidos deberían pasar la validación", result.isValid)
         assertTrue("No debería haber errores", result.errors.isEmpty())
     }
-
     @Test
     fun testInvalidAnalysisDataValidation() {
-        // Crear datos de análisis inválidos
         val invalidAnalysis = AnalysisData(
             id = UUID.randomUUID().toString(),
-            moleId = "", // ID vacío - inválido
-            analysisResult = "", // Resultado vacío - inválido
-            aiProbability = 1.5f, // Fuera de rango - inválido
-            aiConfidence = -0.1f, // Fuera de rango - inválido
+            moleId = "",
+            analysisResult = "",
+            aiProbability = 1.5f,
+            aiConfidence = -0.1f,
             abcdeScores = ABCDEScores(
-                asymmetryScore = 15.0f, // Fuera de rango - inválido
-                borderScore = -1.0f, // Fuera de rango - inválido
+                asymmetryScore = 15.0f,
+                borderScore = -1.0f,
                 colorScore = 2.0f,
                 diameterScore = 3.0f,
                 totalScore = 10.0f
             ),
-            combinedScore = -1.0f, // Negativo - inválido
-            riskLevel = "INVALID", // Nivel inválido
-            recommendation = "", // Vacío - inválido
+            combinedScore = -1.0f,
+            riskLevel = "INVALID",
+            recommendation = "",
             createdAt = Timestamp.now()
         )
-
-        // Validar
         val result = AnalysisDataValidator.validateAnalysisData(invalidAnalysis)
-        
-        // Verificar que es inválido
         assertFalse("Los datos inválidos no deberían pasar la validación", result.isValid)
         assertFalse("Debería haber errores", result.errors.isEmpty())
-        
-        // Verificar que se detectan los errores específicos
         val errorMessage = result.getErrorMessage()
         assertTrue("Debería detectar ID de lunar requerido", errorMessage.contains("ID de lunar requerido"))
         assertTrue("Debería detectar resultado requerido", errorMessage.contains("Resultado de análisis requerido"))
         assertTrue("Debería detectar probabilidad fuera de rango", errorMessage.contains("Probabilidad de IA debe estar entre 0 y 1"))
     }
-
     @Test
     fun testAnalysisDataSanitization() {
-        // Crear datos con contenido malicioso
         val maliciousAnalysis = AnalysisData(
             id = UUID.randomUUID().toString(),
             moleId = "test-mole-id",
             analysisResult = "Análisis con <script>alert('hack')</script> contenido malicioso",
-            riskLevel = "  bajo  ", // Con espacios
+            riskLevel = "  bajo  ",
             recommendation = "Recomendación con \"comillas\" y 'apostrofes'",
-            imageUrl = "javascript:alert('hack')", // URL maliciosa
+            imageUrl = "javascript:alert('hack')",
             analysisMetadata = mapOf(
                 "key<script>" to "value with <tags>",
                 "normalKey" to 12345
             )
         )
-
-        // Sanitizar
         val sanitized = AnalysisDataSanitizer.sanitizeAnalysisData(maliciousAnalysis)
-        
-        // Verificar sanitización
         assertFalse("Debería eliminar scripts", sanitized.analysisResult.contains("<script>"))
         assertEquals("Debería normalizar nivel de riesgo", "LOW", sanitized.riskLevel)
         assertFalse("Debería eliminar comillas", sanitized.recommendation.contains("\""))
         assertEquals("Debería limpiar URL maliciosa", "", sanitized.imageUrl)
-        
-        // Verificar metadatos sanitizados
         assertFalse("Debería limpiar claves de metadatos", sanitized.analysisMetadata.keys.any { it.contains("<") })
     }
-
     @Test
     fun testRiskLevelNormalization() {
         val testCases = listOf(
             "LOW" to "LOW",
-            "MODERATE" to "MODERATE", 
+            "MODERATE" to "MODERATE",
             "HIGH" to "HIGH",
             "  BAJO  " to "LOW",
-            "invalid" to "LOW" // Valor inválido debería convertirse a BAJO
+            "invalid" to "LOW"
         )
-
         testCases.forEach { (input, expected) ->
             val analysis = AnalysisData(
                 moleId = "test",
@@ -131,9 +101,8 @@ class MoleAnalysisServiceTest {
                 riskLevel = input,
                 recommendation = "test"
             )
-            
             val sanitized = AnalysisDataSanitizer.sanitizeAnalysisData(analysis)
-            assertEquals("Nivel de riesgo '$input' debería normalizarse a '$expected'", 
+            assertEquals("Nivel de riesgo '$input' debería normalizarse a '$expected'",
                         expected, sanitized.riskLevel)
         }
     }

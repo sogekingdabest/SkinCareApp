@@ -1,8 +1,4 @@
 package es.monsteraltech.skincare_tfm.camera.guidance
-
-/**
- * Snapshot de métricas de calidad de imagen
- */
 data class QualityMetricsSnapshot(
     val timestamp: Long,
     val sharpness: Float,
@@ -13,20 +9,12 @@ data class QualityMetricsSnapshot(
     val isUnderexposed: Boolean,
     val processingTime: Long
 )
-
-/**
- * Snapshot de uso de memoria
- */
 data class MemorySnapshot(
     val timestamp: Long,
     val usedMemory: Long,
     val totalMemory: Long,
     val usagePercentage: Int
 )
-
-/**
- * Resumen completo de métricas
- */
 data class MetricsSummary(
     val sessionDuration: Long,
     val detectionAttempts: Int,
@@ -40,10 +28,6 @@ data class MetricsSummary(
     val validationStates: Map<String, Int>,
     val currentMemoryUsage: MemorySnapshot?
 )
-
-/**
- * Métricas de rendimiento en tiempo real
- */
 data class PerformanceMetrics(
     val fps: Float,
     val frameProcessingTime: Long,
@@ -51,14 +35,9 @@ data class PerformanceMetrics(
     val cpuUsage: Float,
     val thermalState: String
 )
-
-/**
- * Evento de métrica para logging estructurado
- */
 sealed class MetricEvent {
     abstract val timestamp: Long
     abstract val sessionId: String
-    
     data class DetectionAttempt(
         override val timestamp: Long,
         override val sessionId: String,
@@ -66,7 +45,6 @@ sealed class MetricEvent {
         val processingTime: Long,
         val confidence: Float?
     ) : MetricEvent()
-    
     data class QualityAnalysis(
         override val timestamp: Long,
         override val sessionId: String,
@@ -75,7 +53,6 @@ sealed class MetricEvent {
         val contrast: Float,
         val processingTime: Long
     ) : MetricEvent()
-    
     data class ValidationResult(
         override val timestamp: Long,
         override val sessionId: String,
@@ -83,21 +60,18 @@ sealed class MetricEvent {
         val canCapture: Boolean,
         val processingTime: Long
     ) : MetricEvent()
-    
     data class PreprocessingComplete(
         override val timestamp: Long,
         override val sessionId: String,
         val processingTime: Long,
         val filtersApplied: List<String>
     ) : MetricEvent()
-    
     data class FrameProcessed(
         override val timestamp: Long,
         override val sessionId: String,
         val processingTime: Long,
         val frameSize: String
     ) : MetricEvent()
-    
     data class MemorySnapshot(
         override val timestamp: Long,
         override val sessionId: String,
@@ -105,7 +79,6 @@ sealed class MetricEvent {
         val totalMemory: Long,
         val usagePercentage: Int
     ) : MetricEvent()
-    
     data class PerformanceAlert(
         override val timestamp: Long,
         override val sessionId: String,
@@ -114,10 +87,6 @@ sealed class MetricEvent {
         val threshold: Float
     ) : MetricEvent()
 }
-
-/**
- * Configuración del sistema de métricas
- */
 data class MetricsConfig(
     val enableLogging: Boolean = true,
     val enablePerformanceTracking: Boolean = true,
@@ -125,18 +94,12 @@ data class MetricsConfig(
     val logLevel: LogLevel = LogLevel.INFO,
     val exportFormat: ExportFormat = ExportFormat.TEXT
 )
-
 enum class LogLevel {
     DEBUG, INFO, WARN, ERROR
 }
-
 enum class ExportFormat {
     TEXT, JSON, CSV
 }
-
-/**
- * Estadísticas agregadas para dashboard
- */
 data class DashboardStats(
     val totalSessions: Int,
     val avgSessionDuration: Long,

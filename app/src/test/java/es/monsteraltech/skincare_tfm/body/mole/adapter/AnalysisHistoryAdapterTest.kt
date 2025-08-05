@@ -1,29 +1,25 @@
 package es.monsteraltech.skincare_tfm.body.mole.adapter
-
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.google.firebase.Timestamp
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.util.*
+import java.util.Date
 
 @RunWith(RobolectricTestRunner::class)
 class AnalysisHistoryAdapterTest {
-
     private lateinit var context: Context
     private lateinit var adapter: AnalysisHistoryAdapter
     private lateinit var sampleAnalysisList: List<AnalysisData>
-
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        
-        // Crear datos de muestra
         sampleAnalysisList = listOf(
             AnalysisData(
                 id = "1",
@@ -61,13 +57,11 @@ class AnalysisHistoryAdapterTest {
                 riskLevel = "LOW",
                 recommendation = "Monitoreo normal",
                 imageUrl = "test_image2.jpg",
-                createdAt = Timestamp(Date(System.currentTimeMillis() - 86400000)) // 1 día antes
+                createdAt = Timestamp(Date(System.currentTimeMillis() - 86400000))
             )
         )
-
         adapter = AnalysisHistoryAdapter(context, sampleAnalysisList) { }
     }
-
     @Test
     fun testAdapterInitialization() {
         assertNotNull(adapter)

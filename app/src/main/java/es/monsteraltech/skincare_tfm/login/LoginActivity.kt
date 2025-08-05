@@ -1,5 +1,4 @@
 package es.monsteraltech.skincare_tfm.login
-
 import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
@@ -27,15 +26,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import android.util.Pair as UtilPair
-
-
 class LoginActivity : AppCompatActivity() {
-
     private lateinit var auth: FirebaseAuth
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var firebaseDataManager: FirebaseDataManager
     private lateinit var sessionManager: SessionManager
-
     private lateinit var welcomeTextView: TextView
     private lateinit var instructionsTextView: TextView
     private lateinit var emailEditText: TextInputLayout
@@ -45,18 +40,14 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var forgotPasswordTextView: TextView
     private lateinit var googleSignInButton: com.google.android.gms.common.SignInButton
     private lateinit var logoImageView: ImageView
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
-
         val email = intent.getStringExtra("email")
         val password = intent.getStringExtra("password")
-
         auth = FirebaseAuth.getInstance()
         firebaseDataManager = FirebaseDataManager()
         sessionManager = SessionManager.getInstance(this)
-
         logoImageView = findViewById(R.id.logoImageView)
         welcomeTextView = findViewById(R.id.welcomeTextView)
         instructionsTextView = findViewById(R.id.instructionsTextView)
@@ -66,28 +57,22 @@ class LoginActivity : AppCompatActivity() {
         registerButton = findViewById(R.id.registerButton)
         forgotPasswordTextView = findViewById(R.id.forgotPasswordTextView)
         googleSignInButton = findViewById(R.id.googleSignInButton)
-
         emailEditText.editText?.setText(email)
         passwordEditText.editText?.setText(password)
-
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
-
         loginButton.setOnClickListener {
             val email = emailEditText.editText?.text.toString()
             val password = passwordEditText.editText?.text.toString()
             loginUser(email, password)
         }
-
         registerButton.setOnClickListener {
-
             val intent = Intent(this@LoginActivity, RegisterActivity::class.java)
             intent.putExtra("email", emailEditText.editText?.text.toString())
             intent.putExtra("password", passwordEditText.editText?.text.toString())
-
             val pairs = arrayOf(
                 UtilPair<View, String>(logoImageView, "logoImageView"),
                 UtilPair<View, String>(welcomeTextView, "textTrans"),
@@ -97,17 +82,12 @@ class LoginActivity : AppCompatActivity() {
                 UtilPair<View, String>(loginButton, "registerOrLoginButton"),
                 UtilPair<View, String>(registerButton, "registerOrLoginEditText")
             )
-
-
-
             val options = ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity, *pairs)
             startActivity(intent, options.toBundle())
         }
-
         forgotPasswordTextView.setOnClickListener {
             val intent = Intent(this@LoginActivity, ForgotPasswordActivity::class.java)
             intent.putExtra("email", emailEditText.editText?.text.toString())
-
             val pairs = arrayOf(
                 UtilPair<View, String>(logoImageView, "logoImageView"),
                 UtilPair<View, String>(welcomeTextView, "textTrans"),
@@ -116,16 +96,13 @@ class LoginActivity : AppCompatActivity() {
                 UtilPair<View, String>(loginButton, "registerOrLoginButton"),
                 UtilPair<View, String>(registerButton, "registerOrLoginEditText")
             )
-
             val options = ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity, *pairs)
             startActivity(intent, options.toBundle())
         }
-
         googleSignInButton.setOnClickListener {
             signInWithGoogle()
         }
     }
-
     private fun loginUser(email: String, password: String) {
         if (email.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, "Please enter email and password", Toast.LENGTH_SHORT).show()
@@ -142,15 +119,12 @@ class LoginActivity : AppCompatActivity() {
                 }
             })
     }
-
     private fun signInWithGoogle() {
         val signInIntent = googleSignInClient.signInIntent
         startActivityForResult(signInIntent, RC_SIGN_IN)
     }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
         if (requestCode == RC_SIGN_IN) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             try {
@@ -161,7 +135,6 @@ class LoginActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun firebaseAuthWithGoogle(account: GoogleSignInAccount) {
         val credential = GoogleAuthProvider.getCredential(account.idToken, null)
         auth.signInWithCredential(credential)
@@ -175,17 +148,10 @@ class LoginActivity : AppCompatActivity() {
                 }
             }
     }
-
-    /**
-     * Inicializa las configuraciones del usuario si no existen, guarda la sesión y navega a MainActivity
-     */
     private fun initializeUserSettingsAndNavigate(user: FirebaseUser?) {
         if (user != null) {
-            // Inicializar configuraciones del usuario y guardar sesión en background
             CoroutineScope(Dispatchers.IO).launch {
-
                 try {
-                    // Intentar guardar la sesión primero
                     val sessionSaved = sessionManager.saveSession(user)
                     if (sessionSaved) {
                         android.util.Log.d("LoginActivity", "Sesión guardada exitosamente para usuario: ${user.uid}")
@@ -194,20 +160,13 @@ class LoginActivity : AppCompatActivity() {
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("LoginActivity", "Error al guardar sesión: ${e.message}", e)
-                    // Continuar sin persistencia de sesión
                 }
-                
                 try {
-                    // Intentar inicializar las configuraciones del usuario
                     firebaseDataManager.initializeUserSettings(user.uid)
-                    
-                    // Navegar a MainActivity en el hilo principal
                     runOnUiThread {
                         updateUI(user)
                     }
                 } catch (e: Exception) {
-                    // Si falla la inicialización, aún así navegar a MainActivity
-                    // Las configuraciones se crearán cuando sea necesario
                     android.util.Log.w("LoginActivity", "Error al inicializar configuraciones de usuario: ${e.message}", e)
                     runOnUiThread {
                         updateUI(user)
@@ -216,7 +175,6 @@ class LoginActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun updateUI(user: FirebaseUser?) {
         if (user != null) {
             val intent = Intent(this, MainActivity::class.java)
@@ -224,7 +182,6 @@ class LoginActivity : AppCompatActivity() {
             finish()
         }
     }
-
     companion object {
         private const val RC_SIGN_IN = 9001
     }

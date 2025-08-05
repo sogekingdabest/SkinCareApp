@@ -1,7 +1,5 @@
 package es.monsteraltech.skincare_tfm.body.mole.performance
-
 import android.content.Context
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,15 +19,12 @@ import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class PerformanceOptimizationTest {
-
     private lateinit var context: Context
     private lateinit var performanceManager: PerformanceManager
     private lateinit var localCacheManager: LocalCacheManager
     private lateinit var lazyImageLoader: LazyImageLoader
-    
     @Mock
     private lateinit var mockRecyclerView: RecyclerView
-
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
@@ -38,150 +33,108 @@ class PerformanceOptimizationTest {
         localCacheManager = LocalCacheManager.getInstance(context)
         lazyImageLoader = LazyImageLoader(context)
     }
-
     @Test
     fun testLazyImageLoaderConfiguration() {
-        // Test different configurations
         val moleListConfig = LazyImageLoader.Configs.forMoleList()
         assertTrue(moleListConfig.enablePreload)
         assertEquals(5, moleListConfig.preloadDistance)
         assertTrue(moleListConfig.thumbnailFirst)
-
         val analysisHistoryConfig = LazyImageLoader.Configs.forAnalysisHistory()
         assertTrue(analysisHistoryConfig.enablePreload)
         assertEquals(3, analysisHistoryConfig.preloadDistance)
         assertTrue(analysisHistoryConfig.thumbnailFirst)
-
         val fastScrollingConfig = LazyImageLoader.Configs.forFastScrolling()
         assertEquals(false, fastScrollingConfig.enablePreload)
         assertTrue(fastScrollingConfig.thumbnailFirst)
         assertEquals(200L, fastScrollingConfig.loadDelay)
     }
-
     @Test
     fun testPaginationManagerConfiguration() {
         val analysisPaginationManager = AnalysisPaginationManager(pageSize = 15, prefetchDistance = 3)
         assertNotNull(analysisPaginationManager)
-
         val molePaginationManager = MolePaginationManager(pageSize = 10, prefetchDistance = 2)
         assertNotNull(molePaginationManager)
     }
-
     @Test
     fun testLocalCacheManagerBasicOperations() = runBlocking {
-        // Test analysis caching
         val analysisData = createTestAnalysisData()
-        
-        // Cache analysis
         localCacheManager.cacheAnalysis(
             analysisId = analysisData.id,
             analysis = analysisData,
             config = LocalCacheManager.Configs.shortTerm()
         )
-
-        // Retrieve cached analysis
         val cachedAnalysis = localCacheManager.getCachedAnalysis(
             analysisId = analysisData.id,
             config = LocalCacheManager.Configs.shortTerm()
         )
-
         assertNotNull(cachedAnalysis)
         assertEquals(analysisData.id, cachedAnalysis.id)
         assertEquals(analysisData.moleId, cachedAnalysis.moleId)
         assertEquals(analysisData.riskLevel, cachedAnalysis.riskLevel)
     }
-
     @Test
     fun testLocalCacheManagerMoleOperations() = runBlocking {
-        // Test mole caching
         val moleData = createTestMoleData()
-        
-        // Cache mole
         localCacheManager.cacheMole(
             moleId = moleData.id,
             mole = moleData,
             config = LocalCacheManager.Configs.longTerm()
         )
-
-        // Retrieve cached mole
         val cachedMole = localCacheManager.getCachedMole(
             moleId = moleData.id,
             config = LocalCacheManager.Configs.longTerm()
         )
-
         assertNotNull(cachedMole)
         assertEquals(moleData.id, cachedMole.id)
         assertEquals(moleData.title, cachedMole.title)
         assertEquals(moleData.bodyPart, cachedMole.bodyPart)
     }
-
     @Test
     fun testLocalCacheManagerListOperations() = runBlocking {
-        // Test analysis list caching
         val analysisList = listOf(
             createTestAnalysisData("analysis1"),
             createTestAnalysisData("analysis2"),
             createTestAnalysisData("analysis3")
         )
-        
         val cacheKey = "test_mole_analyses"
-        
-        // Cache analysis list
         localCacheManager.cacheAnalysisList(
             cacheKey = cacheKey,
             analysisList = analysisList,
             config = LocalCacheManager.Configs.mediumTerm()
         )
-
-        // Retrieve cached analysis list
         val cachedList = localCacheManager.getCachedAnalysisList(
             cacheKey = cacheKey,
             config = LocalCacheManager.Configs.mediumTerm()
         )
-
         assertNotNull(cachedList)
         assertEquals(3, cachedList.size)
         assertEquals("analysis1", cachedList[0].id)
         assertEquals("analysis2", cachedList[1].id)
         assertEquals("analysis3", cachedList[2].id)
     }
-
     @Test
     fun testCacheInvalidation() = runBlocking {
         val analysisData = createTestAnalysisData()
-        
-        // Cache analysis
         localCacheManager.cacheAnalysis(
             analysisId = analysisData.id,
             analysis = analysisData
         )
-
-        // Verify it's cached
         val cachedBefore = localCacheManager.getCachedAnalysis(analysisData.id)
         assertNotNull(cachedBefore)
-
-        // Invalidate cache
         localCacheManager.invalidateAnalysis(analysisData.id)
-
-        // Verify it's no longer cached
         val cachedAfter = localCacheManager.getCachedAnalysis(analysisData.id)
         assertEquals(null, cachedAfter)
     }
-
     @Test
     fun testCacheStats() = runBlocking {
-        // Add some data to cache
         val analysisData = createTestAnalysisData()
         val moleData = createTestMoleData()
-        
         localCacheManager.cacheAnalysis(analysisData.id, analysisData)
         localCacheManager.cacheMole(moleData.id, moleData)
-        
         val stats = localCacheManager.getCacheStats()
         assertTrue(stats.analysisMemoryCacheSize >= 1)
         assertTrue(stats.moleMemoryCacheSize >= 1)
     }
-
     @Test
     fun testPerformanceManagerConfigurations() {
         val highPerformanceConfig = PerformanceManager.Configs.highPerformance()
@@ -191,76 +144,53 @@ class PerformanceOptimizationTest {
         assertTrue(highPerformanceConfig.enableOptimizedQueries)
         assertEquals(5, highPerformanceConfig.preloadDistance)
         assertEquals(15, highPerformanceConfig.pageSize)
-
         val lowMemoryConfig = PerformanceManager.Configs.lowMemory()
         assertTrue(lowMemoryConfig.enableImageLazyLoading)
         assertTrue(lowMemoryConfig.enablePagination)
-        assertEquals(false, lowMemoryConfig.enableLocalCache) // Disabled for low memory
+        assertEquals(false, lowMemoryConfig.enableLocalCache)
         assertTrue(lowMemoryConfig.enableOptimizedQueries)
         assertEquals(1, lowMemoryConfig.preloadDistance)
         assertEquals(10, lowMemoryConfig.pageSize)
-
         val offlineConfig = PerformanceManager.Configs.offline()
         assertEquals(false, offlineConfig.enableImageLazyLoading)
         assertEquals(false, offlineConfig.enablePagination)
         assertTrue(offlineConfig.enableLocalCache)
         assertEquals(false, offlineConfig.enableOptimizedQueries)
     }
-
     @Test
     fun testPerformanceManagerCacheOperations() = runBlocking {
         val analysisData = createTestAnalysisData()
         val moleData = createTestMoleData()
-        
-        // Test caching through performance manager
         performanceManager.cacheAnalysis(analysisData.id, analysisData)
         performanceManager.cacheMole(moleData.id, moleData)
-        
-        // Test retrieval through performance manager
         val cachedAnalysis = performanceManager.getCachedAnalysis(analysisData.id)
         val cachedMole = performanceManager.getCachedMole(moleData.id)
-        
         assertNotNull(cachedAnalysis)
         assertNotNull(cachedMole)
         assertEquals(analysisData.id, cachedAnalysis.id)
         assertEquals(moleData.id, cachedMole.id)
     }
-
     @Test
     fun testPerformanceStats() = runBlocking {
-        // Add some data to generate stats
         val analysisData = createTestAnalysisData()
         val moleData = createTestMoleData()
-        
         performanceManager.cacheAnalysis(analysisData.id, analysisData)
         performanceManager.cacheMole(moleData.id, moleData)
-        
         val stats = performanceManager.getPerformanceStats()
-        assertTrue(stats.memoryCacheSize >= 2) // At least analysis + mole
+        assertTrue(stats.memoryCacheSize >= 2)
     }
-
     @Test
     fun testClearCaches() = runBlocking {
-        // Add data to caches
         val analysisData = createTestAnalysisData()
         val moleData = createTestMoleData()
-        
         performanceManager.cacheAnalysis(analysisData.id, analysisData)
         performanceManager.cacheMole(moleData.id, moleData)
-        
-        // Verify data is cached
         assertNotNull(performanceManager.getCachedAnalysis(analysisData.id))
         assertNotNull(performanceManager.getCachedMole(moleData.id))
-        
-        // Clear caches
         performanceManager.clearCaches()
-        
-        // Verify caches are cleared
         assertEquals(null, performanceManager.getCachedAnalysis(analysisData.id))
         assertEquals(null, performanceManager.getCachedMole(moleData.id))
     }
-
-    // Helper methods to create test data
     private fun createTestAnalysisData(id: String = "test_analysis_id"): AnalysisData {
         return AnalysisData(
             id = id,
@@ -284,7 +214,6 @@ class PerformanceOptimizationTest {
             analysisMetadata = mapOf("test" to "metadata")
         )
     }
-
     private fun createTestMoleData(id: String = "test_mole_id"): MoleData {
         return MoleData(
             id = id,

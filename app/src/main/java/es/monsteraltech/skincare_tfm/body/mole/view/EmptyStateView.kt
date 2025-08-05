@@ -1,5 +1,4 @@
 package es.monsteraltech.skincare_tfm.body.mole.view
-
 import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater
@@ -12,17 +11,11 @@ import android.widget.TextView
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import es.monsteraltech.skincare_tfm.R
-
-/**
- * Componente reutilizable para mostrar estados vacíos con mensajes informativos
- * Soporta diferentes tipos de estados vacíos y acciones de recuperación
- */
 class EmptyStateView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : LinearLayout(context, attrs, defStyleAttr) {
-
     private val icon: ImageView
     private val title: TextView
     private val message: TextView
@@ -30,10 +23,6 @@ class EmptyStateView @JvmOverloads constructor(
     private val secondaryButton: Button
     private val progressBar: ProgressBar
     private val retryText: TextView
-
-    /**
-     * Tipos de estados vacíos predefinidos
-     */
     enum class EmptyStateType {
         NO_MOLES,
         NO_ANALYSIS,
@@ -43,10 +32,8 @@ class EmptyStateView @JvmOverloads constructor(
         AUTHENTICATION_ERROR,
         GENERIC_ERROR
     }
-
     init {
         LayoutInflater.from(context).inflate(R.layout.component_empty_state, this, true)
-        
         icon = findViewById(R.id.emptyStateIcon)
         title = findViewById(R.id.emptyStateTitle)
         message = findViewById(R.id.emptyStateMessage)
@@ -54,13 +41,8 @@ class EmptyStateView @JvmOverloads constructor(
         secondaryButton = findViewById(R.id.emptyStateSecondaryButton)
         progressBar = findViewById(R.id.emptyStateProgressBar)
         retryText = findViewById(R.id.emptyStateRetryText)
-        
         visibility = View.GONE
     }
-
-    /**
-     * Configura el estado vacío usando un tipo predefinido
-     */
     fun setEmptyState(
         type: EmptyStateType,
         primaryAction: (() -> Unit)? = null,
@@ -76,7 +58,6 @@ class EmptyStateView @JvmOverloads constructor(
                     primaryAction = primaryAction
                 )
             }
-            
             EmptyStateType.NO_ANALYSIS -> {
                 setEmptyState(
                     iconRes = R.drawable.ic_analytics_outline,
@@ -86,7 +67,6 @@ class EmptyStateView @JvmOverloads constructor(
                     primaryAction = primaryAction
                 )
             }
-            
             EmptyStateType.NO_SEARCH_RESULTS -> {
                 setEmptyState(
                     iconRes = R.drawable.ic_search_off,
@@ -98,7 +78,6 @@ class EmptyStateView @JvmOverloads constructor(
                     secondaryAction = secondaryAction
                 )
             }
-            
             EmptyStateType.LOADING_FAILED -> {
                 setEmptyState(
                     iconRes = R.drawable.ic_error_outline,
@@ -110,7 +89,6 @@ class EmptyStateView @JvmOverloads constructor(
                     secondaryAction = secondaryAction
                 )
             }
-            
             EmptyStateType.NETWORK_ERROR -> {
                 setEmptyState(
                     iconRes = R.drawable.ic_wifi_off,
@@ -120,7 +98,6 @@ class EmptyStateView @JvmOverloads constructor(
                     primaryAction = primaryAction
                 )
             }
-            
             EmptyStateType.AUTHENTICATION_ERROR -> {
                 setEmptyState(
                     iconRes = R.drawable.ic_account_circle_outline,
@@ -130,7 +107,6 @@ class EmptyStateView @JvmOverloads constructor(
                     primaryAction = primaryAction
                 )
             }
-            
             EmptyStateType.GENERIC_ERROR -> {
                 setEmptyState(
                     iconRes = R.drawable.ic_error_outline,
@@ -142,10 +118,6 @@ class EmptyStateView @JvmOverloads constructor(
             }
         }
     }
-
-    /**
-     * Configura el estado vacío con parámetros personalizados
-     */
     fun setEmptyState(
         @DrawableRes iconRes: Int? = null,
         @StringRes titleRes: Int? = null,
@@ -159,22 +131,15 @@ class EmptyStateView @JvmOverloads constructor(
         primaryAction: (() -> Unit)? = null,
         secondaryAction: (() -> Unit)? = null
     ) {
-        // Configurar icono
         iconRes?.let { icon.setImageResource(it) }
-        
-        // Configurar título
         when {
             title != null -> this.title.text = title
             titleRes != null -> this.title.text = context.getString(titleRes)
         }
-        
-        // Configurar mensaje
         when {
             message != null -> this.message.text = message
             messageRes != null -> this.message.text = context.getString(messageRes)
         }
-        
-        // Configurar botón primario
         if (primaryAction != null) {
             when {
                 primaryActionText != null -> actionButton.text = primaryActionText
@@ -185,8 +150,6 @@ class EmptyStateView @JvmOverloads constructor(
         } else {
             actionButton.visibility = View.GONE
         }
-        
-        // Configurar botón secundario
         if (secondaryAction != null) {
             when {
                 secondaryActionText != null -> secondaryButton.text = secondaryActionText
@@ -197,41 +160,22 @@ class EmptyStateView @JvmOverloads constructor(
         } else {
             secondaryButton.visibility = View.GONE
         }
-        
-        // Ocultar elementos de reintento por defecto
         hideRetryIndicators()
-        
-        // Mostrar el componente
         visibility = View.VISIBLE
     }
-
-    /**
-     * Muestra indicadores de reintento automático
-     */
     fun showRetryIndicators(attempt: Int, maxAttempts: Int) {
         progressBar.visibility = View.VISIBLE
         retryText.text = context.getString(R.string.retry_attempting, attempt, maxAttempts)
         retryText.visibility = View.VISIBLE
-        
-        // Ocultar botones durante el reintento
         actionButton.visibility = View.GONE
         secondaryButton.visibility = View.GONE
     }
-
-    /**
-     * Oculta indicadores de reintento
-     */
     fun hideRetryIndicators() {
         progressBar.visibility = View.GONE
         retryText.visibility = View.GONE
     }
-
-    /**
-     * Oculta completamente el estado vacío
-     */
     fun hide() {
         visibility = View.GONE
         hideRetryIndicators()
     }
-    
 }

@@ -1,5 +1,4 @@
 package es.monsteraltech.skincare_tfm.notifications
-
 import android.app.TimePickerDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -16,9 +15,7 @@ import es.monsteraltech.skincare_tfm.account.UserProfileManager
 import es.monsteraltech.skincare_tfm.databinding.ActivityNotificationSettingsBinding
 import es.monsteraltech.skincare_tfm.utils.UIUtils
 import kotlinx.coroutines.launch
-
 class NotificationSettingsActivity : AppCompatActivity() {
-
     private lateinit var binding: ActivityNotificationSettingsBinding
     private lateinit var notificationManager: NotificationManager
     private lateinit var userProfileManager: UserProfileManager
@@ -27,33 +24,26 @@ class NotificationSettingsActivity : AppCompatActivity() {
     private var currentAccountSettings = AccountSettings()
     private var generalNotificationsEnabled = false
     private var isLoadingSettings = false
-
     companion object {
         private const val TAG = "NotificationSettings"
     }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityNotificationSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         setupToolbar()
         initializeComponents()
         loadSettings()
         setupListeners()
     }
-
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume - Verificando estado actual")
-
-        // Recargar el estado de notificaciones generales por si cambió desde otra pantalla
         lifecycleScope.launch {
             val result = userProfileManager.getUserSettings()
             if (result is AccountResult.Success<*>) {
                 val accountSettings = result.data as AccountSettings
                 val newGeneralNotificationsEnabled = accountSettings.notificationsEnabled
-
                 if (newGeneralNotificationsEnabled != generalNotificationsEnabled) {
                     Log.d(
                             TAG,
@@ -64,10 +54,8 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 }
             }
         }
-
         debugCurrentState()
     }
-
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.apply {
@@ -75,16 +63,13 @@ class NotificationSettingsActivity : AppCompatActivity() {
             setDisplayShowHomeEnabled(true)
             title = "Configuración de Notificaciones"
         }
-
         binding.toolbar.setNavigationOnClickListener { onBackPressed() }
     }
-
     private fun initializeComponents() {
         notificationManager = NotificationManager(this)
         userProfileManager = UserProfileManager()
         permissionManager = NotificationPermissionManager(this)
     }
-
     private fun loadSettings() {
         lifecycleScope.launch {
             when (val result = userProfileManager.getUserSettings()) {
@@ -93,7 +78,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                     currentAccountSettings = result.data as AccountSettings
                     currentSettings = currentAccountSettings.toNotificationSettings()
                     generalNotificationsEnabled = currentAccountSettings.notificationsEnabled
-
                     Log.d(TAG, "Configuraciones cargadas:")
                     Log.d(
                             TAG,
@@ -109,7 +93,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                             TAG,
                             "  - moleCheckupFrequency: ${currentAccountSettings.moleCheckupFrequency}"
                     )
-
                     applySettingsToUI()
                 }
                 is AccountResult.Error<*> -> {
@@ -118,8 +101,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                             binding.root,
                             "Error al cargar configuraciones: ${result.message}"
                     )
-
-                    // Usar configuraciones por defecto
                     currentAccountSettings = AccountSettings()
                     currentSettings = NotificationSettings()
                     generalNotificationsEnabled = false
@@ -131,41 +112,25 @@ class NotificationSettingsActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun applySettingsToUI() {
-        // Desactivar listeners temporalmente para evitar guardado automático
         isLoadingSettings = true
-
         binding.apply {
-            // Mole checkups
             switchMoleCheckups.isChecked = currentSettings.moleCheckups
             tvMoleTime.text = currentSettings.moleCheckupTime
             tvMoleFrequency.text = "${currentSettings.moleCheckupFrequency} días"
-
-            // General settings
             switchVibration.isChecked = currentSettings.vibration
             switchSound.isChecked = currentSettings.sound
-
             updateUIState()
         }
-
-        // Reactivar listeners después de aplicar configuraciones
         isLoadingSettings = false
     }
-
     private fun updateUIState() {
         binding.apply {
-            // Disable the switch if general notifications are disabled
             switchMoleCheckups.isEnabled = generalNotificationsEnabled
-
-            // Enable/disable mole checkup options
             val moleOptionsEnabled = generalNotificationsEnabled && switchMoleCheckups.isChecked
-
             layoutMoleOptions.alpha = if (moleOptionsEnabled) 1.0f else 0.5f
             layoutMoleTime.isEnabled = moleOptionsEnabled
             layoutMoleFrequency.isEnabled = moleOptionsEnabled
-
-            // Show a message if general notifications are disabled
             if (!generalNotificationsEnabled) {
                 cardNotificationDisabledMessage.visibility = View.VISIBLE
                 Log.d(TAG, "Mostrando mensaje de notificaciones desactivadas")
@@ -173,28 +138,23 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 cardNotificationDisabledMessage.visibility = View.GONE
                 Log.d(TAG, "Ocultando mensaje de notificaciones desactivadas")
             }
-
             Log.d(
                     TAG,
                     "UI State updated - generalNotifications: $generalNotificationsEnabled, moleCheckups: ${switchMoleCheckups.isChecked}, optionsEnabled: $moleOptionsEnabled"
             )
         }
-
         debugCurrentState()
     }
-
     private fun setupListeners() {
         binding.apply {
             switchMoleCheckups.setOnCheckedChangeListener { _, isChecked ->
                 if (!isLoadingSettings) {
                     Log.d(TAG, "Switch mole checkups cambiado por usuario: $isChecked")
-
                     if (isChecked && !permissionManager.hasNotificationPermission()) {
                         showPermissionDialog()
                         switchMoleCheckups.isChecked = false
                         return@setOnCheckedChangeListener
                     }
-
                     currentSettings = currentSettings.copy(moleCheckups = isChecked)
                     updateUIState()
                     saveSettings()
@@ -202,7 +162,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                     Log.d(TAG, "Switch mole checkups aplicado desde carga inicial: $isChecked")
                 }
             }
-
             switchVibration.setOnCheckedChangeListener { _, isChecked ->
                 if (!isLoadingSettings) {
                     Log.d(TAG, "Switch vibration cambiado por usuario: $isChecked")
@@ -212,7 +171,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                     Log.d(TAG, "Switch vibration aplicado desde carga inicial: $isChecked")
                 }
             }
-
             switchSound.setOnCheckedChangeListener { _, isChecked ->
                 if (!isLoadingSettings) {
                     Log.d(TAG, "Switch sound cambiado por usuario: $isChecked")
@@ -222,7 +180,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                     Log.d(TAG, "Switch sound aplicado desde carga inicial: $isChecked")
                 }
             }
-
             layoutMoleTime.setOnClickListener {
                 if (generalNotificationsEnabled && switchMoleCheckups.isChecked) {
                     showTimePicker(currentSettings.moleCheckupTime) { time ->
@@ -232,7 +189,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                     }
                 }
             }
-
             layoutMoleFrequency.setOnClickListener {
                 if (generalNotificationsEnabled && switchMoleCheckups.isChecked) {
                     showFrequencyDialog(
@@ -247,12 +203,10 @@ class NotificationSettingsActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun showTimePicker(currentTime: String, onTimeSelected: (String) -> Unit) {
         val parts = currentTime.split(":")
         val hour = parts[0].toInt()
         val minute = parts[1].toInt()
-
         TimePickerDialog(
                         this,
                         { _, selectedHour, selectedMinute ->
@@ -266,7 +220,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 )
                 .show()
     }
-
     private fun showFrequencyDialog(
             title: String,
             currentFrequency: Int,
@@ -276,7 +229,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 arrayOf("1 día", "3 días", "7 días", "14 días", "30 días", "60 días", "90 días")
         val values = arrayOf(1, 3, 7, 14, 30, 60, 90)
         val currentIndex = values.indexOf(currentFrequency).takeIf { it >= 0 } ?: 2
-
         AlertDialog.Builder(this)
                 .setTitle(title)
                 .setSingleChoiceItems(frequencies, currentIndex) { dialog, which ->
@@ -286,19 +238,16 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 .setNegativeButton("Cancelar", null)
                 .show()
     }
-
     private fun saveSettings() {
         lifecycleScope.launch {
             try {
                 Log.d(TAG, "Guardando configuraciones en Firebase")
-
                 val updatedAccountSettings =
                         currentSettings.toAccountSettings(currentAccountSettings)
                 when (val result = userProfileManager.updateUserSettings(updatedAccountSettings)) {
                     is AccountResult.Success<*> -> {
                         Log.d(TAG, "Configuraciones guardadas exitosamente")
                         currentAccountSettings = updatedAccountSettings
-
                         if (generalNotificationsEnabled &&
                                         permissionManager.hasNotificationPermission()
                         ) {
@@ -308,7 +257,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                             notificationManager.cancelAllNotifications()
                             Log.d(TAG, "Notificaciones canceladas")
                         }
-
                         Toast.makeText(
                                         this@NotificationSettingsActivity,
                                         "Configuración guardada",
@@ -333,7 +281,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun showPermissionDialog() {
         if (permissionManager.shouldShowRequestPermissionRationale(this)) {
             AlertDialog.Builder(this)
@@ -348,14 +295,12 @@ class NotificationSettingsActivity : AppCompatActivity() {
             permissionManager.requestNotificationPermission(this)
         }
     }
-
     override fun onRequestPermissionsResult(
             requestCode: Int,
             permissions: Array<out String>,
             grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
         when (requestCode) {
             NotificationPermissionManager.NOTIFICATION_PERMISSION_REQUEST_CODE -> {
                 if (grantResults.isNotEmpty() &&
@@ -378,7 +323,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun debugCurrentState() {
         Log.d(TAG, "=== DEBUG CURRENT STATE ===")
         Log.d(TAG, "generalNotificationsEnabled: $generalNotificationsEnabled")
