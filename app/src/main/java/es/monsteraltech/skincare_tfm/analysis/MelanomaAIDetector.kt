@@ -387,31 +387,32 @@ class MelanomaAIDetector(private val context: Context) {
     }
 
     private fun calculateConfidence(probability: Float): Float {
-
-        // Calcular distancia al umbral óptimo
         val distanceFromThreshold = abs(probability - OPTIMAL_THRESHOLD)
 
-        // Considerar también la distancia a los extremos
-        val distanceFromExtremes = minOf(probability, 1f - probability)
-
-        // Combinar ambos factores
         val confidence = when {
-            // Alta confianza: lejos del umbral Y cerca de los extremos
-            distanceFromThreshold > 0.4f && distanceFromExtremes < 0.1f -> 0.90f
-
-            // Confianza media-alta
-            distanceFromThreshold > 0.3f -> 0.80f
-
+            // Muy alta confianza
+            probability < 0.1f || probability > 0.9f -> 0.95f
+            
+            // Alta confianza
+            probability < 0.15f || probability > 0.85f -> 0.90f
+            
+            // Confianza alta-media
+            distanceFromThreshold > 0.25f -> 0.85f
+            
             // Confianza media
-            distanceFromThreshold > 0.2f -> 0.75f
-
-            // Confianza baja
-            distanceFromThreshold > 0.1f -> 0.70f
-
+            distanceFromThreshold > 0.15f -> 0.75f
+            
+            // Confianza media-baja
+            distanceFromThreshold > 0.08f -> 0.65f
+            
+            // Baja confianza
+            distanceFromThreshold > 0.04f -> 0.55f
+            
             // Muy baja confianza
-            else -> 0.40f
+            else -> 0.45f
         }
-
+        
+        Log.d(TAG, "Confianza calculada: $confidence (prob: $probability, distancia umbral: $distanceFromThreshold)")
         return confidence
     }
 
