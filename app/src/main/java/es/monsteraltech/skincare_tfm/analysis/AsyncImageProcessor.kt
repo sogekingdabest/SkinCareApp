@@ -31,7 +31,7 @@ class AsyncImageProcessor(
 
     // Detector de IA y analizador ABCDE
     private val melanomaDetector = MelanomaAIDetector(context)
-    private val abcdeAnalyzer = ABCDEAnalyzerOpenCV()
+    private val abcdeAnalyzer = ABCDEAnalyzerOpenCV(context)
     
     // Control de cancelación
     private val processingMutex = Mutex()

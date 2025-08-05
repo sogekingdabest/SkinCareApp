@@ -1,6 +1,7 @@
 // ABCDEAnalyzerOpenCV.kt - Implementación con OpenCV
 package es.monsteraltech.skincare_tfm.analysis
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import org.opencv.android.Utils
@@ -27,7 +28,7 @@ import kotlin.math.sqrt
 /**
  * Analizador ABCDE implementado con OpenCV para análisis preciso
  */
-class ABCDEAnalyzerOpenCV {
+class ABCDEAnalyzerOpenCV(private val context: Context) {
 
     companion object {
         private const val TAG = "ABCDEAnalyzerOpenCV"
@@ -343,7 +344,7 @@ class ABCDEAnalyzerOpenCV {
     /**
      * Validar si la segmentación es razonable
      */
-    private fun isValidSegmentation(mask: Mat, contour: MatOfPoint): Boolean {
+    private fun isValidSegmentationOld(mask: Mat, contour: MatOfPoint): Boolean {
         if (contour.total() < 10) return false
 
         val area = Imgproc.contourArea(contour)
@@ -352,6 +353,20 @@ class ABCDEAnalyzerOpenCV {
 
         // El lunar debe ocupar entre 1% y 80% de la imagen
         return ratio in 0.01..0.8
+    }
+
+    private fun isValidSegmentation(mask: Mat, contour: MatOfPoint): Boolean {
+        val area = Imgproc.contourArea(contour)
+        val totalArea = mask.rows() * mask.cols()
+        val ratio = area / totalArea
+
+        // Agregar más validaciones
+        val perimeter = Imgproc.arcLength(MatOfPoint2f(*contour.toArray()), true)
+        val circularity = 4 * Math.PI * area / (perimeter * perimeter)
+
+        return ratio in 0.01..0.8 &&
+                circularity > 0.3 && // Evitar formas muy elongadas
+                contour.total() > 50  // Mínimo de puntos
     }
 
     /**
@@ -535,8 +550,10 @@ class ABCDEAnalyzerOpenCV {
             val l = center[0]
             val a = center[1]
             val b = center[2]
-            l > 70 && a in -10.0..0.0 && b in -20.0..-5.0 &&
-                    size > molePixels.size * 0.1
+//            l > 70 && a in -10.0..0.0 && b in -20.0..-5.0 &&
+//                    size > molePixels.size * 0.1
+            l > 80 && abs(a) < 5 && b in -15.0..-5.0 &&
+                    size > molePixels.size * 0.05
         }
 
         val hasRedBlue = detectRedBlueCombination(sortedClusters)
@@ -645,10 +662,30 @@ class ABCDEAnalyzerOpenCV {
         )
     }
 
+    private fun calculatePixelsPerMm(): Float {
+        val metrics = context.resources.displayMetrics
+
+        // Usar el promedio de xdpi e ydpi para mayor precisión
+        val averageDpi = (metrics.xdpi + metrics.ydpi) / 2f
+
+        // Validar que el DPI sea razonable (algunos dispositivos reportan valores incorrectos)
+        val validatedDpi = when {
+            averageDpi < 120f -> 160f  // Valor por defecto para baja densidad
+            averageDpi > 700f -> 450f  // Límite superior razonable
+            else -> averageDpi
+        }
+
+        return validatedDpi / 25.4f  // Convertir DPI a píxeles por mm
+    }
+
+
     /**
      * Análisis de diámetro con OpenCV
      */
-    private fun analyzeDiameter(contour: MatOfPoint, pixelDensity: Float): DiameterDetails {
+    private fun analyzeDiameter(contour: MatOfPoint,
+                                //pixelDensity: Float
+                                scaleFactor: Float = 1.0f
+    ): DiameterDetails {
         // Calcular área
         val area = Imgproc.contourArea(contour)
 
@@ -675,10 +712,13 @@ class ABCDEAnalyzerOpenCV {
         val diameterPx = maxOf(maxDistance, equivalentDiameter)
 
         // Convertir a mm
-        val assumedDPI = 400f // DPI típico de móvil moderno
-        val inchToMm = 25.4f
-        val calibratedPixelToMm = inchToMm / (assumedDPI * pixelDensity)
-        val diameterMm = (diameterPx * calibratedPixelToMm).toFloat()
+//        val assumedDPI = 400f // DPI típico de móvil moderno
+//        val inchToMm = 25.4f
+//        val calibratedPixelToMm = inchToMm / (assumedDPI * pixelDensity)
+//        val diameterMm = (diameterPx * calibratedPixelToMm).toFloat()
+
+        val pixelsPerMm = calculatePixelsPerMm()
+        val diameterMm = (diameterPx / (pixelsPerMm * scaleFactor)).toFloat()
 
         val description = when {
             diameterMm < 6f -> "Diámetro pequeño (<6mm) - Bajo riesgo"
@@ -830,8 +870,10 @@ class ABCDEAnalyzerOpenCV {
     private fun calculateAsymmetryScore(details: AsymmetryDetails): Float {
         val maxAsymmetry = maxOf(details.horizontalAsymmetry, details.verticalAsymmetry)
         return when {
-            maxAsymmetry < 0.1f -> 0f
-            maxAsymmetry < 0.2f -> 1f
+            maxAsymmetry < 0.05f -> 0f
+            maxAsymmetry < 0.10f -> 0.5f
+            maxAsymmetry < 0.15f -> 1f
+            maxAsymmetry < 0.25f -> 1.5f
             else -> 2f
         }
     }
