@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.performance
+﻿package es.monsteraltech.skincare_tfm.performance
 import android.content.Intent
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider

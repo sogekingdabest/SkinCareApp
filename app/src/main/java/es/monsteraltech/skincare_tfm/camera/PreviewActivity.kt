@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera
+﻿package es.monsteraltech.skincare_tfm.camera
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

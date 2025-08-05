@@ -1,9 +1,8 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.graphics.Bitmap
 import android.util.Log
 import androidx.core.graphics.scale
 import kotlinx.coroutines.delay
-
 class ErrorRecoveryManager {
     companion object {
         private const val TAG = "ErrorRecoveryManager"

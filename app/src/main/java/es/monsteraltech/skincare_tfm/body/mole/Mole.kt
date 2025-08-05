@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole
+﻿package es.monsteraltech.skincare_tfm.body.mole
 data class Mole(
     val id: String = "",
     val title: String = "",

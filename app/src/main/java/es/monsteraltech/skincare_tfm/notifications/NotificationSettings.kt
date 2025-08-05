@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.notifications
+﻿package es.monsteraltech.skincare_tfm.notifications
 import es.monsteraltech.skincare_tfm.account.AccountSettings
 data class NotificationSettings(
     val moleCheckups: Boolean = false,

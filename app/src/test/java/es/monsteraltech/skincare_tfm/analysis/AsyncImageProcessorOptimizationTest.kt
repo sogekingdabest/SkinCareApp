@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.content.Context
 import android.graphics.Bitmap
 import kotlinx.coroutines.runBlocking
@@ -9,7 +9,6 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
-
 class AsyncImageProcessorOptimizationTest {
     private lateinit var mockContext: Context
     private lateinit var mockProgressCallback: ProgressCallback

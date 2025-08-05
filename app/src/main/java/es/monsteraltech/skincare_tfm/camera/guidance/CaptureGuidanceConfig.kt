@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 data class CaptureGuidanceConfig(
     val guideCircleRadius: Float = 150f,
     val centeringTolerance: Float = 50f,

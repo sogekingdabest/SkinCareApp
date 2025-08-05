@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.animation.ValueAnimator
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -10,7 +10,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
-
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [28])
 class CaptureGuidanceOverlayAnimationTest {

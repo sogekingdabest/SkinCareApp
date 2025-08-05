@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole
+﻿package es.monsteraltech.skincare_tfm.body.mole
 import com.google.firebase.Timestamp
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
@@ -9,7 +9,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-
 class MoleViewerIntegrationTest {
     @Test
     fun testCompleteAnalysisDataFlow() {

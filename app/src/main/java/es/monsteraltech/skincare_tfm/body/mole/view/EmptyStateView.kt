@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.view
+﻿package es.monsteraltech.skincare_tfm.body.mole.view
 import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater

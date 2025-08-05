@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera
+﻿package es.monsteraltech.skincare_tfm.camera
 import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater

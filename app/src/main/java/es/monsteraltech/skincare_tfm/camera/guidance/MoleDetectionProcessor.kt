@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

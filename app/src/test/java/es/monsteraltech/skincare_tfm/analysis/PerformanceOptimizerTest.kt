@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.graphics.Bitmap
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -9,7 +9,6 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
-
 class PerformanceOptimizerTest {
     private lateinit var performanceOptimizer: PerformanceOptimizer
     private lateinit var mockBitmap: Bitmap

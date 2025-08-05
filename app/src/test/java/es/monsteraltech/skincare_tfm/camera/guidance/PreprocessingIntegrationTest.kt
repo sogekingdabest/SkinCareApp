@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -18,7 +18,6 @@ import org.junit.runner.RunWith
 import org.opencv.core.Size
 import java.io.File
 import java.io.FileOutputStream
-
 @RunWith(AndroidJUnit4::class)
 class PreprocessingIntegrationTest {
     private lateinit var context: Context

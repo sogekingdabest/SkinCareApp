@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm
+﻿package es.monsteraltech.skincare_tfm
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -22,7 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.opencv.android.OpenCVLoader
-
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var userProfileManager: UserProfileManager

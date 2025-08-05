@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 interface ProgressCallback {
     fun onProgressUpdate(progress: Int, message: String)
     fun onProgressUpdateWithTimeEstimate(progress: Int, message: String, estimatedTotalTimeMs: Long)

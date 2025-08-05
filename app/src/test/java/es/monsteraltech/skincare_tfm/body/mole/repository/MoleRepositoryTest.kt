@@ -1,7 +1,6 @@
-package es.monsteraltech.skincare_tfm.body.mole.repository
+﻿package es.monsteraltech.skincare_tfm.body.mole.repository
 import org.junit.Assert.assertTrue
 import org.junit.Test
-
 class MoleRepositoryTest {
     @Test
     fun `getAllMolesForUser method exists and has correct signature`() {

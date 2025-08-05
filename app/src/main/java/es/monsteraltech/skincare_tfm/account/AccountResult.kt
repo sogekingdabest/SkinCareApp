@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.account
+﻿package es.monsteraltech.skincare_tfm.account
 sealed class AccountResult<T> {
     data class Success<T>(val data: T) : AccountResult<T>()
     data class Error<T>(

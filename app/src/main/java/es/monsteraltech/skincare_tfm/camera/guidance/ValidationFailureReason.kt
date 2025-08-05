@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 enum class ValidationFailureReason {
     NOT_CENTERED,
     TOO_FAR,

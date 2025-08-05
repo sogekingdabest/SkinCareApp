@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.login
+﻿package es.monsteraltech.skincare_tfm.login
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.google.firebase.auth.FirebaseAuth
@@ -25,7 +25,6 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.graphics.Bitmap
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -16,7 +16,6 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.mockStatic
 import org.mockito.Mockito.`when`
 import org.mockito.MockitoAnnotations
-
 class ErrorRecoveryManagerTest {
     @Mock
     private lateinit var mockBitmap: Bitmap

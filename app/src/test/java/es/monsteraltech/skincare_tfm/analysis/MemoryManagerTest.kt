@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.graphics.Bitmap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -7,7 +7,6 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
-
 class MemoryManagerTest {
     private lateinit var memoryManager: MemoryManager
     private lateinit var mockBitmap: Bitmap

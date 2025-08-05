@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.account
+﻿package es.monsteraltech.skincare_tfm.account
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import kotlinx.coroutines.test.runTest
 import org.junit.Before

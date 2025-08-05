@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.dialog
+﻿package es.monsteraltech.skincare_tfm.body.mole.dialog
 import android.app.Dialog
 import android.content.Context
 import android.os.Bundle
@@ -23,7 +23,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
-
 class MoleSelectorDialog : DialogFragment() {
     private var _binding: DialogMoleSelectorBinding? = null
     private val binding get() = _binding!!

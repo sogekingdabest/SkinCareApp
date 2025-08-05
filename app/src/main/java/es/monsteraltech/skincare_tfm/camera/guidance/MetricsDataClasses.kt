@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 data class QualityMetricsSnapshot(
     val timestamp: Long,
     val sharpness: Float,

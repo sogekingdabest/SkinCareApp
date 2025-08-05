@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.Context
@@ -13,7 +13,6 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Button
 import android.widget.TextView
 import com.google.android.material.progressindicator.LinearProgressIndicator
-
 class ProgressManager(
     private val context: Context,
     private val progressBar: LinearProgressIndicator?,

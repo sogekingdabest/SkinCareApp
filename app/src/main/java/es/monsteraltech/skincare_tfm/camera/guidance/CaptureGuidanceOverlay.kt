@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas

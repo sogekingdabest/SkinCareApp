@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -17,7 +17,6 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.*
 import kotlin.test.*
-
 @RunWith(AndroidJUnit4::class)
 class CompleteFlowIntegrationTest {
     private lateinit var context: Context

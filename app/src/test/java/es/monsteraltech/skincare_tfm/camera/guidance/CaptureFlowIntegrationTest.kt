@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -22,7 +22,6 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import java.io.File
 import java.io.FileOutputStream
-
 @RunWith(AndroidJUnit4::class)
 class CaptureFlowIntegrationTest {
     private lateinit var context: Context

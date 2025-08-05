@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.content.Context
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
@@ -7,7 +7,6 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
-
 class MetricsDashboardTest {
     @Mock
     private lateinit var mockContext: Context

@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.account
+﻿package es.monsteraltech.skincare_tfm.account
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click

@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.model
+﻿package es.monsteraltech.skincare_tfm.body.mole.model
 import com.google.firebase.Timestamp
 import org.json.JSONObject
 import java.util.UUID

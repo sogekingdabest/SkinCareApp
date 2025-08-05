@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -12,7 +12,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.MockitoAnnotations
 import kotlin.test.*
-
 @RunWith(AndroidJUnit4::class)
 class LowEndDevicePerformanceTest {
     private lateinit var context: Context

@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.account
+﻿package es.monsteraltech.skincare_tfm.account
 import java.util.Date
 data class UserInfo(
     val uid: String = "",

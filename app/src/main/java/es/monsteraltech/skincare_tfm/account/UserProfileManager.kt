@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.account
+﻿package es.monsteraltech.skincare_tfm.account
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager

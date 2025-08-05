@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 sealed class AnalysisError(message: String, cause: Throwable? = null) : Exception(message, cause) {
     object Timeout : AnalysisError("El análisis está tomando más tiempo del esperado")
     object OutOfMemory : AnalysisError("Memoria insuficiente para procesar la imagen")

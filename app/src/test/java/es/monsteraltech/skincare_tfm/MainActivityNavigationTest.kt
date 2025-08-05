@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm
+﻿package es.monsteraltech.skincare_tfm
 import androidx.fragment.app.Fragment
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import es.monsteraltech.skincare_tfm.fragments.AccountFragment
@@ -7,7 +7,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-
 @RunWith(AndroidJUnit4::class)
 class MainActivityNavigationTest {
     @Test

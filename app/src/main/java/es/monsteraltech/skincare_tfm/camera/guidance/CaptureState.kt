@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 data class Point(val x: Float, val y: Float)
 sealed class CaptureState {
     object Initializing : CaptureState()

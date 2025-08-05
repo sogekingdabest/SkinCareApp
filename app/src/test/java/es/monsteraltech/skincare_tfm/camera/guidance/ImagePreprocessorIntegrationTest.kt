@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.graphics.Bitmap
 import android.graphics.Color
 import kotlinx.coroutines.test.runTest

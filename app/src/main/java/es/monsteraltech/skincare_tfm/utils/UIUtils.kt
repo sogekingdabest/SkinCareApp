@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.utils
+﻿package es.monsteraltech.skincare_tfm.utils
 import android.animation.ObjectAnimator
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator

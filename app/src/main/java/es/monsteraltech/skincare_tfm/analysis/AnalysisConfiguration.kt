@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 data class AnalysisConfiguration(
     val enableAI: Boolean = true,
     val enableABCDE: Boolean = true,

@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.data
+﻿package es.monsteraltech.skincare_tfm.data
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException

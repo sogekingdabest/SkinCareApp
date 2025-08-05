@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,7 +14,6 @@ import org.opencv.android.OpenCVLoaderCallback.SUCCESS
 import org.opencv.core.Mat
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

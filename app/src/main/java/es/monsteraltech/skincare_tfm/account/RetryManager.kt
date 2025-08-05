@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.account
+﻿package es.monsteraltech.skincare_tfm.account
 import android.util.Log
 import kotlinx.coroutines.delay
 import kotlin.math.pow

@@ -1,10 +1,9 @@
-package es.monsteraltech.skincare_tfm.body.mole.dialog
+﻿package es.monsteraltech.skincare_tfm.body.mole.dialog
 import com.google.firebase.Timestamp
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Date
-
 class MoleSelectorDialogTest {
     private fun createTestMoles(): List<MoleData> {
         val now = Timestamp.now()

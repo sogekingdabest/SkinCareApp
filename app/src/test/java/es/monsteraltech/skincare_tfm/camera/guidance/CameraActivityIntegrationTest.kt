@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.graphics.RectF
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -8,7 +8,6 @@ import org.junit.runner.RunWith
 import org.mockito.junit.MockitoJUnitRunner
 import org.opencv.core.*
 import kotlin.test.*
-
 @ExperimentalCoroutinesApi
 @RunWith(MockitoJUnitRunner::class)
 class CameraActivityIntegrationTest {

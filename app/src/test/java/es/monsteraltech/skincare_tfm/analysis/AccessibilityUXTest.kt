@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Vibrator
@@ -24,7 +24,6 @@ import org.mockito.Mockito.`when`
 import org.mockito.MockitoAnnotations
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class AccessibilityUXTest {

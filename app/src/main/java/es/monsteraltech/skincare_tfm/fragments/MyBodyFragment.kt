@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.fragments
+﻿package es.monsteraltech.skincare_tfm.fragments
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap

@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole
+﻿package es.monsteraltech.skincare_tfm.body.mole
 import androidx.recyclerview.widget.DiffUtil
 class MoleDiffCallback(
     private val oldMoleList: List<Mole>,

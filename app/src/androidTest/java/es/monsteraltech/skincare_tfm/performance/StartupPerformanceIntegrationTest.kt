@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.performance
+﻿package es.monsteraltech.skincare_tfm.performance
 import android.content.Intent
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -15,7 +15,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.system.measureTimeMillis
-
 @RunWith(AndroidJUnit4::class)
 class StartupPerformanceIntegrationTest {
     private lateinit var sessionManager: SessionManager

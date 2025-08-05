@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.graphics.Bitmap
 import android.graphics.Color
 import kotlinx.coroutines.test.runTest
@@ -9,7 +9,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.math.abs
 import kotlin.test.*
-
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [29])
 class ImagePreprocessorQualityTest {

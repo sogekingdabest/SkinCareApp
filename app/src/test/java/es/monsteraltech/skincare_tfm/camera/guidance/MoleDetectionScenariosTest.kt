@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -9,7 +9,6 @@ import org.junit.Test
 import org.opencv.core.CvType
 import org.opencv.core.Mat
 import org.opencv.core.Scalar
-
 class MoleDetectionScenariosTest {
     private lateinit var processor: MoleDetectionProcessor
     @Before

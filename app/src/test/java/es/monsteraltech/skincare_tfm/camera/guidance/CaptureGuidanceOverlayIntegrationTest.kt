@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.content.Context
 import android.graphics.PointF
 import androidx.test.core.app.ApplicationProvider
@@ -9,7 +9,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
-
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [28])
 class CaptureGuidanceOverlayIntegrationTest {

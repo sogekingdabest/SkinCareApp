@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.dialog
+﻿package es.monsteraltech.skincare_tfm.body.mole.dialog
 import android.graphics.Typeface
 import android.text.SpannableString
 import android.text.Spanned

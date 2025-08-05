@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.login
+﻿package es.monsteraltech.skincare_tfm.login
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import es.monsteraltech.skincare_tfm.data.SessionManager
@@ -9,7 +9,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class SessionCheckActivityTest {
