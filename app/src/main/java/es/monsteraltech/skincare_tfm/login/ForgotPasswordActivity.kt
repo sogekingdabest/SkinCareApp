@@ -1,5 +1,4 @@
 package es.monsteraltech.skincare_tfm.login
-
 import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
@@ -13,9 +12,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import es.monsteraltech.skincare_tfm.R
-
 class ForgotPasswordActivity : AppCompatActivity() {
-
     private lateinit var auth: FirebaseAuth
     private lateinit var logoImageView: ImageView
     private lateinit var welcomeTextView: TextView
@@ -23,36 +20,26 @@ class ForgotPasswordActivity : AppCompatActivity() {
     private lateinit var emailEditText: TextInputLayout
     private lateinit var recuperarButton: Button
     private lateinit var loginTextView: TextView
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_forgot_password)
-
         val email = intent.getStringExtra("password")
-
-        // Initialize Firebase Auth
         auth = FirebaseAuth.getInstance()
-
         logoImageView = findViewById(R.id.logoImageView)
         welcomeTextView = findViewById(R.id.welcomeTextView)
         instructionsTextView = findViewById(R.id.instructionsTextView)
         emailEditText = findViewById(R.id.emailLabel)
         recuperarButton = findViewById(R.id.recuperarButton)
         loginTextView = findViewById(R.id.loginTextView)
-
-
         emailEditText.editText?.setText(email)
-
         recuperarButton.setOnClickListener {
             if (validateEmail()) {
                 val email = emailEditText.editText?.text.toString().trim()
                 auth.sendPasswordResetEmail(email)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            // Password reset email sent successfully
                             Snackbar.make(it, R.string.password_reset_email_sent, Snackbar.LENGTH_LONG).show()
                             val intent = Intent(this@ForgotPasswordActivity, LoginActivity::class.java)
-
                             val pairs = arrayOf(
                                 Pair<View, String>(logoImageView, "logoImageView"),
                                 Pair<View, String>(welcomeTextView, "textTrans"),
@@ -61,28 +48,21 @@ class ForgotPasswordActivity : AppCompatActivity() {
                                 Pair<View, String>(recuperarButton, "registerOrLoginButton"),
                                 Pair<View, String>(loginTextView, "registerOrLoginEditText")
                             )
-
                             val options = ActivityOptions.makeSceneTransitionAnimation(this@ForgotPasswordActivity, *pairs)
                             startActivity(intent, options.toBundle())
                         } else {
-                            // Failed to send password reset email
                             Snackbar.make(it, R.string.error_password_reset_failed, Snackbar.LENGTH_LONG).show()
                         }
                     }
             } else {
-                // Show error message if email validation fails
-                //close the keyboard if it's open
                 val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
                 inputMethodManager.hideSoftInputFromWindow(emailEditText.editText?.windowToken, 0)
                 emailEditText.editText?.clearFocus()
-
                 Snackbar.make(it, R.string.error_invalid_email, Snackbar.LENGTH_LONG).show()
             }
         }
-
         loginTextView.setOnClickListener {
             val intent = Intent(this@ForgotPasswordActivity, LoginActivity::class.java)
-
             val pairs = arrayOf(
                 Pair<View, String>(logoImageView, "logoImageView"),
                 Pair<View, String>(welcomeTextView, "textTrans"),
@@ -91,7 +71,6 @@ class ForgotPasswordActivity : AppCompatActivity() {
                 Pair<View, String>(recuperarButton, "registerOrLoginButton"),
                 Pair<View, String>(loginTextView, "registerOrLoginEditText")
             )
-
             val options = ActivityOptions.makeSceneTransitionAnimation(this@ForgotPasswordActivity, *pairs)
             startActivity(intent, options.toBundle())
         }

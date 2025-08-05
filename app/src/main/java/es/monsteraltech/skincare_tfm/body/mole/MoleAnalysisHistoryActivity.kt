@@ -1,5 +1,4 @@
 package es.monsteraltech.skincare_tfm.body.mole
-
 import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
@@ -21,35 +20,24 @@ import es.monsteraltech.skincare_tfm.body.mole.view.EmptyStateView
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisHistoryBinding
 import kotlinx.coroutines.launch
-
 class MoleAnalysisHistoryActivity : AppCompatActivity() {
-
     private lateinit var binding: ActivityAnalysisHistoryBinding
     private lateinit var adapter: AnalysisHistoryAdapter
-
     private val moleRepository = MoleRepository()
     private val firebaseDataManager = FirebaseDataManager()
     private val auth = FirebaseAuth.getInstance()
     private lateinit var retryManager: RetryManager
-
     private var moleId: String = ""
     private var moleData: MoleData? = null
     private var analysisList: List<AnalysisData> = emptyList()
     private var isRetrying = false
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityAnalysisHistoryBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        // Configurar la toolbar
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-
-        // Inicializar retry manager
         retryManager = RetryManager()
-
-        // Obtener el ID del lunar
         moleId = intent.getStringExtra("MOLE_ID") ?: ""
         if (moleId.isEmpty()) {
             showErrorState(
@@ -62,38 +50,27 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             ) { finish() }
             return
         }
-
-        // Configurar RecyclerView
         setupRecyclerView()
-
-        // Cargar datos
         loadMoleData()
         loadAnalysisHistory()
     }
-
     private fun setupRecyclerView() {
         adapter = AnalysisHistoryAdapter(
             context = this,
             analysisList = emptyList(),
             onItemClick = { analysis ->
-                // Usar MoleViewerActivity para mostrar análisis pasados
                 val intent = createMoleViewerIntentForHistoricalAnalysis(analysis)
                 startActivity(intent)
             }
         )
-
         binding.analysisRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@MoleAnalysisHistoryActivity)
             adapter = this@MoleAnalysisHistoryActivity.adapter
         }
     }
-
     private fun loadMoleData() {
         if (isRetrying) return
-        
         binding.progressBar.visibility = View.VISIBLE
-
-        // Verificar que el usuario está autenticado
         val currentUser = auth.currentUser
         if (currentUser == null) {
             showErrorState(
@@ -106,7 +83,6 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             ) { finish() }
             return
         }
-
         lifecycleScope.launch {
             val retryResult = retryManager.executeWithRetry(
                 operation = "Cargar datos del lunar $moleId",
@@ -124,18 +100,12 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             ) {
                 moleRepository.getMoleById(currentUser.uid, moleId)
             }
-            
             isRetrying = false
             binding.progressBar.visibility = View.GONE
-            
             if (retryResult.result.isSuccess) {
                 moleData = retryResult.result.getOrNull()
-
                 moleData?.let { mole ->
-                    // Mostrar título
                     binding.moleTitleText.text = mole.title
-
-                    // Cargar imagen con manejo de errores mejorado
                     if (mole.imageUrl.isNotEmpty()) {
                         ImageLoadingUtil.loadImageWithFallback(
                             context = this@MoleAnalysisHistoryActivity,
@@ -143,15 +113,12 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
                             imageUrl = mole.imageUrl,
                             config = ImageLoadingUtil.Configs.fullSize().copy(
                                 onLoadError = { exception ->
-                                    // Log del error pero no mostrar al usuario (imagen no crítica)
                                     android.util.Log.w("MoleAnalysisHistory", "Error cargando imagen del lunar", exception)
                                 }
                             ),
                             coroutineScope = lifecycleScope
                         )
                     }
-
-                    // Mostrar información adicional del lunar
                     val analysisCount = mole.analysisCount
                     val lastAnalysisDate = mole.lastAnalysisDate?.toDate()
                     if (analysisCount > 0 && lastAnalysisDate != null) {
@@ -159,7 +126,6 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
                         binding.historyTitleText.text = "Historial de Análisis ($analysisCount análisis - Último: ${dateFormat.format(lastAnalysisDate)})"
                     }
                 }
-                
                 if (retryResult.attemptsMade > 1) {
                     Toast.makeText(
                         this@MoleAnalysisHistoryActivity,
@@ -170,11 +136,9 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             } else {
                 val exception = retryResult.result.exceptionOrNull() ?: Exception("Error desconocido")
                 val errorResult = ErrorHandler.handleError(this@MoleAnalysisHistoryActivity, exception, "Cargar datos del lunar")
-                
                 showErrorState(errorResult) {
                     loadMoleData()
                 }
-                
                 if (retryResult.attemptsMade > 1) {
                     Toast.makeText(
                         this@MoleAnalysisHistoryActivity,
@@ -185,11 +149,8 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun loadAnalysisHistory() {
         if (isRetrying) return
-        
-        // Verificar que el usuario está autenticado
         val currentUser = auth.currentUser
         if (currentUser == null) {
             showErrorState(
@@ -202,10 +163,8 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             ) { finish() }
             return
         }
-
         binding.progressBar.visibility = View.VISIBLE
         hideEmptyState()
-
         lifecycleScope.launch {
             val retryResult = retryManager.executeWithRetry(
                 operation = "Cargar historial de análisis del lunar $moleId",
@@ -224,16 +183,13 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             ) {
                 moleRepository.getAnalysisHistory(moleId)
             }
-            
             isRetrying = false
             binding.progressBar.visibility = View.GONE
             hideRetryIndicator()
-            
             if (retryResult.result.isSuccess) {
                 val analyses = retryResult.result.getOrNull() ?: emptyList()
                 if (analyses.isNotEmpty()) {
                     handleAnalysisLoaded(analyses)
-                    
                     if (retryResult.attemptsMade > 1) {
                         Toast.makeText(
                             this@MoleAnalysisHistoryActivity,
@@ -247,11 +203,9 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             } else {
                 val exception = retryResult.result.exceptionOrNull() ?: Exception("Error desconocido")
                 val errorResult = ErrorHandler.handleError(this@MoleAnalysisHistoryActivity, exception, "Cargar historial")
-                
                 showErrorState(errorResult) {
                     loadAnalysisHistory()
                 }
-                
                 if (retryResult.attemptsMade > 1) {
                     Toast.makeText(
                         this@MoleAnalysisHistoryActivity,
@@ -262,109 +216,68 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             }
         }
     }
-
-
-
     private fun handleAnalysisLoaded(analyses: List<AnalysisData>) {
-        // Actualizar datos del adapter
         analysisList = analyses
         adapter.updateData(analyses)
-        
         hideEmptyState()
         binding.analysisRecyclerView.visibility = View.VISIBLE
     }
-
-
-
-    /**
-     * Muestra estado de error con información contextual
-     */
     private fun showErrorState(errorResult: ErrorHandler.ErrorResult, retryAction: () -> Unit) {
         binding.progressBar.visibility = View.GONE
         binding.analysisRecyclerView.visibility = View.GONE
-        
         val emptyStateType = when (errorResult.type) {
             ErrorHandler.ErrorType.NETWORK_ERROR -> EmptyStateView.EmptyStateType.NETWORK_ERROR
             ErrorHandler.ErrorType.AUTHENTICATION_ERROR -> EmptyStateView.EmptyStateType.AUTHENTICATION_ERROR
             ErrorHandler.ErrorType.DATA_NOT_FOUND -> EmptyStateView.EmptyStateType.NO_ANALYSIS
             else -> EmptyStateView.EmptyStateType.LOADING_FAILED
         }
-        
         binding.emptyView.setEmptyState(
             type = emptyStateType,
             primaryAction = if (errorResult.isRetryable) {
                 { retryAction.invoke() }
             } else null,
             secondaryAction = {
-                finish() // Volver atrás
+                finish()
             }
         )
-        
         binding.emptyView.visibility = View.VISIBLE
         Toast.makeText(this, errorResult.userMessage, Toast.LENGTH_LONG).show()
     }
-
-    /**
-     * Muestra estado vacío con tipo específico
-     */
     private fun showEmptyState(type: EmptyStateView.EmptyStateType) {
         binding.progressBar.visibility = View.GONE
         binding.analysisRecyclerView.visibility = View.GONE
-        
         binding.emptyView.setEmptyState(
             type = type,
             primaryAction = when (type) {
                 EmptyStateView.EmptyStateType.NO_ANALYSIS -> {
-                    { finish() } // Volver atrás para crear análisis
+                    { finish() }
                 }
                 else -> {
                     { loadAnalysisHistory() }
                 }
             }
         )
-        
         binding.emptyView.visibility = View.VISIBLE
     }
-
-    /**
-     * Oculta el estado vacío
-     */
     private fun hideEmptyState() {
         binding.emptyView.visibility = View.GONE
         binding.emptyView.hide()
     }
-
-    /**
-     * Muestra indicador de reintento
-     */
     private fun showRetryIndicator(attempt: Int, maxAttempts: Int) {
         binding.emptyView.showRetryIndicators(attempt, maxAttempts)
         binding.emptyView.visibility = View.VISIBLE
     }
-
-    /**
-     * Oculta indicador de reintento
-     */
     private fun hideRetryIndicator() {
         binding.emptyView.hideRetryIndicators()
     }
-
-    /**
-     * Crea un Intent para abrir MoleViewerActivity con datos de un análisis histórico
-     */
     private fun createMoleViewerIntentForHistoricalAnalysis(analysis: AnalysisData): Intent {
         return Intent(this, MoleViewerActivity::class.java).apply {
-            // Datos básicos del lunar
             putExtra("MOLE_ID", analysis.moleId)
             putExtra("LUNAR_TITLE", moleData?.title ?: "Análisis Histórico")
             putExtra("LUNAR_DESCRIPTION", moleData?.description ?: "")
             putExtra("LUNAR_IMAGE_URL", analysis.imageUrl)
-            
-            // Marcar como análisis histórico para deshabilitar botón de evolución
             putExtra("IS_HISTORICAL_ANALYSIS", true)
-            putExtra("ANALYSIS_COUNT", 1) // Solo este análisis para evitar mostrar botón de evolución
-            
-            // Datos del análisis específico
+            putExtra("ANALYSIS_COUNT", 1)
             putExtra("HISTORICAL_ANALYSIS_ID", analysis.id)
             putExtra("HISTORICAL_ANALYSIS_RESULT", analysis.analysisResult)
             putExtra("HISTORICAL_AI_PROBABILITY", analysis.aiProbability)
@@ -373,16 +286,12 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             putExtra("HISTORICAL_RISK_LEVEL", analysis.riskLevel)
             putExtra("HISTORICAL_RECOMMENDATION", analysis.recommendation)
             putExtra("HISTORICAL_CREATED_AT", analysis.createdAt.toDate().time)
-            
-            // ABCDE Scores históricos
             putExtra("HISTORICAL_ASYMMETRY_SCORE", analysis.abcdeScores.asymmetryScore)
             putExtra("HISTORICAL_BORDER_SCORE", analysis.abcdeScores.borderScore)
             putExtra("HISTORICAL_COLOR_SCORE", analysis.abcdeScores.colorScore)
             putExtra("HISTORICAL_DIAMETER_SCORE", analysis.abcdeScores.diameterScore)
             putExtra("HISTORICAL_EVOLUTION_SCORE", analysis.abcdeScores.evolutionScore ?: -1f)
             putExtra("HISTORICAL_TOTAL_SCORE", analysis.abcdeScores.totalScore)
-            
-            // Metadatos del análisis histórico
             val metadataBundle = Bundle()
             analysis.analysisMetadata.forEach { (key, value) ->
                 when (value) {
@@ -397,7 +306,6 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             putExtra("HISTORICAL_ANALYSIS_METADATA", metadataBundle)
         }
     }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
             onBackPressedDispatcher.onBackPressed()

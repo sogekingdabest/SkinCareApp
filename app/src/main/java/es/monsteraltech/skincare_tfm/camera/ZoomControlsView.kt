@@ -1,5 +1,4 @@
 package es.monsteraltech.skincare_tfm.camera
-
 import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater
@@ -10,23 +9,15 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.google.android.material.slider.Slider
 import es.monsteraltech.skincare_tfm.R
-
-/**
- * Vista de controles de zoom digital integrada para la interfaz de cámara
- * Proporciona controles intuitivos para zoom con indicadores visuales
- */
 class ZoomControlsView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : LinearLayout(context, attrs, defStyleAttr) {
-    
     companion object {
         private const val TAG = "ZoomControlsView"
         private const val SEEKBAR_MAX = 100
     }
-    
-    // Componentes UI
     private lateinit var zoomInButton: ImageButton
     private lateinit var zoomOutButton: ImageButton
     private lateinit var zoomResetButton: ImageButton
@@ -34,23 +25,15 @@ class ZoomControlsView @JvmOverloads constructor(
     private lateinit var zoomSeekBar: Slider
     private lateinit var zoomLevelText: TextView
     private lateinit var stabilizationIndicator: View
-    
-    // Listener para eventos de zoom
     private var zoomListener: ZoomControlListener? = null
-    
-    // Estado actual
     private var currentZoomInfo: DigitalZoomController.ZoomInfo? = null
-    
     init {
         initializeView()
         setupClickListeners()
     }
-    
     private fun initializeView() {
         orientation = HORIZONTAL
         LayoutInflater.from(context).inflate(R.layout.view_zoom_controls, this, true)
-        
-        // Inicializar componentes
         zoomOutButton = findViewById(R.id.zoom_out_button)
         zoomInButton = findViewById(R.id.zoom_in_button)
         zoomResetButton = findViewById(R.id.zoom_reset_button)
@@ -58,33 +41,24 @@ class ZoomControlsView @JvmOverloads constructor(
         zoomSeekBar = findViewById(R.id.zoom_seekbar)
         zoomLevelText = findViewById(R.id.zoom_level_text)
         stabilizationIndicator = findViewById(R.id.stabilization_indicator)
-        
-        // Configurar Slider
         zoomSeekBar.valueFrom = 0f
         zoomSeekBar.valueTo = SEEKBAR_MAX.toFloat()
         zoomSeekBar.value = 0f
-        
-        // Configurar accesibilidad
         setupAccessibility()
     }
-    
     private fun setupClickListeners() {
         zoomInButton.setOnClickListener {
             zoomListener?.onZoomIn()
         }
-        
         zoomOutButton.setOnClickListener {
             zoomListener?.onZoomOut()
         }
-        
         zoomResetButton.setOnClickListener {
             zoomListener?.onZoomReset()
         }
-        
         zoomOptimalButton.setOnClickListener {
             zoomListener?.onZoomOptimal()
         }
-        
         zoomSeekBar.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 val zoomInfo = currentZoomInfo ?: return@addOnChangeListener
@@ -94,7 +68,6 @@ class ZoomControlsView @JvmOverloads constructor(
             }
         }
     }
-    
     private fun setupAccessibility() {
         zoomInButton.contentDescription = "Aumentar zoom"
         zoomOutButton.contentDescription = "Disminuir zoom"
@@ -103,29 +76,15 @@ class ZoomControlsView @JvmOverloads constructor(
         zoomSeekBar.contentDescription = "Control deslizante de zoom"
         stabilizationIndicator.contentDescription = "Indicador de estabilización activa"
     }
-    
-    /**
-     * Actualiza la vista con nueva información de zoom
-     */
     fun updateZoomInfo(zoomInfo: DigitalZoomController.ZoomInfo) {
         currentZoomInfo = zoomInfo
-        
-        // Actualizar texto del nivel de zoom
         zoomLevelText.text = String.format("%.1fx", zoomInfo.currentLevel)
-        
-        // Actualizar Slider
         val zoomRange = zoomInfo.maxLevel - zoomInfo.minLevel
         val normalizedProgress = ((zoomInfo.currentLevel - zoomInfo.minLevel) / zoomRange * SEEKBAR_MAX).toFloat()
         zoomSeekBar.value = normalizedProgress
-        
-        // Actualizar estado de botones
         zoomOutButton.isEnabled = zoomInfo.currentLevel > zoomInfo.minLevel
         zoomInButton.isEnabled = zoomInfo.currentLevel < zoomInfo.maxLevel
-        
-        // Actualizar indicador de estabilización
         stabilizationIndicator.visibility = if (zoomInfo.isStabilizationActive) View.VISIBLE else View.GONE
-        
-        // Resaltar botón óptimo si está en uso
         val isOptimal = zoomInfo.isOptimalForSmallMoles
         val optimalColor = if (isOptimal) {
             ContextCompat.getColor(context, R.color.md_theme_primary)
@@ -133,32 +92,19 @@ class ZoomControlsView @JvmOverloads constructor(
             ContextCompat.getColor(context, R.color.md_theme_surfaceVariant)
         }
         zoomOptimalButton.backgroundTintList = android.content.res.ColorStateList.valueOf(optimalColor)
-        
-        // Actualizar accesibilidad
         updateAccessibilityInfo(zoomInfo)
     }
-    
     private fun updateAccessibilityInfo(zoomInfo: DigitalZoomController.ZoomInfo) {
         val zoomDescription = "Zoom actual: ${String.format("%.1fx", zoomInfo.currentLevel)}"
         zoomLevelText.contentDescription = zoomDescription
-        
         val stabilizationStatus = if (zoomInfo.isStabilizationActive) "activada" else "desactivada"
         stabilizationIndicator.contentDescription = "Estabilización $stabilizationStatus"
-        
         val optimalStatus = if (zoomInfo.isOptimalForSmallMoles) "activo" else "inactivo"
         zoomOptimalButton.contentDescription = "Zoom óptimo para lunares pequeños - $optimalStatus"
     }
-    
-    /**
-     * Establece el listener para eventos de zoom
-     */
     fun setZoomControlListener(listener: ZoomControlListener) {
         this.zoomListener = listener
     }
-    
-    /**
-     * Interface para eventos de control de zoom
-     */
     interface ZoomControlListener {
         fun onZoomIn()
         fun onZoomOut()

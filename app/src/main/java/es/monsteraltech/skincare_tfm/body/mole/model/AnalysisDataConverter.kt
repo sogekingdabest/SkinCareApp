@@ -1,18 +1,8 @@
 package es.monsteraltech.skincare_tfm.body.mole.model
-
 import com.google.firebase.Timestamp
 import org.json.JSONObject
 import java.util.UUID
-
-/**
- * Utilidad para convertir entre formatos existentes y nuevos modelos de datos
- * Facilita la migración y compatibilidad entre versiones
- */
 object AnalysisDataConverter {
-
-    /**
-     * Convierte el campo aiResult existente en MoleData a AnalysisData estructurado
-     */
     fun fromAiResultString(
         aiResult: String,
         moleId: String,
@@ -20,11 +10,8 @@ object AnalysisDataConverter {
         createdAt: Timestamp = Timestamp.now()
     ): AnalysisData? {
         if (aiResult.isEmpty()) return null
-
         return try {
-            // Intentar parsear como JSON si es posible
             val jsonResult = JSONObject(aiResult)
-            
             AnalysisData(
                 id = UUID.randomUUID().toString(),
                 moleId = moleId,
@@ -40,7 +27,6 @@ object AnalysisDataConverter {
                 analysisMetadata = parseMetadataFromJson(jsonResult)
             )
         } catch (e: Exception) {
-            // Si no es JSON válido, crear AnalysisData básico con el texto completo
             AnalysisData(
                 id = UUID.randomUUID().toString(),
                 moleId = moleId,
@@ -57,10 +43,6 @@ object AnalysisDataConverter {
             )
         }
     }
-
-    /**
-     * Convierte AnalysisData de vuelta al formato aiResult para compatibilidad
-     */
     fun toAiResultString(analysisData: AnalysisData): String {
         return try {
             val jsonObject = JSONObject().apply {
@@ -74,8 +56,8 @@ object AnalysisDataConverter {
                     put("borderScore", analysisData.abcdeScores.borderScore)
                     put("colorScore", analysisData.abcdeScores.colorScore)
                     put("diameterScore", analysisData.abcdeScores.diameterScore)
-                    analysisData.abcdeScores.evolutionScore?.let { 
-                        put("evolutionScore", it) 
+                    analysisData.abcdeScores.evolutionScore?.let {
+                        put("evolutionScore", it)
                     }
                     put("totalScore", analysisData.abcdeScores.totalScore)
                 })
@@ -84,35 +66,25 @@ object AnalysisDataConverter {
             }
             jsonObject.toString()
         } catch (e: Exception) {
-            // Fallback al texto original si existe
-            analysisData.analysisResult.ifEmpty { 
-                "Análisis realizado el ${analysisData.createdAt.toDate()}" 
+            analysisData.analysisResult.ifEmpty {
+                "Análisis realizado el ${analysisData.createdAt.toDate()}"
             }
         }
     }
-
-    /**
-     * Actualiza MoleData con información del nuevo análisis
-     */
     fun updateMoleDataWithAnalysis(
         moleData: MoleData,
         analysisData: AnalysisData
     ): MoleData {
         val newAnalysisCount = moleData.analysisCount + 1
         val firstAnalysisDate = moleData.firstAnalysisDate ?: analysisData.createdAt
-        
         return moleData.copy(
             analysisCount = newAnalysisCount,
             lastAnalysisDate = analysisData.createdAt,
             firstAnalysisDate = firstAnalysisDate,
             updatedAt = Timestamp.now(),
-            // Mantener el aiResult más reciente para compatibilidad
             aiResult = toAiResultString(analysisData)
         )
     }
-
-    // Métodos auxiliares privados
-
     private fun parseABCDEScoresFromJson(jsonObject: JSONObject): ABCDEScores {
         val abcdeJson = jsonObject.optJSONObject("abcdeScores")
         return if (abcdeJson != null) {
@@ -130,31 +102,23 @@ object AnalysisDataConverter {
             ABCDEScores()
         }
     }
-
     private fun parseMetadataFromJson(jsonObject: JSONObject): Map<String, Any> {
         val metadata = mutableMapOf<String, Any>()
-        
         jsonObject.optJSONObject("metadata")?.let { metaJson ->
             metaJson.keys().forEach { key ->
                 metadata[key] = metaJson.get(key)
             }
         }
-        
-        // Añadir metadatos adicionales si están disponibles
         if (jsonObject.has("analysisDate")) {
             metadata["originalAnalysisDate"] = jsonObject.optLong("analysisDate")
         }
-        
         return metadata
     }
-
     private fun extractRecommendationFromText(text: String): String {
-        // Buscar patrones comunes de recomendaciones en el texto
         val recommendationKeywords = listOf(
             "recomendación", "recomendamos", "sugerimos", "aconsejamos",
             "debe", "debería", "consulte", "visite", "contacte"
         )
-        
         val lines = text.split("\n")
         for (line in lines) {
             if (recommendationKeywords.any { keyword ->
@@ -163,7 +127,6 @@ object AnalysisDataConverter {
                 return line.trim()
             }
         }
-        
         return "Consulte con un dermatólogo para evaluación profesional"
     }
 }

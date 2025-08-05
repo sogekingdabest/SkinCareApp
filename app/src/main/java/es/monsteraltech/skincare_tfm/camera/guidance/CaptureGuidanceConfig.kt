@@ -1,8 +1,4 @@
 package es.monsteraltech.skincare_tfm.camera.guidance
-
-/**
- * Configuración para el sistema de guías de captura inteligente
- */
 data class CaptureGuidanceConfig(
     val guideCircleRadius: Float = 150f,
     val centeringTolerance: Float = 50f,
@@ -13,10 +9,6 @@ data class CaptureGuidanceConfig(
     val enableAutoCapture: Boolean = false,
     val autoCaptureDelay: Long = 3000L
 )
-
-/**
- * Umbrales de calidad para validación de imagen
- */
 data class QualityThresholds(
     val minSharpness: Float = 0.25f,
     val minBrightness: Float = 70f,

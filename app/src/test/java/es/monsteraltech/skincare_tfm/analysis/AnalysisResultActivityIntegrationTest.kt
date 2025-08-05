@@ -1,15 +1,10 @@
 package es.monsteraltech.skincare_tfm.analysis
-
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
+import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.junit.Assert.*
 
-/**
- * Test básico para verificar la integración del selector de lunares
- */
 class AnalysisResultActivityIntegrationTest {
-
     @Test
     fun testABCDEScoresCreation() {
         val scores = ABCDEScores(
@@ -20,7 +15,6 @@ class AnalysisResultActivityIntegrationTest {
             evolutionScore = 0.5f,
             totalScore = 9.1f
         )
-
         assertEquals(1.5f, scores.asymmetryScore, 0.01f)
         assertEquals(3.2f, scores.borderScore, 0.01f)
         assertEquals(2.1f, scores.colorScore, 0.01f)
@@ -28,7 +22,6 @@ class AnalysisResultActivityIntegrationTest {
         assertEquals(0.5f, scores.evolutionScore!!, 0.01f)
         assertEquals(9.1f, scores.totalScore, 0.01f)
     }
-
     @Test
     fun testABCDEScoresToMap() {
         val scores = ABCDEScores(
@@ -39,9 +32,7 @@ class AnalysisResultActivityIntegrationTest {
             evolutionScore = 0.5f,
             totalScore = 9.1f
         )
-
         val map = scores.toMap()
-        
         assertEquals(1.5f, map["asymmetryScore"] as Float, 0.01f)
         assertEquals(3.2f, map["borderScore"] as Float, 0.01f)
         assertEquals(2.1f, map["colorScore"] as Float, 0.01f)
@@ -49,7 +40,6 @@ class AnalysisResultActivityIntegrationTest {
         assertEquals(0.5f, map["evolutionScore"] as Float, 0.01f)
         assertEquals(9.1f, map["totalScore"] as Float, 0.01f)
     }
-
     @Test
     fun testABCDEScoresFromMap() {
         val map = mapOf(
@@ -60,9 +50,7 @@ class AnalysisResultActivityIntegrationTest {
             "evolutionScore" to 0.5f,
             "totalScore" to 9.1f
         )
-
         val scores = ABCDEScores.fromMap(map)
-        
         assertEquals(1.5f, scores.asymmetryScore, 0.01f)
         assertEquals(3.2f, scores.borderScore, 0.01f)
         assertEquals(2.1f, scores.colorScore, 0.01f)
@@ -70,7 +58,6 @@ class AnalysisResultActivityIntegrationTest {
         assertEquals(0.5f, scores.evolutionScore!!, 0.01f)
         assertEquals(9.1f, scores.totalScore, 0.01f)
     }
-
     @Test
     fun testAnalysisDataCreation() {
         val abcdeScores = ABCDEScores(
@@ -81,7 +68,6 @@ class AnalysisResultActivityIntegrationTest {
             evolutionScore = 0.5f,
             totalScore = 9.1f
         )
-
         val analysisData = AnalysisData(
             moleId = "test-mole-id",
             analysisResult = "Test analysis result",
@@ -94,7 +80,6 @@ class AnalysisResultActivityIntegrationTest {
             imageUrl = "test-image-url",
             analysisMetadata = mapOf("test" to "value")
         )
-
         assertEquals("test-mole-id", analysisData.moleId)
         assertEquals("Test analysis result", analysisData.analysisResult)
         assertEquals(0.75f, analysisData.aiProbability, 0.01f)

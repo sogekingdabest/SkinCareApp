@@ -1,37 +1,26 @@
 package es.monsteraltech.skincare_tfm.body.mole.model
-
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 import java.io.File
 import java.io.Serializable
 import java.util.UUID
-
-/**
- * Modelo de datos extendido para almacenar análisis históricos detallados
- * Contiene toda la información necesaria para el seguimiento de análisis por lunar
- */
 data class AnalysisData(
     @DocumentId
     val id: String = UUID.randomUUID().toString(),
-    val moleId: String = "", // Referencia al lunar
-    val analysisResult: String = "", // Resultado completo del análisis
+    val moleId: String = "",
+    val analysisResult: String = "",
     val aiProbability: Float = 0f,
     val aiConfidence: Float = 0f,
     val abcdeScores: ABCDEScores = ABCDEScores(),
     val combinedScore: Float = 0f,
     val riskLevel: String = "",
     val recommendation: String = "",
-    val imageUrl: String = "", // Imagen específica del análisis
+    val imageUrl: String = "",
     val imageData: File? = null,
     val createdAt: Timestamp = Timestamp.now(),
     val analysisMetadata: Map<String, Any> = emptyMap()
 ) : Serializable {
-    // Constructor vacío requerido por Firestore
     constructor() : this("", "", "", 0f, 0f, ABCDEScores(), 0f, "", "", "", null, Timestamp.now(), emptyMap())
-
-    /**
-     * Convierte el objeto a Map para almacenamiento en Firestore
-     */
     fun toMap(): Map<String, Any> {
         return mapOf(
             "moleId" to moleId,
@@ -47,10 +36,6 @@ data class AnalysisData(
             "analysisMetadata" to analysisMetadata
         )
     }
-
-    /**
-     * Crea una instancia desde un Map de Firestore
-     */
     companion object {
         fun fromMap(id: String, data: Map<String, Any>): AnalysisData {
             return AnalysisData(

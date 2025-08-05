@@ -1,28 +1,18 @@
 package es.monsteraltech.skincare_tfm.camera.guidance
-
 import android.content.Context
 import android.os.Build
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-/**
- * Detector de estado térmico del dispositivo para ajustar el rendimiento
- * del procesamiento de imágenes según las condiciones térmicas
- * 
- * Implementación sin imports de ThermalManager para evitar problemas de compilación
- */
 class ThermalStateDetector(private val context: Context) {
-
     enum class ThermalState {
-        NONE,        // Sin restricciones térmicas
-        LIGHT,       // Restricciones ligeras
-        MODERATE,    // Restricciones moderadas
-        SEVERE,      // Restricciones severas
-        CRITICAL,    // Restricciones críticas
-        EMERGENCY    // Estado de emergencia térmica
+        NONE,
+        LIGHT,
+        MODERATE,
+        SEVERE,
+        CRITICAL,
+        EMERGENCY
     }
-
     data class ThermalAdjustments(
         val processingQuality: Float,
         val frameSkipRate: Int,
@@ -35,8 +25,6 @@ class ThermalStateDetector(private val context: Context) {
         val enableROI: Boolean,
         val roiScale: Float
     )
-
-    // Constantes para estados térmicos (equivalentes a ThermalManager)
     companion object {
         private const val THERMAL_STATUS_NONE = 0
         private const val THERMAL_STATUS_LIGHT = 1
@@ -45,8 +33,6 @@ class ThermalStateDetector(private val context: Context) {
         private const val THERMAL_STATUS_CRITICAL = 4
         private const val THERMAL_STATUS_EMERGENCY = 5
     }
-
-    // Configuraciones de ajuste por estado térmico
     private val thermalAdjustments = mapOf(
         ThermalState.NONE to ThermalAdjustments(
             processingQuality = 1.0f,
@@ -121,15 +107,10 @@ class ThermalStateDetector(private val context: Context) {
             roiScale = 0.3f
         )
     )
-
-    // Estado actual
     private val _currentThermalState = MutableStateFlow(ThermalState.NONE)
     val currentThermalState: StateFlow<ThermalState> = _currentThermalState.asStateFlow()
-
     private val _currentAdjustments = MutableStateFlow(thermalAdjustments[ThermalState.NONE]!!)
     val currentAdjustments: StateFlow<ThermalAdjustments> = _currentAdjustments.asStateFlow()
-
-    // Manager térmico usando reflexión para evitar problemas de import
     private val thermalManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         try {
             context.getSystemService("thermal")
@@ -137,42 +118,26 @@ class ThermalStateDetector(private val context: Context) {
             null
         }
     } else null
-
-    // Monitor de fallback para dispositivos sin ThermalManager
     private var fallbackMonitor: FallbackThermalMonitor? = null
-
     init {
         initializeThermalMonitoring()
     }
-
-    /**
-     * Inicializa el monitoreo térmico según la versión de Android
-     */
     private fun initializeThermalMonitoring() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && thermalManager != null) {
-            // Usar ThermalManager oficial en Android Q+ con reflexión
             setupThermalManagerListener()
         } else {
-            // Usar monitor de fallback para versiones anteriores
             fallbackMonitor = FallbackThermalMonitor()
             fallbackMonitor?.startMonitoring()
         }
     }
-
-    /**
-     * Configura el listener del ThermalManager usando reflexión para Android Q+
-     */
     private fun setupThermalManagerListener() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && thermalManager != null) {
             try {
-                // Usar reflexión para evitar imports problemáticos
                 val addListenerMethod = thermalManager.javaClass.getMethod(
                     "addThermalStatusListener",
                     java.util.concurrent.Executor::class.java,
                     Class.forName("android.os.ThermalManager\$OnThermalStatusChangedListener")
                 )
-                
-                // Crear listener usando proxy
                 val listenerClass = Class.forName("android.os.ThermalManager\$OnThermalStatusChangedListener")
                 val listener = java.lang.reflect.Proxy.newProxyInstance(
                     listenerClass.classLoader,
@@ -185,25 +150,16 @@ class ThermalStateDetector(private val context: Context) {
                     }
                     null
                 }
-                
                 addListenerMethod.invoke(thermalManager, context.mainExecutor, listener)
-                
-                // Obtener estado inicial
                 val getCurrentStatusMethod = thermalManager.javaClass.getMethod("getCurrentThermalStatus")
                 val initialStatus = getCurrentStatusMethod.invoke(thermalManager) as Int
                 updateThermalState(mapSystemThermalStatus(initialStatus))
-                
             } catch (e: Exception) {
-                // Si falla la reflexión, usar monitor de fallback
                 fallbackMonitor = FallbackThermalMonitor()
                 fallbackMonitor?.startMonitoring()
             }
         }
     }
-
-    /**
-     * Mapea el estado térmico del sistema a nuestro enum
-     */
     private fun mapSystemThermalStatus(status: Int): ThermalState {
         return when (status) {
             THERMAL_STATUS_NONE -> ThermalState.NONE
@@ -215,83 +171,41 @@ class ThermalStateDetector(private val context: Context) {
             else -> ThermalState.NONE
         }
     }
-
-    /**
-     * Actualiza el estado térmico y los ajustes correspondientes
-     */
     private fun updateThermalState(newState: ThermalState) {
         if (_currentThermalState.value != newState) {
             _currentThermalState.value = newState
             _currentAdjustments.value = thermalAdjustments[newState]!!
         }
     }
-
-    /**
-     * Monitor de fallback para dispositivos sin ThermalManager
-     */
     private inner class FallbackThermalMonitor {
         private var isMonitoring = false
-
         fun startMonitoring() {
             if (!isMonitoring) {
                 isMonitoring = true
-                // Implementación básica que mantiene estado NONE
-                // En una implementación real, podrías monitorear CPU, batería, etc.
                 updateThermalState(ThermalState.NONE)
             }
         }
-
         fun stopMonitoring() {
             isMonitoring = false
         }
     }
-
-    /**
-     * Limpia los recursos del detector
-     */
     fun cleanup() {
         fallbackMonitor?.stopMonitoring()
     }
-
-    /**
-     * Obtiene el estado térmico actual
-     */
     fun getCurrentState(): ThermalState = _currentThermalState.value
-
-    /**
-     * Obtiene los ajustes actuales
-     */
     fun getCurrentAdjustments(): ThermalAdjustments = _currentAdjustments.value
-
-
-    /**
-     * Calcula la frecuencia ajustada basada en el multiplicador térmico
-     */
     fun calculateAdjustedFrequency(baseFrequency: Int): Int {
         return (baseFrequency * _currentAdjustments.value.processingFrequencyMultiplier).toInt()
     }
-
-    /**
-     * Verifica si el procesamiento avanzado está permitido
-     */
     fun isAdvancedProcessingAllowed(): Boolean {
         return _currentAdjustments.value.enableAdvancedProcessing
     }
-
-    /**
-     * Verifica si se requiere throttling
-     */
     fun requiresThrottling(): Boolean {
         return _currentThermalState.value != ThermalState.NONE
     }
-
-    /**
-     * Obtiene recomendaciones de optimización
-     */
     fun getOptimizationRecommendations(): List<String> {
         val recommendations = mutableListOf<String>()
         val state = _currentThermalState.value
-        
         when (state) {
             ThermalState.LIGHT -> recommendations.add("Reducir calidad de procesamiento ligeramente")
             ThermalState.MODERATE -> recommendations.add("Saltar algunos frames para reducir carga")
@@ -300,33 +214,17 @@ class ThermalStateDetector(private val context: Context) {
             ThermalState.EMERGENCY -> recommendations.add("Procesamiento mínimo solamente")
             else -> recommendations.add("Rendimiento óptimo disponible")
         }
-        
         return recommendations
     }
-    /**
-     * Obtiene el multiplicador de frecuencia actual
-     */
     fun getFrequencyMultiplier(): Float {
         return _currentAdjustments.value.processingFrequencyMultiplier
     }
-
-    /**
-     * Obtiene la escala de resolución recomendada
-     */
     fun getRecommendedResolutionScale(): Float {
         return _currentAdjustments.value.imageResolutionScale
     }
-
-    /**
-     * Obtiene el número máximo de operaciones concurrentes
-     */
     fun getMaxConcurrentOperations(): Int {
         return _currentAdjustments.value.maxConcurrentOperations
     }
-
-    /**
-     * Verifica si el caching está habilitado
-     */
     fun isCachingEnabled(): Boolean {
         return _currentAdjustments.value.enableCaching
     }

@@ -1,4 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <!-- Base application theme. -->
     <style name="Base.Theme.SkinCare_TFM" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Material Design 3 - Colores del tema generado -->

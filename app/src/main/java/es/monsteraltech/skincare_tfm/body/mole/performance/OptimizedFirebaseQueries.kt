@@ -1,5 +1,4 @@
 package es.monsteraltech.skincare_tfm.body.mole.performance
-
 import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -11,66 +10,40 @@ import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-
-/**
- * Consultas Firebase optimizadas para reducir tiempo de carga y uso de datos
- * Implementa estrategias de consulta eficientes, batch operations y caché
- */
 class OptimizedFirebaseQueries {
-    
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
-    
     companion object {
         private const val USERS_COLLECTION = "users"
         private const val MOLES_SUBCOLLECTION = "moles"
         private const val ANALYSIS_SUBCOLLECTION = "mole_analysis"
     }
-
-    /**
-     * Configuración para consultas optimizadas
-     */
     data class QueryConfig(
         val useCache: Boolean = true,
         val source: Source = Source.DEFAULT,
         val limit: Int = 20,
         val enableBatching: Boolean = true,
-        val selectFields: List<String>? = null // Campos específicos a seleccionar
+        val selectFields: List<String>? = null
     )
-
-    // ==================== CONSULTAS DE LUNARES OPTIMIZADAS ====================
-
-    /**
-     * Obtiene lunares con consulta optimizada y campos selectivos
-     */
     suspend fun getMolesOptimized(
         userId: String? = null,
         bodyPartColorCode: String? = null,
         config: QueryConfig = QueryConfig()
     ): Result<List<MoleData>> = withContext(Dispatchers.IO) {
         try {
-            val currentUser = userId ?: auth.currentUser?.uid 
+            val currentUser = userId ?: auth.currentUser?.uid
                 ?: return@withContext Result.failure(Exception("Usuario no autenticado"))
-
             var query: Query = firestore.collection(USERS_COLLECTION)
                 .document(currentUser)
                 .collection(MOLES_SUBCOLLECTION)
-
-            // Aplicar filtros
             if (bodyPartColorCode != null) {
                 query = query.whereEqualTo("bodyPartColorCode", bodyPartColorCode)
             }
-
-            // Ordenar por fecha de actualización para obtener los más recientes primero
             query = query.orderBy("updatedAt", Query.Direction.DESCENDING)
                 .limit(config.limit.toLong())
-
-            // Ejecutar consulta con configuración de caché
             val querySnapshot = query.get(config.source).await()
-
             val moles = querySnapshot.documents.mapNotNull { doc ->
                 try {
-                    // Si se especifican campos selectivos, crear objeto parcial
                     if (config.selectFields != null) {
                         createPartialMoleData(doc.id, doc.data ?: emptyMap(), config.selectFields)
                     } else {
@@ -82,19 +55,12 @@ class OptimizedFirebaseQueries {
                     null
                 }
             }
-
             Result.success(moles)
         } catch (e: Exception) {
             Log.e("OptimizedFirebaseQueries", "Error en consulta optimizada de lunares", e)
             Result.failure(e)
         }
     }
-
-    // ==================== CONSULTAS DE ANÁLISIS OPTIMIZADAS ====================
-
-    /**
-     * Obtiene análisis con consulta optimizada
-     */
     suspend fun getAnalysisOptimized(
         moleId: String? = null,
         startDate: Timestamp? = null,
@@ -102,33 +68,23 @@ class OptimizedFirebaseQueries {
         config: QueryConfig = QueryConfig()
     ): Result<List<AnalysisData>> = withContext(Dispatchers.IO) {
         try {
-            val currentUser = auth.currentUser?.uid 
+            val currentUser = auth.currentUser?.uid
                 ?: return@withContext Result.failure(Exception("Usuario no autenticado"))
-
             var query: Query = firestore.collection(USERS_COLLECTION)
                 .document(currentUser)
                 .collection(ANALYSIS_SUBCOLLECTION)
-
-            // Aplicar filtros
             if (moleId != null) {
                 query = query.whereEqualTo("moleId", moleId)
             }
-
             if (startDate != null) {
                 query = query.whereGreaterThanOrEqualTo("createdAt", startDate)
             }
-
             if (endDate != null) {
                 query = query.whereLessThanOrEqualTo("createdAt", endDate)
             }
-
-            // Ordenar por fecha de creación descendente
             query = query.orderBy("createdAt", Query.Direction.DESCENDING)
                 .limit(config.limit.toLong())
-
-            // Ejecutar consulta
             val querySnapshot = query.get(config.source).await()
-
             val analyses = querySnapshot.documents.mapNotNull { doc ->
                 try {
                     if (config.selectFields != null) {
@@ -141,19 +97,12 @@ class OptimizedFirebaseQueries {
                     null
                 }
             }
-
             Result.success(analyses)
         } catch (e: Exception) {
             Log.e("OptimizedFirebaseQueries", "Error en consulta optimizada de análisis", e)
             Result.failure(e)
         }
     }
-
-    // ==================== MÉTODOS AUXILIARES ====================
-
-    /**
-     * Crea un objeto MoleData parcial con solo los campos especificados
-     */
     private fun createPartialMoleData(
         id: String,
         data: Map<String, Any>,
@@ -175,10 +124,6 @@ class OptimizedFirebaseQueries {
             updatedAt = if ("updatedAt" in fields) data["updatedAt"] as? Timestamp ?: Timestamp.now() else Timestamp.now()
         )
     }
-
-    /**
-     * Crea un objeto AnalysisData parcial con solo los campos especificados
-     */
     private fun createPartialAnalysisData(
         id: String,
         data: Map<String, Any>,
@@ -197,5 +142,4 @@ class OptimizedFirebaseQueries {
             createdAt = if ("createdAt" in fields) data["createdAt"] as? Timestamp ?: Timestamp.now() else Timestamp.now()
         )
     }
-
 }

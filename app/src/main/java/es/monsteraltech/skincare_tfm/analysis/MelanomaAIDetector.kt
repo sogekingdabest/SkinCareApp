@@ -1,6 +1,4 @@
-// MelanomaAIDetector.kt - Actualizado para usar ABCDEAnalyzerOpenCV
 package es.monsteraltech.skincare_tfm.analysis
-
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
@@ -8,40 +6,26 @@ import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 import kotlin.math.abs
-
-/**
- * Detector de melanomas que combina IA con análisis ABCDE usando OpenCV
- */
 class MelanomaAIDetector(private val context: Context) {
-
     companion object {
         private const val TAG = "MelanomaAIDetector"
         private const val MODEL_PATH = "melanoma_efficientnet_dynamic.tflite"
         private const val IMAGE_SIZE = 224
-
-        // Umbrales del modelo entrenado
         private const val AI_THRESHOLD_HIGH = 0.5f
         private const val OPTIMAL_THRESHOLD = 0.327f
-
-        // Pesos para combinar IA + ABCDE
         private const val AI_WEIGHT = 0.6f
         private const val ABCDE_WEIGHT = 0.4f
     }
-
     private var interpreter: Interpreter? = null
     private val abcdeAnalyzer = ABCDEAnalyzerOpenCV(context)
-
     init {
         loadModel()
     }
-
-    // [Mantener las data classes existentes: CombinedAnalysisResult, RiskLevel, UrgencyLevel]
-
     data class CombinedAnalysisResult(
         val aiProbability: Float,
         val aiRiskLevel: RiskLevel,
         val aiConfidence: Float,
-        val abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult, // Actualizado
+        val abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult,
         val combinedScore: Float,
         val combinedRiskLevel: RiskLevel,
         val recommendation: String,
@@ -49,62 +33,42 @@ class MelanomaAIDetector(private val context: Context) {
         val urgencyLevel: UrgencyLevel,
         val explanations: List<String>
     )
-
     enum class RiskLevel {
         VERY_LOW, LOW, MEDIUM, HIGH, VERY_HIGH
     }
-
     enum class UrgencyLevel {
         ROUTINE, MONITOR, CONSULT, URGENT
     }
-
-    /**
-     * Analiza un lunar combinando IA y criterios ABCDE con OpenCV
-     */
     fun analyzeMole(
         bitmap: Bitmap,
         previousBitmap: Bitmap? = null,
         pixelDensity: Float = 1.0f
     ): CombinedAnalysisResult {
         Log.d(TAG, "Iniciando análisis de lunar con OpenCV - bitmap: ${bitmap.width}x${bitmap.height}")
-
-        // 1. Análisis con IA
         Log.d(TAG, "Ejecutando análisis con IA...")
         val aiResult = analyzeWithAI(bitmap)
         Log.d(TAG, "Análisis IA completado - probabilidad: ${aiResult.probability}")
-
-        // 2. Análisis ABCDE con OpenCV
         Log.d(TAG, "Ejecutando análisis ABCDE con OpenCV...")
         val abcdeResult = try {
             abcdeAnalyzer.analyzeMole(bitmap, previousBitmap, pixelDensity)
         } catch (e: Exception) {
             Log.e(TAG, "Error en análisis ABCDE con OpenCV: ${e.message}", e)
-            // Crear resultado por defecto si falla
             createDefaultABCDEResult()
         }
         Log.d(TAG, "Análisis ABCDE completado")
-
-        // 3. Combinar resultados
         val combinedScore = calculateCombinedScore(aiResult, abcdeResult)
         val combinedRiskLevel = calculateCombinedRiskLevel(combinedScore)
-
-        // 4. Generar recomendaciones
         val recommendation = generateRecommendation(
             combinedRiskLevel,
             aiResult,
             abcdeResult
         )
-
-        // 5. Determinar urgencia
         val urgencyLevel = determineUrgency(
             combinedRiskLevel,
             abcdeResult,
             aiResult.probability > AI_THRESHOLD_HIGH
         )
-
-        // 6. Generar explicaciones
         val explanations = generateExplanations(aiResult, abcdeResult)
-
         return CombinedAnalysisResult(
             aiProbability = aiResult.probability,
             aiRiskLevel = aiResult.riskLevel,
@@ -118,32 +82,22 @@ class MelanomaAIDetector(private val context: Context) {
             explanations = explanations
         )
     }
-
-    /**
-     * Combina un resultado de IA ya calculado (probabilidad, riesgo y confianza)
-     * con un resultado ABCDE para devolver un CombinedAnalysisResult.
-     */
     fun combineResults(
         probability: Float,
         riskLevel: RiskLevel,
         confidence: Float,
         abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult
     ): CombinedAnalysisResult {
-        // 1) Reconstruimos el AIAnalysisResult interno
         val aiResult = AIAnalysisResult(probability, riskLevel, confidence)
-        // 2) Calculamos el combinedScore y nivel de riesgo
         val combinedScore = calculateCombinedScore(aiResult, abcdeResult)
         val combinedRiskLevel = calculateCombinedRiskLevel(combinedScore)
-        // 3) Generamos recomendación, urgencia y explicaciones
         val recommendation = generateRecommendation(combinedRiskLevel, aiResult, abcdeResult)
         val urgencyLevel = determineUrgency(
             combinedRiskLevel,
             abcdeResult,
-            /* suponemos highAIProbability = probability > AI_THRESHOLD_HIGH */
             probability > AI_THRESHOLD_HIGH
         )
         val explanations = generateExplanations(aiResult, abcdeResult)
-
         return CombinedAnalysisResult(
             aiProbability   = probability,
             aiRiskLevel     = riskLevel,
@@ -157,10 +111,6 @@ class MelanomaAIDetector(private val context: Context) {
             explanations    = explanations
         )
     }
-
-    /**
-     * Crear resultado ABCDE por defecto si el análisis falla
-     */
     private fun createDefaultABCDEResult(): ABCDEAnalyzerOpenCV.ABCDEResult {
         return ABCDEAnalyzerOpenCV.ABCDEResult(
             asymmetryScore = 0f,
@@ -187,64 +137,40 @@ class MelanomaAIDetector(private val context: Context) {
             )
         )
     }
-
-    /**
-     * Combina los scores de IA y ABCDE
-     */
     private fun calculateCombinedScore(
         aiResult: AIAnalysisResult,
         abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult
     ): Float {
-        // Normalizar score ABCDE (0-11.9) a (0-1)
         val normalizedAbcdeScore = minOf(1f, abcdeResult.totalScore / 11.9f)
-
-        // Combinar con pesos
         var combinedScore = (aiResult.probability * AI_WEIGHT) +
                 (normalizedAbcdeScore * ABCDE_WEIGHT)
-
-        // Ajustes por factores críticos detectados por OpenCV
         if (abcdeResult.details.colorDetails.hasBlueWhite) {
-            combinedScore *= 1.2f  // Aumentar 20% si hay velo azul-blanquecino
+            combinedScore *= 1.2f
             Log.d(TAG, "Ajuste por velo azul-blanquecino: +20%")
         }
-
         if (abcdeResult.diameterScore >= 3f) {
-            combinedScore *= 1.1f  // Aumentar 10% si diámetro > 10mm
+            combinedScore *= 1.1f
             Log.d(TAG, "Ajuste por diámetro grande: +10%")
         }
-
         if (abcdeResult.evolutionScore != null && abcdeResult.evolutionScore > 2f) {
-            combinedScore *= 1.3f  // Aumentar 30% si hay evolución significativa
+            combinedScore *= 1.3f
             Log.d(TAG, "Ajuste por evolución: +30%")
         }
-
-        // Ajuste adicional si hay alta irregularidad de bordes detectada por OpenCV
         if (abcdeResult.details.borderDetails.irregularityIndex > 0.3f) {
             combinedScore *= 1.15f
             Log.d(TAG, "Ajuste por bordes irregulares: +15%")
         }
-
         return minOf(1f, combinedScore)
     }
-
-    /**
-     * Genera explicaciones detalladas del análisis
-     */
     private fun generateExplanations(
         aiResult: AIAnalysisResult,
         abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult
     ): List<String> {
         val explanations = mutableListOf<String>()
-
-        // Explicación IA
         explanations.add(
             "IA: Probabilidad de melanoma del ${(aiResult.probability * 100).toInt()}% " +
                     "(confianza: ${(aiResult.confidence * 100).toInt()}%)"
         )
-
-        // Explicaciones ABCDE con más detalle gracias a OpenCV
-
-        // A - Asimetría
         val asymmetryIcon = when {
             abcdeResult.asymmetryScore == 0f -> "✅"
             abcdeResult.asymmetryScore <= 1f -> "✓"
@@ -253,8 +179,6 @@ class MelanomaAIDetector(private val context: Context) {
         explanations.add(
             "$asymmetryIcon Asimetría: ${abcdeResult.details.asymmetryDetails.description}"
         )
-
-        // B - Bordes
         val borderIcon = when {
             abcdeResult.details.borderDetails.irregularityIndex < 0.1f -> "✅"
             abcdeResult.details.borderDetails.irregularityIndex < 0.25f -> "✓"
@@ -264,8 +188,6 @@ class MelanomaAIDetector(private val context: Context) {
             "$borderIcon Bordes: ${abcdeResult.details.borderDetails.description} " +
                     "(Irregularidad: ${(abcdeResult.details.borderDetails.irregularityIndex * 100).toInt()}%)"
         )
-
-        // C - Color
         val colorIcon = when {
             abcdeResult.details.colorDetails.hasBlueWhite -> "🔴"
             abcdeResult.colorScore > 3 -> "⚠"
@@ -274,35 +196,25 @@ class MelanomaAIDetector(private val context: Context) {
         explanations.add(
             "$colorIcon Color: ${abcdeResult.details.colorDetails.description}"
         )
-
-        // D - Diámetro
         val diameterIcon = if (abcdeResult.diameterScore == 0f) "✅" else "⚠"
         explanations.add(
             "$diameterIcon Diámetro: ${abcdeResult.details.diameterDetails.description}"
         )
-
-        // E - Evolución
         abcdeResult.details.evolutionDetails?.let { evolution ->
             val evolutionIcon = if (abcdeResult.evolutionScore!! <= 1) "✓" else "⚠"
             explanations.add(
                 "$evolutionIcon Evolución: ${evolution.description}"
             )
         }
-
         return explanations
     }
-
-    // [Mantener el resto de métodos sin cambios: analyzeWithAI, loadModel, etc.]
-
     private data class AIAnalysisResult(
         val probability: Float,
         val riskLevel: RiskLevel,
         val confidence: Float
     )
-
     private fun analyzeWithAI(bitmap: Bitmap): AIAnalysisResult {
         Log.d(TAG, "Iniciando analyzeWithAI - interpreter disponible: ${interpreter != null}")
-
         if (interpreter == null) {
             Log.e(TAG, "Interpreter es null, usando análisis basado en ABCDE únicamente")
             val fallbackProbability = estimateProbabilityFromImage()
@@ -318,37 +230,27 @@ class MelanomaAIDetector(private val context: Context) {
                 confidence = 0.3f
             )
         }
-
         try {
             Log.d(TAG, "Preparando imagen para el modelo...")
-
             val resizedBitmap = Bitmap.createScaledBitmap(bitmap, IMAGE_SIZE, IMAGE_SIZE, true)
             Log.d(TAG, "Imagen redimensionada a ${IMAGE_SIZE}x${IMAGE_SIZE}")
-
             val inputBuffer = java.nio.ByteBuffer.allocateDirect(4 * IMAGE_SIZE * IMAGE_SIZE * 3)
             inputBuffer.order(java.nio.ByteOrder.nativeOrder())
-
             val pixels = IntArray(IMAGE_SIZE * IMAGE_SIZE)
             resizedBitmap.getPixels(pixels, 0, IMAGE_SIZE, 0, 0, IMAGE_SIZE, IMAGE_SIZE)
-
             for (pixel in pixels) {
                 val r = (pixel shr 16) and 0xFF
                 val g = (pixel shr 8) and 0xFF
                 val b = pixel and 0xFF
-
                 inputBuffer.putFloat((r / 127.5f) - 1.0f)
                 inputBuffer.putFloat((g / 127.5f) - 1.0f)
                 inputBuffer.putFloat((b / 127.5f) - 1.0f)
             }
-
             inputBuffer.rewind()
-
             val outputTensor = interpreter!!.getOutputTensor(0)
             val outputShape = outputTensor.shape()
             val outputBuffer = TensorBuffer.createFixedSize(outputShape, org.tensorflow.lite.DataType.FLOAT32)
-
             interpreter?.run(inputBuffer, outputBuffer.buffer.rewind())
-
             val outputArray = outputBuffer.floatArray
             val probability = if (outputArray.size == 1) {
                 outputArray[0]
@@ -357,9 +259,7 @@ class MelanomaAIDetector(private val context: Context) {
             } else {
                 outputArray.last()
             }
-
             Log.d(TAG, "Probabilidad obtenida del modelo: $probability")
-
             val riskLevel = when {
                 probability < 0.2f -> RiskLevel.VERY_LOW
                 probability < 0.4f -> RiskLevel.LOW
@@ -367,15 +267,12 @@ class MelanomaAIDetector(private val context: Context) {
                 probability < 0.8f -> RiskLevel.HIGH
                 else -> RiskLevel.VERY_HIGH
             }
-
             val confidence = calculateConfidence(probability)
-
             return AIAnalysisResult(
                 probability = probability,
                 riskLevel = riskLevel,
                 confidence = confidence
             )
-
         } catch (e: Exception) {
             Log.e(TAG, "Error durante la inferencia del modelo: ${e.message}", e)
             return AIAnalysisResult(
@@ -385,38 +282,20 @@ class MelanomaAIDetector(private val context: Context) {
             )
         }
     }
-
     private fun calculateConfidence(probability: Float): Float {
         val distanceFromThreshold = abs(probability - OPTIMAL_THRESHOLD)
-
         val confidence = when {
-            // Muy alta confianza
             probability < 0.1f || probability > 0.9f -> 0.95f
-            
-            // Alta confianza
             probability < 0.15f || probability > 0.85f -> 0.90f
-            
-            // Confianza alta-media
             distanceFromThreshold > 0.25f -> 0.85f
-            
-            // Confianza media
             distanceFromThreshold > 0.15f -> 0.75f
-            
-            // Confianza media-baja
             distanceFromThreshold > 0.08f -> 0.65f
-            
-            // Baja confianza
             distanceFromThreshold > 0.04f -> 0.55f
-            
-            // Muy baja confianza
             else -> 0.45f
         }
-        
         Log.d(TAG, "Confianza calculada: $confidence (prob: $probability, distancia umbral: $distanceFromThreshold)")
         return confidence
     }
-
-
     private fun calculateCombinedRiskLevel(combinedScore: Float): RiskLevel {
         return when {
             combinedScore < 0.2f -> RiskLevel.VERY_LOW
@@ -426,7 +305,6 @@ class MelanomaAIDetector(private val context: Context) {
             else -> RiskLevel.VERY_HIGH
         }
     }
-
     private fun generateRecommendation(
         riskLevel: RiskLevel,
         aiResult: AIAnalysisResult,
@@ -436,11 +314,9 @@ class MelanomaAIDetector(private val context: Context) {
             RiskLevel.VERY_LOW -> {
                 "✅ Aspecto normal. Continúe con autoexámenes regulares cada 3 meses."
             }
-
             RiskLevel.LOW -> {
                 "👀 Lunar de bajo riesgo. Fotografíe mensualmente para detectar cambios."
             }
-
             RiskLevel.MEDIUM -> {
                 buildString {
                     append("⚠️ Riesgo moderado detectado. ")
@@ -450,7 +326,6 @@ class MelanomaAIDetector(private val context: Context) {
                     append("Recomendamos evaluación dermatológica en los próximos 1-2 meses.")
                 }
             }
-
             RiskLevel.HIGH -> {
                 buildString {
                     append("🔶 Riesgo alto identificado. ")
@@ -460,14 +335,12 @@ class MelanomaAIDetector(private val context: Context) {
                     append("Consulte con un dermatólogo en las próximas 2-4 semanas.")
                 }
             }
-
             RiskLevel.VERY_HIGH -> {
                 "🔴 Riesgo muy alto. Múltiples características de alarma detectadas. " +
                         "Solicite cita con dermatólogo lo antes posible (urgente)."
             }
         }
     }
-
     private fun determineUrgency(
         riskLevel: RiskLevel,
         abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult,
@@ -480,45 +353,34 @@ class MelanomaAIDetector(private val context: Context) {
             abcdeResult.evolutionScore?.let { it >= 2f } ?: false,
             abcdeResult.borderScore >= 6f
         ).count { it }
-
         return when {
             riskLevel == RiskLevel.VERY_HIGH || criticalFactors >= 3 ->
                 UrgencyLevel.URGENT
-
             riskLevel == RiskLevel.HIGH || (criticalFactors >= 2 && highAIProbability) ->
                 UrgencyLevel.CONSULT
-
             riskLevel == RiskLevel.MEDIUM || criticalFactors >= 1 ->
                 UrgencyLevel.MONITOR
-
             else ->
                 UrgencyLevel.ROUTINE
         }
     }
-
     private fun loadModel() {
         try {
             Log.d(TAG, "Iniciando carga del modelo desde assets...")
             val model = FileUtil.loadMappedFile(context, MODEL_PATH)
-
             val options = Interpreter.Options().apply {
                 numThreads = 4
                 useNNAPI = false
             }
-
             interpreter = Interpreter(model, options)
             Log.d(TAG, "Modelo cargado exitosamente")
-
         } catch (e: Exception) {
             Log.e(TAG, "Error cargando modelo: ${e.message}", e)
         }
     }
-
     private fun estimateProbabilityFromImage(): Float {
-        // Método simplificado de estimación por si falla
         return 0.1f
     }
-
     fun close() {
         interpreter?.close()
     }

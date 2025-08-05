@@ -1,26 +1,23 @@
 package es.monsteraltech.skincare_tfm.body.mole
-
 import android.content.Intent
-import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.firebase.Timestamp
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisDataConverter
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.Assert.*
 
-/**
- * Tests unitarios para MoleViewerActivity
- */
 @RunWith(AndroidJUnit4::class)
 class MoleViewerActivityTest {
-
     @Test
     fun testAnalysisDataConverterFromAiResult() {
-        // Datos de prueba
         val aiResult = """
             {
                 "probability": 0.75,
@@ -37,18 +34,13 @@ class MoleViewerActivityTest {
                 }
             }
         """.trimIndent()
-
         val moleId = "test-mole-id"
         val imageUrl = "test-image-url"
-
-        // Convertir aiResult a AnalysisData
         val analysisData = AnalysisDataConverter.fromAiResultString(
             aiResult = aiResult,
             moleId = moleId,
             imageUrl = imageUrl
         )
-
-        // Verificar que la conversión fue exitosa
         assertNotNull("AnalysisData no debe ser null", analysisData)
         analysisData?.let { data ->
             assertEquals("MoleId debe coincidir", moleId, data.moleId)
@@ -58,8 +50,6 @@ class MoleViewerActivityTest {
             assertEquals("Combined Score debe coincidir", 4.2f, data.combinedScore, 0.01f)
             assertEquals("Risk Level debe coincidir", "MODERATE", data.riskLevel)
             assertEquals("Recommendation debe coincidir", "Consulte con un dermatólogo", data.recommendation)
-            
-            // Verificar puntuaciones ABCDE
             assertEquals("Asymmetry Score debe coincidir", 1.0f, data.abcdeScores.asymmetryScore, 0.01f)
             assertEquals("Border Score debe coincidir", 2.5f, data.abcdeScores.borderScore, 0.01f)
             assertEquals("Color Score debe coincidir", 3.0f, data.abcdeScores.colorScore, 0.01f)
@@ -67,22 +57,16 @@ class MoleViewerActivityTest {
             assertEquals("Total Score debe coincidir", 8.0f, data.abcdeScores.totalScore, 0.01f)
         }
     }
-
     @Test
     fun testAnalysisDataConverterFromPlainText() {
-        // Datos de prueba con texto plano (no JSON)
         val aiResult = "Análisis realizado: Lunar de riesgo moderado. Se recomienda consulta dermatológica."
         val moleId = "test-mole-id"
         val imageUrl = "test-image-url"
-
-        // Convertir aiResult a AnalysisData
         val analysisData = AnalysisDataConverter.fromAiResultString(
             aiResult = aiResult,
             moleId = moleId,
             imageUrl = imageUrl
         )
-
-        // Verificar que la conversión fue exitosa
         assertNotNull("AnalysisData no debe ser null", analysisData)
         analysisData?.let { data ->
             assertEquals("MoleId debe coincidir", moleId, data.moleId)
@@ -92,10 +76,8 @@ class MoleViewerActivityTest {
             assertTrue("Recommendation debe contener texto", data.recommendation.isNotEmpty())
         }
     }
-
     @Test
     fun testAnalysisDataConverterToAiResultString() {
-        // Crear AnalysisData de prueba
         val analysisData = AnalysisData(
             id = "test-id",
             moleId = "test-mole-id",
@@ -115,33 +97,23 @@ class MoleViewerActivityTest {
             imageUrl = "test-image-url",
             createdAt = Timestamp.now()
         )
-
-        // Convertir a string
         val aiResultString = AnalysisDataConverter.toAiResultString(analysisData)
-
-        // Verificar que el string no esté vacío y contenga información relevante
         assertFalse("AI Result String no debe estar vacío", aiResultString.isEmpty())
         assertTrue("Debe contener probability", aiResultString.contains("probability"))
         assertTrue("Debe contener riskLevel", aiResultString.contains("riskLevel"))
         assertTrue("Debe contener abcdeScores", aiResultString.contains("abcdeScores"))
     }
-
     @Test
     fun testAnalysisDataConverterEmptyAiResult() {
-        // Probar con aiResult vacío
         val analysisData = AnalysisDataConverter.fromAiResultString(
             aiResult = "",
             moleId = "test-mole-id",
             imageUrl = "test-image-url"
         )
-
-        // Debe retornar null para aiResult vacío
         assertNull("AnalysisData debe ser null para aiResult vacío", analysisData)
     }
-
     @Test
     fun testActivityIntentCreation() {
-        // Crear intent con datos de prueba
         val intent = Intent(ApplicationProvider.getApplicationContext(), MoleViewerActivity::class.java).apply {
             putExtra("LUNAR_TITLE", "Lunar de prueba")
             putExtra("LUNAR_DESCRIPTION", "Descripción de prueba")
@@ -150,8 +122,6 @@ class MoleViewerActivityTest {
             putExtra("MOLE_ID", "test-mole-id")
             putExtra("ANALYSIS_COUNT", 2)
         }
-
-        // Verificar que el intent contiene los datos correctos
         assertEquals("Título debe coincidir", "Lunar de prueba", intent.getStringExtra("LUNAR_TITLE"))
         assertEquals("Descripción debe coincidir", "Descripción de prueba", intent.getStringExtra("LUNAR_DESCRIPTION"))
         assertEquals("Análisis debe coincidir", "Resultado de análisis de prueba", intent.getStringExtra("LUNAR_ANALYSIS_RESULT"))

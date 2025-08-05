@@ -1,5 +1,4 @@
 package es.monsteraltech.skincare_tfm.performance
-
 import android.content.Intent
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -16,28 +15,18 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.system.measureTimeMillis
-
-/**
- * Tests de UI para verificar que los indicadores de progreso y optimizaciones
- * de experiencia de usuario funcionen correctamente
- */
 @RunWith(AndroidJUnit4::class)
 class SessionCheckUIPerformanceTest {
-
     private lateinit var sessionManager: SessionManager
-
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         sessionManager = SessionManager.getInstance(context)
-        
-        // Limpiar estado previo
         runBlocking {
             sessionManager.clearSession()
             sessionManager.clearCache()
         }
     }
-
     @After
     fun tearDown() {
         runBlocking {
@@ -45,104 +34,74 @@ class SessionCheckUIPerformanceTest {
             sessionManager.clearCache()
         }
     }
-
     @Test
     fun testProgressIndicatorsAreVisible() {
         val intent = Intent(ApplicationProvider.getApplicationContext(), SessionCheckActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        
         ActivityScenario.launch<SessionCheckActivity>(intent).use { scenario ->
-            // Verificar que el indicador de progreso es visible
             onView(withId(R.id.loadingProgressBar))
                 .check(matches(isDisplayed()))
-            
-            // Verificar que el texto de estado es visible
             onView(withId(R.id.statusTextView))
                 .check(matches(isDisplayed()))
                 .check(matches(withText(R.string.session_check_verifying)))
         }
     }
-
     @Test
     fun testProgressIndicatorsDuringVerification() {
         val intent = Intent(ApplicationProvider.getApplicationContext(), SessionCheckActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        
         ActivityScenario.launch<SessionCheckActivity>(intent).use { scenario ->
-            // Verificar estado inicial
             onView(withId(R.id.loadingProgressBar))
                 .check(matches(isDisplayed()))
-            
             onView(withId(R.id.statusTextView))
                 .check(matches(isDisplayed()))
-            
-            // Los botones de error no deberían estar visibles inicialmente
             onView(withId(R.id.errorMessageTextView))
                 .check(matches(withEffectiveVisibility(Visibility.GONE)))
-            
             onView(withId(R.id.retryButton))
                 .check(matches(withEffectiveVisibility(Visibility.GONE)))
         }
     }
-
     @Test
     fun testUIResponsivenessTime() {
         val uiResponseTime = measureTimeMillis {
             val intent = Intent(ApplicationProvider.getApplicationContext(), SessionCheckActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            
             ActivityScenario.launch<SessionCheckActivity>(intent).use { scenario ->
-                // Verificar que la UI responde rápidamente
                 onView(withId(R.id.loadingProgressBar))
                     .check(matches(isDisplayed()))
-                
                 onView(withId(R.id.statusTextView))
                     .check(matches(isDisplayed()))
             }
         }
-
-        // La UI debería responder en menos de 1 segundo
         assert(uiResponseTime < 1000L) {
             "UI tardó demasiado en responder: ${uiResponseTime}ms"
         }
-        
         println("Tiempo de respuesta de UI: ${uiResponseTime}ms")
     }
-
     @Test
     fun testSmoothTransitions() {
         val intent = Intent(ApplicationProvider.getApplicationContext(), SessionCheckActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        
         ActivityScenario.launch<SessionCheckActivity>(intent).use { scenario ->
-            // Verificar que los elementos de transición están presentes
             onView(withId(R.id.logoImageView))
                 .check(matches(isDisplayed()))
-            
             onView(withId(R.id.skinCareTextView))
                 .check(matches(isDisplayed()))
                 .check(matches(withText("SkinCare")))
-            
-            // Verificar que el texto "de" también está presente
             onView(withId(R.id.deTextView))
                 .check(matches(isDisplayed()))
                 .check(matches(withText("de")))
         }
     }
-
     @Test
     fun testLayoutPerformance() {
         val layoutTime = measureTimeMillis {
             val intent = Intent(ApplicationProvider.getApplicationContext(), SessionCheckActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            
             ActivityScenario.launch<SessionCheckActivity>(intent).use { scenario ->
                 scenario.onActivity { activity ->
-                    // Forzar un layout pass para medir el tiempo
                     activity.findViewById<android.view.View>(android.R.id.content).requestLayout()
                 }
-                
-                // Verificar que todos los elementos están correctamente posicionados
                 onView(withId(R.id.logoImageView)).check(matches(isDisplayed()))
                 onView(withId(R.id.loadingProgressBar)).check(matches(isDisplayed()))
                 onView(withId(R.id.statusTextView)).check(matches(isDisplayed()))
@@ -150,143 +109,98 @@ class SessionCheckUIPerformanceTest {
                 onView(withId(R.id.deTextView)).check(matches(isDisplayed()))
             }
         }
-
-        // El layout debería completarse rápidamente
         assert(layoutTime < 500L) {
             "Layout tardó demasiado: ${layoutTime}ms"
         }
-        
         println("Tiempo de layout: ${layoutTime}ms")
     }
-
     @Test
     fun testMinimumLoadingTime() {
         val totalTime = measureTimeMillis {
             val intent = Intent(ApplicationProvider.getApplicationContext(), SessionCheckActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            
             ActivityScenario.launch<SessionCheckActivity>(intent).use { scenario ->
-                // Esperar a que complete la verificación
                 Thread.sleep(2000)
-                
                 scenario.onActivity { activity ->
-                    // La actividad debería seguir mostrando el progreso por el tiempo mínimo
                     assertNotNull("Activity no debería ser null", activity)
                 }
             }
         }
-
-        // Debería tomar al menos el tiempo mínimo configurado (1.5 segundos)
-        // pero no demasiado más
         assert(totalTime >= 1500L) {
             "No se respetó el tiempo mínimo de carga: ${totalTime}ms"
         }
-        
         assert(totalTime < 5000L) {
             "Tiempo total demasiado alto: ${totalTime}ms"
         }
-        
         println("Tiempo total con tiempo mínimo: ${totalTime}ms")
     }
-
     @Test
     fun testAccessibilityPerformance() {
         val intent = Intent(ApplicationProvider.getApplicationContext(), SessionCheckActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        
         ActivityScenario.launch<SessionCheckActivity>(intent).use { scenario ->
-            // Verificar que los elementos tienen descripciones de accesibilidad apropiadas
             onView(withId(R.id.logoImageView))
                 .check(matches(hasContentDescription()))
-            
-            // Verificar que el progreso es accesible
             onView(withId(R.id.loadingProgressBar))
                 .check(matches(isDisplayed()))
-            
-            // Verificar que el texto de estado es legible
             onView(withId(R.id.statusTextView))
                 .check(matches(isDisplayed()))
                 .check(matches(isCompletelyDisplayed()))
         }
     }
-
     @Test
     fun testErrorStateUIPerformance() {
-        // Simular un error de red para probar el estado de error
         val intent = Intent(ApplicationProvider.getApplicationContext(), SessionCheckActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        
         ActivityScenario.launch<SessionCheckActivity>(intent).use { scenario ->
             scenario.onActivity { activity ->
-                // Simular un error llamando al método de manejo de errores
-                // (esto requeriría hacer el método público o usar reflection,
-                // por ahora solo verificamos que los elementos de error existen)
-                
-                // Verificar que los elementos de error están en el layout
                 val errorMessage = activity.findViewById<android.widget.TextView>(R.id.errorMessageTextView)
                 val retryButton = activity.findViewById<android.widget.Button>(R.id.retryButton)
-                
                 assertNotNull("Error message view debería existir", errorMessage)
                 assertNotNull("Retry button debería existir", retryButton)
             }
         }
     }
-
     @Test
     fun testMultipleUIUpdatesPerformance() {
         val intent = Intent(ApplicationProvider.getApplicationContext(), SessionCheckActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        
         val updateTime = measureTimeMillis {
             ActivityScenario.launch<SessionCheckActivity>(intent).use { scenario ->
                 scenario.onActivity { activity ->
                     val statusTextView = activity.findViewById<android.widget.TextView>(R.id.statusTextView)
-                    
-                    // Simular múltiples actualizaciones de estado
                     repeat(5) { iteration ->
                         activity.runOnUiThread {
                             statusTextView.text = "Estado $iteration"
                         }
-                        Thread.sleep(50) // Pequeña pausa entre actualizaciones
+                        Thread.sleep(50)
                     }
                 }
             }
         }
-
-        // Las actualizaciones de UI deberían ser rápidas
         assert(updateTime < 1000L) {
             "Actualizaciones de UI tardaron demasiado: ${updateTime}ms"
         }
-        
         println("Tiempo de múltiples actualizaciones de UI: ${updateTime}ms")
     }
-
     @Test
     fun testViewRecyclingPerformance() {
-        // Probar que las vistas se reutilizan eficientemente
         val recyclingTime = measureTimeMillis {
             repeat(3) { iteration ->
                 val intent = Intent(ApplicationProvider.getApplicationContext(), SessionCheckActivity::class.java)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                
                 ActivityScenario.launch<SessionCheckActivity>(intent).use { scenario ->
                     onView(withId(R.id.loadingProgressBar))
                         .check(matches(isDisplayed()))
-                    
                     onView(withId(R.id.statusTextView))
                         .check(matches(isDisplayed()))
                 }
-                
-                // Pequeña pausa entre lanzamientos
                 Thread.sleep(100)
             }
         }
-
-        // El reciclaje de vistas debería ser eficiente
         assert(recyclingTime < 3000L) {
             "Reciclaje de vistas tardó demasiado: ${recyclingTime}ms"
         }
-        
         println("Tiempo de reciclaje de vistas: ${recyclingTime}ms")
     }
 }
