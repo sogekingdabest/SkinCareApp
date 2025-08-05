@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.error
+﻿package es.monsteraltech.skincare_tfm.body.mole.error
 import android.content.Context
 import es.monsteraltech.skincare_tfm.R
 import io.mockk.every
@@ -11,7 +11,6 @@ import org.junit.Test
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-
 class ErrorHandlerTest {
     private lateinit var mockContext: Context
     @Before

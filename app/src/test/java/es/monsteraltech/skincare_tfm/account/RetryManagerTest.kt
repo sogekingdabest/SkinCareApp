@@ -1,8 +1,7 @@
-package es.monsteraltech.skincare_tfm.account
+﻿package es.monsteraltech.skincare_tfm.account
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
-
 class RetryManagerTest {
     private val retryManager = RetryManager()
     @Test

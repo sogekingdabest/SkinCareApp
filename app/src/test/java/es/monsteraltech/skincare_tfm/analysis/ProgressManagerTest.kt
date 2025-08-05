@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.content.Context
 import android.widget.Button
 import android.widget.ProgressBar
@@ -13,7 +13,6 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
-
 class ProgressManagerTest {
     @Mock
     private lateinit var mockContext: Context

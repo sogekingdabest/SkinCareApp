@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera
+﻿package es.monsteraltech.skincare_tfm.camera
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager

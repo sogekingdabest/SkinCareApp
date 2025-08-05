@@ -1,10 +1,9 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.graphics.Bitmap
 import android.util.Log
 import androidx.core.graphics.scale
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
-
 class MemoryManager {
     companion object {
         private const val TAG = "MemoryManager"

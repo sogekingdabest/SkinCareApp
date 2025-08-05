@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.performance
+﻿package es.monsteraltech.skincare_tfm.body.mole.performance
 import android.util.Log
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-
 open class PaginationManager<T>(
     private val pageSize: Int = 20,
     private val prefetchDistance: Int = 5

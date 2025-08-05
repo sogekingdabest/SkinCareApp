@@ -1,11 +1,10 @@
-package es.monsteraltech.skincare_tfm.account
+﻿package es.monsteraltech.skincare_tfm.account
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-
 class PasswordChangeManagerTest {
     private lateinit var passwordChangeManager: PasswordChangeManager
     @Before

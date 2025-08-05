@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.graphics.Bitmap
 import android.util.Log
 import androidx.core.graphics.scale
@@ -8,7 +8,6 @@ import kotlinx.coroutines.coroutineScope
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadPoolExecutor
 import kotlin.system.measureTimeMillis
-
 class PerformanceOptimizer {
     companion object {
         private const val TAG = "PerformanceOptimizer"

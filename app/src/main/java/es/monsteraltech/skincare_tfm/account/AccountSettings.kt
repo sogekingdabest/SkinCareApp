@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.account
+﻿package es.monsteraltech.skincare_tfm.account
 import com.google.firebase.firestore.Exclude
 data class AccountSettings(
     val userId: String = "",

@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.graphics.PointF
 import android.graphics.RectF
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -13,7 +13,6 @@ import org.opencv.core.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-
 @ExperimentalCoroutinesApi
 @RunWith(MockitoJUnitRunner::class)
 class RealtimeAnalysisIntegrationTest {

@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.adapter
+﻿package es.monsteraltech.skincare_tfm.body.mole.adapter
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View

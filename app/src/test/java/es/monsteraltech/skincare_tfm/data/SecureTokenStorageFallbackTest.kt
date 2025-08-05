@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.data
+﻿package es.monsteraltech.skincare_tfm.data
 import android.content.Context
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -12,7 +12,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-
 @RunWith(RobolectricTestRunner::class)
 class SecureTokenStorageFallbackTest {
     private lateinit var secureTokenStorage: SecureTokenStorage

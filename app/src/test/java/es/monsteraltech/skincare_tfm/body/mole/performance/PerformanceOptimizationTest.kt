@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.performance
+﻿package es.monsteraltech.skincare_tfm.body.mole.performance
 import android.content.Context
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ApplicationProvider
@@ -16,7 +16,6 @@ import org.mockito.MockitoAnnotations
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-
 @RunWith(AndroidJUnit4::class)
 class PerformanceOptimizationTest {
     private lateinit var context: Context

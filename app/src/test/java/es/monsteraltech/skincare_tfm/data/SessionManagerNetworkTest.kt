@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.data
+﻿package es.monsteraltech.skincare_tfm.data
 import android.content.Context
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
@@ -20,7 +20,6 @@ import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 class SessionManagerNetworkTest {

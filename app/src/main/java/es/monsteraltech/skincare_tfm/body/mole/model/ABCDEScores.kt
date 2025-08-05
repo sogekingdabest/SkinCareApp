@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.model
+﻿package es.monsteraltech.skincare_tfm.body.mole.model
 import es.monsteraltech.skincare_tfm.analysis.ABCDEAnalyzerOpenCV
 import java.io.Serializable
 data class ABCDEScores(

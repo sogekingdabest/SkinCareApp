@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.service
+﻿package es.monsteraltech.skincare_tfm.body.mole.service
 import com.google.firebase.Timestamp
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData

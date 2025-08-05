@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.content.Context
 import android.graphics.Bitmap
 import kotlinx.coroutines.runBlocking
@@ -15,7 +15,6 @@ import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-
 class ErrorHandlingIntegrationTest {
     @Mock
     private lateinit var mockContext: Context

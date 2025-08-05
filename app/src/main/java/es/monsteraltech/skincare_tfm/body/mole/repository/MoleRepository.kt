@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.repository
+﻿package es.monsteraltech.skincare_tfm.body.mole.repository
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
@@ -21,7 +21,6 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
-
 class MoleRepository {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()

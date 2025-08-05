@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm
+﻿package es.monsteraltech.skincare_tfm
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
@@ -23,7 +23,6 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-
 @ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
 class MainActivityLogoutIntegrationTest {

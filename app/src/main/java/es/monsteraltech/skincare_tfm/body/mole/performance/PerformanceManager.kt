@@ -1,9 +1,8 @@
-package es.monsteraltech.skincare_tfm.body.mole.performance
+﻿package es.monsteraltech.skincare_tfm.body.mole.performance
 import android.content.Context
 import android.util.Log
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
-
 class PerformanceManager private constructor(private val context: Context) {
     private val lazyImageLoader = LazyImageLoader(context)
     private val localCacheManager = LocalCacheManager.getInstance(context)

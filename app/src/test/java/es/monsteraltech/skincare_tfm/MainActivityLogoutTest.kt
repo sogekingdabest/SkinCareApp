@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm
+﻿package es.monsteraltech.skincare_tfm
 import android.content.Intent
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import es.monsteraltech.skincare_tfm.data.SessionManager
@@ -22,7 +22,6 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

@@ -1,9 +1,8 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 import org.junit.Assert.assertEquals
 import org.junit.Test
-
 class AnalysisResultActivityIntegrationTest {
     @Test
     fun testABCDEScoresCreation() {

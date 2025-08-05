@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body
+﻿package es.monsteraltech.skincare_tfm.body
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -29,7 +29,6 @@ import es.monsteraltech.skincare_tfm.body.mole.MoleDetailActivity
 import es.monsteraltech.skincare_tfm.camera.CameraActivity
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import kotlinx.coroutines.launch
-
 class BodyPartActivity : AppCompatActivity() {
     private lateinit var toolbar: MaterialToolbar
     private lateinit var searchEditText: TextInputEditText

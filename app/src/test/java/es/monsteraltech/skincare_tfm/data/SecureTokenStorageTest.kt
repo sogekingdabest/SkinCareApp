@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.data
+﻿package es.monsteraltech.skincare_tfm.data
 import android.content.Context
 import android.content.SharedPreferences
 import kotlinx.coroutines.test.runTest
@@ -14,7 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-
 @RunWith(RobolectricTestRunner::class)
 class SecureTokenStorageTest {
     @Mock

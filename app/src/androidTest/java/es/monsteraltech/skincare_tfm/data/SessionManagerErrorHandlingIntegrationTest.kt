@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.data
+﻿package es.monsteraltech.skincare_tfm.data
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -8,7 +8,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-
 @RunWith(AndroidJUnit4::class)
 class SessionManagerErrorHandlingIntegrationTest {
     private lateinit var context: Context

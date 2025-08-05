@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.adapter
+﻿package es.monsteraltech.skincare_tfm.body.mole.adapter
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.google.firebase.Timestamp
@@ -11,7 +11,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.util.Date
-
 @RunWith(RobolectricTestRunner::class)
 class AnalysisHistoryAdapterTest {
     private lateinit var context: Context

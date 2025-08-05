@@ -1,8 +1,7 @@
-package es.monsteraltech.skincare_tfm.body.mole.error
+﻿package es.monsteraltech.skincare_tfm.body.mole.error
 import android.util.Log
 import kotlinx.coroutines.delay
 import kotlin.math.pow
-
 class RetryManager() {
     data class RetryConfig(
         val maxAttempts: Int = 3,

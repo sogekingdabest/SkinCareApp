@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.performance
+﻿package es.monsteraltech.skincare_tfm.performance
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -12,7 +12,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.system.measureTimeMillis
-
 @RunWith(AndroidJUnit4::class)
 class SessionPerformanceTest {
     private lateinit var context: Context

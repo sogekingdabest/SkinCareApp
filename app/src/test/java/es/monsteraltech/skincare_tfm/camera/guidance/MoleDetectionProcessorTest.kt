@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before
@@ -6,7 +6,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.junit.MockitoJUnitRunner
 import org.opencv.core.*
-
 @RunWith(MockitoJUnitRunner::class)
 class MoleDetectionProcessorTest {
     private lateinit var processor: MoleDetectionProcessor

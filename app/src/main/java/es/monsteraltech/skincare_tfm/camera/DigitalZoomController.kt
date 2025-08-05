@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera
+﻿package es.monsteraltech.skincare_tfm.camera
 import android.util.Log
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraControl

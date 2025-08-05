@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.performance
+﻿package es.monsteraltech.skincare_tfm.body.mole.performance
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
@@ -10,7 +10,6 @@ import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
-
 class LocalCacheManager private constructor(context: Context) {
     private val gson = Gson()
     private val sharedPrefs: SharedPreferences = context.getSharedPreferences(CACHE_PREFS_NAME, Context.MODE_PRIVATE)

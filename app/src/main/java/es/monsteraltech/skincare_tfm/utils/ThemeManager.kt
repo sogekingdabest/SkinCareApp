@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.utils
+﻿package es.monsteraltech.skincare_tfm.utils
 import android.app.Activity
 import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate

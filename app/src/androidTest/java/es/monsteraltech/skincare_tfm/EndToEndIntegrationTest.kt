@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm
+﻿package es.monsteraltech.skincare_tfm
 import android.content.Context
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -23,7 +23,6 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-
 @RunWith(AndroidJUnit4::class)
 @LargeTest
 class EndToEndIntegrationTest {

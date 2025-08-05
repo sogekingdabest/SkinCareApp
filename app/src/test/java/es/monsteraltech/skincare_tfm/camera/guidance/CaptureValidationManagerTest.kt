@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import android.graphics.PointF
 import android.graphics.RectF
 import org.junit.Assert.assertEquals
@@ -10,7 +10,6 @@ import org.junit.Test
 import org.opencv.core.MatOfPoint
 import org.opencv.core.Point
 import org.opencv.core.Rect
-
 class CaptureValidationManagerTest {
     private lateinit var validationManager: CaptureValidationManager
     private lateinit var guideArea: RectF

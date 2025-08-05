@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -8,7 +8,6 @@ import org.mockito.junit.MockitoJUnitRunner
 import org.opencv.core.*
 import kotlin.system.measureTimeMillis
 import kotlin.test.assertTrue
-
 @ExperimentalCoroutinesApi
 @RunWith(MockitoJUnitRunner::class)
 class RealtimeAnalysisPerformanceTest {

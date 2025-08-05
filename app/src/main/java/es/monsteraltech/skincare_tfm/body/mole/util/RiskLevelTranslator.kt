@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.util
+﻿package es.monsteraltech.skincare_tfm.body.mole.util
 import android.content.Context
 import es.monsteraltech.skincare_tfm.R
 object RiskLevelTranslator {

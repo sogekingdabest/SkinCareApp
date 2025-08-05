@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.body.mole.validation
+﻿package es.monsteraltech.skincare_tfm.body.mole.validation
 import es.monsteraltech.skincare_tfm.body.mole.model.ABCDEScores
 import es.monsteraltech.skincare_tfm.body.mole.model.AnalysisData
 object AnalysisDataValidator {

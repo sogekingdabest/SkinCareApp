@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.data
+﻿package es.monsteraltech.skincare_tfm.data
 import android.content.Context
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -12,7 +12,6 @@ import org.robolectric.RuntimeEnvironment
 import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
-
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 class SessionManagerTest {

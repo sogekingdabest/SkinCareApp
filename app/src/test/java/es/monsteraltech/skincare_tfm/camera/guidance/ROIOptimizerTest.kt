@@ -1,11 +1,10 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.opencv.core.Point
 import org.opencv.core.Rect
 import org.opencv.core.Size
-
 class ROIOptimizerTest {
     private lateinit var roiOptimizer: ROIOptimizer
     private val testImageSize = Size(1920.0, 1080.0)

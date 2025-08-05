@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 import android.content.Context
 import android.graphics.Bitmap
 import kotlinx.coroutines.CancellationException
@@ -15,7 +15,6 @@ import org.junit.Test
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.whenever
-
 class CancellationAndTimeoutTest {
     @Mock
     private lateinit var mockContext: Context

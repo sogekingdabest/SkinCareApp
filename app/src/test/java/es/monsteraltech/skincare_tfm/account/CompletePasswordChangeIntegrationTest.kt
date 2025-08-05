@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.account
+﻿package es.monsteraltech.skincare_tfm.account
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.*
 import kotlinx.coroutines.test.runTest
@@ -11,7 +11,6 @@ import org.mockito.Mockito.*
 import org.mockito.junit.MockitoJUnitRunner
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
-
 @RunWith(MockitoJUnitRunner::class)
 class CompletePasswordChangeIntegrationTest {
     @Mock

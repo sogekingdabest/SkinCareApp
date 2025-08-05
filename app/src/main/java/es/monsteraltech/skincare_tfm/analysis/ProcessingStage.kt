@@ -1,4 +1,4 @@
-package es.monsteraltech.skincare_tfm.analysis
+﻿package es.monsteraltech.skincare_tfm.analysis
 enum class ProcessingStage(val message: String, val weight: Int) {
     INITIALIZING("Preparando análisis...", 10),
     PREPROCESSING("Procesando imagen...", 20),

@@ -1,9 +1,8 @@
-package es.monsteraltech.skincare_tfm.camera.guidance
+﻿package es.monsteraltech.skincare_tfm.camera.guidance
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
-
 class CaptureMetricsTest {
     private lateinit var metrics: CaptureMetrics
     @Before
