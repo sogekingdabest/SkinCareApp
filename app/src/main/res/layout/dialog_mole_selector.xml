@@ -43,53 +43,47 @@
         </LinearLayout>
 
         <!-- Search Bar with Enhanced Features -->
-        <RelativeLayout
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/searchInputLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp">
+            android:layout_marginBottom="8dp"
+            app:startIconDrawable="@drawable/ic_search"
+            app:endIconMode="clear_text"
+            app:hintEnabled="true"
+            android:hint="@string/mole_selector_search_hint"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/searchInputLayout"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/searchEditText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:startIconDrawable="@drawable/ic_search"
-                app:hintEnabled="true"
-                android:hint="@string/mole_selector_search_hint"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                android:inputType="text"
+                android:maxLines="1"
+                android:imeOptions="actionSearch" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/searchEditText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="text"
-                    android:maxLines="1"
-                    android:imeOptions="actionSearch" />
+        </com.google.android.material.textfield.TextInputLayout>
 
-            </com.google.android.material.textfield.TextInputLayout>
+        <!-- Search Active Indicator -->
+        <View
+            android:id="@+id/searchActiveIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:background="@color/colorPrimary"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone" />
 
-            <!-- Clear Search Button -->
-            <ImageButton
-                android:id="@+id/clearSearchButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="12dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_clear"
-                android:contentDescription="@string/mole_selector_clear_search"
-                android:visibility="gone" />
-
-            <!-- Search Active Indicator -->
-            <View
-                android:id="@+id/searchActiveIndicator"
-                android:layout_width="4dp"
-                android:layout_height="match_parent"
-                android:layout_alignParentStart="true"
-                android:background="@color/colorPrimary"
-                android:visibility="gone" />
-
-        </RelativeLayout>
+        <!-- Clear Search Button (backup) -->
+        <ImageButton
+            android:id="@+id/clearSearchButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_clear"
+            android:contentDescription="@string/mole_selector_clear_search"
+            android:visibility="gone"
+            android:layout_gravity="end"
+            android:layout_marginBottom="8dp" />
 
         <!-- Result Count and Search Info -->
         <LinearLayout

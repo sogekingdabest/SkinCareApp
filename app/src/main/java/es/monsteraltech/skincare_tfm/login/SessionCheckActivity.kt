@@ -294,14 +294,10 @@ class SessionCheckActivity : AppCompatActivity() {
             val options = ActivityOptions.makeSceneTransitionAnimation(this, *pairs)
             startActivity(intent, options.toBundle())
             
-            // Finalizar esta actividad para que no quede en el stack
-            finish()
-            
         } catch (e: Exception) {
             Log.e(TAG, "Error al navegar a MainActivity: ${e.message}", e)
             // Fallback sin animaciones
             startActivity(Intent(this, MainActivity::class.java))
-            finish()
         }
     }
 
@@ -323,14 +319,10 @@ class SessionCheckActivity : AppCompatActivity() {
             val options = ActivityOptions.makeSceneTransitionAnimation(this, *pairs)
             startActivity(intent, options.toBundle())
             
-            // Finalizar esta actividad para que no quede en el stack
-            finish()
-            
         } catch (e: Exception) {
             Log.e(TAG, "Error al navegar a LoginActivity: ${e.message}", e)
             // Fallback sin animaciones
             startActivity(Intent(this, LoginActivity::class.java))
-            finish()
         }
     }
 

@@ -4,6 +4,8 @@ import android.app.Dialog
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.content.Context
+import android.view.inputmethod.InputMethodManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -106,8 +108,7 @@ class MoleSelectorDialog : DialogFragment() {
 
         // Configurar botón de limpiar búsqueda
         binding.clearSearchButton.setOnClickListener {
-            binding.searchEditText.text?.clear()
-            binding.searchEditText.clearFocus()
+            clearSearch()
         }
 
         // Configurar título y descripción
@@ -193,9 +194,17 @@ class MoleSelectorDialog : DialogFragment() {
         searchJob?.cancel()
         
         searchJob = lifecycleScope.launch {
-            // Debounce de 300ms para evitar búsquedas excesivas
-            delay(300)
-            filterMoles(query)
+            try {
+                // Debounce de 300ms para evitar búsquedas excesivas
+                delay(300)
+                
+                // Verificar que el fragment aún esté activo
+                if (isAdded && !isDetached) {
+                    filterMoles(query)
+                }
+            } catch (e: Exception) {
+                // Manejar cancelación o errores silenciosamente
+            }
         }
     }
 
@@ -204,31 +213,51 @@ class MoleSelectorDialog : DialogFragment() {
      * Optimizado para listas grandes con búsqueda eficiente
      */
     private fun filterMoles(query: String) {
-        filteredMoles = if (query.isEmpty()) {
-            allMoles
-        } else {
-            val searchTerms = query.lowercase().split(" ").filter { it.isNotBlank() }
-            
-            allMoles.filter { mole ->
-                searchTerms.all { term ->
-                    // Búsqueda por nombre
-                    mole.title.lowercase().contains(term) ||
-                    // Búsqueda por parte del cuerpo
-                    mole.bodyPart.lowercase().contains(term) ||
-                    // Búsqueda por descripción
-                    mole.description.lowercase().contains(term) ||
-                    // Búsqueda por fecha de creación
-                    dateFormat.format(mole.createdAt.toDate()).contains(term) ||
-                    // Búsqueda por fecha de último análisis
-                    (mole.lastAnalysisDate?.let { 
-                        dateFormat.format(it.toDate()).contains(term) 
-                    } ?: false) ||
-                    // Búsqueda por número de análisis
-                    mole.analysisCount.toString().contains(term)
+        try {
+            filteredMoles = if (query.isEmpty()) {
+                allMoles
+            } else {
+                val searchTerms = query.lowercase().trim().split(" ").filter { it.isNotBlank() }
+                
+                allMoles.filter { mole ->
+                    searchTerms.any { term ->
+                        // Búsqueda por nombre
+                        mole.title.lowercase().contains(term) ||
+                        // Búsqueda por parte del cuerpo
+                        mole.bodyPart.lowercase().contains(term) ||
+                        // Búsqueda por descripción
+                        mole.description.lowercase().contains(term) ||
+                        // Búsqueda por fecha de creación
+                        try {
+                            dateFormat.format(mole.createdAt.toDate()).contains(term)
+                        } catch (e: Exception) {
+                            false
+                        } ||
+                        // Búsqueda por fecha de último análisis
+                        try {
+                            mole.lastAnalysisDate?.let { 
+                                dateFormat.format(it.toDate()).contains(term) 
+                            } ?: false
+                        } catch (e: Exception) {
+                            false
+                        } ||
+                        // Búsqueda por número de análisis
+                        mole.analysisCount.toString().contains(term)
+                    }
                 }
             }
+            
+            // Ejecutar actualización en el hilo principal
+            requireActivity().runOnUiThread {
+                updateUI()
+            }
+        } catch (e: Exception) {
+            // En caso de error, mostrar todos los lunares
+            filteredMoles = allMoles
+            requireActivity().runOnUiThread {
+                updateUI()
+            }
         }
-        updateUI()
     }
 
     private fun updateUI() {
@@ -240,6 +269,15 @@ class MoleSelectorDialog : DialogFragment() {
         // Actualizar lista con animación suave
         moleAdapter.submitList(filteredMoles.toList()) // Crear nueva lista para trigger DiffUtil
         
+        // Mostrar/ocultar RecyclerView y estado vacío
+        if (filteredMoles.isEmpty()) {
+            binding.molesRecyclerView.visibility = View.GONE
+            binding.emptyStateContainer.visibility = View.VISIBLE
+        } else {
+            binding.molesRecyclerView.visibility = View.VISIBLE
+            binding.emptyStateContainer.visibility = View.GONE
+        }
+        
         // Mostrar indicadores visuales apropiados
         updateEmptyState()
         updateResultCount()
@@ -250,14 +288,21 @@ class MoleSelectorDialog : DialogFragment() {
      * Actualiza el estado vacío con mensajes contextuales
      */
     private fun updateEmptyState() {
-        val searchQuery = binding.searchEditText.text?.toString() ?: ""
+        val searchQuery = binding.searchEditText.text?.toString()?.trim() ?: ""
         
         if (filteredMoles.isEmpty()) {
+            binding.emptyStateContainer.visibility = View.VISIBLE
+            
             if (allMoles.isEmpty()) {
                 // No hay lunares en absoluto
                 binding.emptyStateText.text = getString(R.string.mole_selector_no_moles)
-                binding.emptyStateIcon.setImageResource(R.drawable.ic_add_circle_outline)
-                binding.emptyStateIcon.visibility = View.VISIBLE
+                try {
+                    binding.emptyStateIcon.setImageResource(R.drawable.ic_add_circle_outline)
+                    binding.emptyStateIcon.visibility = View.VISIBLE
+                } catch (e: Exception) {
+                    binding.emptyStateIcon.visibility = View.GONE
+                }
+                binding.searchSuggestions.visibility = View.GONE
             } else {
                 // Hay lunares pero no coinciden con la búsqueda
                 binding.emptyStateText.text = if (searchQuery.isNotEmpty()) {
@@ -265,11 +310,14 @@ class MoleSelectorDialog : DialogFragment() {
                 } else {
                     getString(R.string.mole_selector_no_results)
                 }
-                binding.emptyStateIcon.setImageResource(R.drawable.ic_search_off)
-                binding.emptyStateIcon.visibility = View.VISIBLE
+                try {
+                    binding.emptyStateIcon.setImageResource(R.drawable.ic_search_off)
+                    binding.emptyStateIcon.visibility = View.VISIBLE
+                } catch (e: Exception) {
+                    binding.emptyStateIcon.visibility = View.GONE
+                }
+                binding.searchSuggestions.visibility = if (searchQuery.isNotEmpty()) View.VISIBLE else View.GONE
             }
-            binding.emptyStateContainer.visibility = View.VISIBLE
-            binding.searchSuggestions.visibility = if (searchQuery.isNotEmpty() && allMoles.isNotEmpty()) View.VISIBLE else View.GONE
         } else {
             binding.emptyStateContainer.visibility = View.GONE
         }
@@ -301,15 +349,14 @@ class MoleSelectorDialog : DialogFragment() {
      * Actualiza indicadores visuales de búsqueda
      */
     private fun updateSearchIndicators() {
-        val searchQuery = binding.searchEditText.text?.toString() ?: ""
+        val searchQuery = binding.searchEditText.text?.toString()?.trim() ?: ""
         
         // Mostrar indicador de búsqueda activa
         if (searchQuery.isNotEmpty()) {
             binding.searchActiveIndicator.visibility = View.VISIBLE
-            binding.clearSearchButton.visibility = View.VISIBLE
+            // El botón de limpiar ya está manejado por endIconMode="clear_text"
         } else {
             binding.searchActiveIndicator.visibility = View.GONE
-            binding.clearSearchButton.visibility = View.GONE
         }
     }
 
@@ -326,6 +373,26 @@ class MoleSelectorDialog : DialogFragment() {
      */
     private fun setupSearchSuggestions() {
         binding.searchSuggestions.text = getString(R.string.mole_selector_search_suggestions)
+    }
+
+    /**
+     * Limpia la búsqueda y restaura la lista completa
+     */
+    private fun clearSearch() {
+        binding.searchEditText.text?.clear()
+        binding.searchEditText.clearFocus()
+        
+        // Ocultar el teclado
+        try {
+            val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(binding.searchEditText.windowToken, 0)
+        } catch (e: Exception) {
+            // Ignorar errores del teclado
+        }
+        
+        // Restaurar lista completa
+        filteredMoles = allMoles
+        updateUI()
     }
 
     override fun onDestroyView() {

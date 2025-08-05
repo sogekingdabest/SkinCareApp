@@ -39,22 +39,18 @@ class ProgressManager(
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     private val isHighContrastMode = isHighContrastEnabled()
     
-    // Colores para diferentes estados (adaptados para alto contraste)
-    private val normalColor = if (isHighContrastMode) {
-        ContextCompat.getColor(context, android.R.color.black)
-    } else {
-        ContextCompat.getColor(context, R.color.md_theme_primary)
+    // Colores usando atributos del tema para compatibilidad claro/oscuro
+    private fun getThemeColor(attrId: Int): Int {
+        val typedValue = android.util.TypedValue()
+        context.theme.resolveAttribute(attrId, typedValue, true)
+        return typedValue.data
     }
-    private val errorColor = if (isHighContrastMode) {
-        ContextCompat.getColor(context, android.R.color.black)
-    } else {
-        ContextCompat.getColor(context, android.R.color.holo_red_light)
-    }
-    private val successColor = if (isHighContrastMode) {
-        ContextCompat.getColor(context, android.R.color.black)
-    } else {
-        ContextCompat.getColor(context, android.R.color.holo_green_light)
-    }
+    
+    private val normalColor by lazy { getThemeColor(com.google.android.material.R.attr.colorPrimary) }
+    private val errorColor by lazy { getThemeColor(com.google.android.material.R.attr.colorError) }
+    private val successColor by lazy { getThemeColor(com.google.android.material.R.attr.colorPrimary) }
+    private val onSurfaceColor by lazy { getThemeColor(com.google.android.material.R.attr.colorOnSurface) }
+    private val onSurfaceVariantColor by lazy { getThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant) }
     
     // Control de tiempo para estimaciones
     private var processingStartTime: Long = 0
@@ -127,9 +123,9 @@ class ProgressManager(
                 shake.start()
             }
             
-            // Cambiar color de la barra de progreso a error
+            // Cambiar color de la barra de progreso a error usando tema
             progressBar?.let { bar ->
-                bar.progressTintList = ContextCompat.getColorStateList(context, android.R.color.holo_red_light)
+                bar.setIndicatorColor(errorColor)
             }
             
             // Ocultar botón de cancelar si existe
@@ -150,7 +146,7 @@ class ProgressManager(
             // Animar progreso al 100%
             progressBar?.let { bar ->
                 animateProgressTo(100)
-                bar.progressTintList = ContextCompat.getColorStateList(context, android.R.color.holo_green_light)
+                bar.setIndicatorColor(successColor)
             }
             
             // Ocultar después de un breve delay
@@ -167,13 +163,13 @@ class ProgressManager(
         mainHandler.post {
             statusText?.let { textView ->
                 textView.text = "Análisis cancelado"
-                textView.setTextColor(ContextCompat.getColor(context, android.R.color.darker_gray))
+                textView.setTextColor(onSurfaceVariantColor)
             }
             
             // Resetear barra de progreso
             progressBar?.let { bar ->
                 bar.progress = 0
-                bar.progressTintList = ContextCompat.getColorStateList(context, android.R.color.darker_gray)
+                bar.setIndicatorColor(onSurfaceVariantColor)
             }
             
             // Ocultar después de un breve delay
@@ -224,9 +220,9 @@ class ProgressManager(
                     .start()
             }
             
-            // Resetear colores a estado normal
-            statusText?.setTextColor(ContextCompat.getColor(context, android.R.color.black))
-            progressBar?.progressTintList = ContextCompat.getColorStateList(context, R.color.md_theme_primary)
+            // Resetear colores a estado normal usando tema
+            statusText?.setTextColor(onSurfaceColor)
+            progressBar?.setIndicatorColor(normalColor)
         }
     }
     
@@ -277,15 +273,15 @@ class ProgressManager(
      */
     private fun updateProgressBarColor(stage: ProcessingStage) {
         progressBar?.let { bar ->
-            val colorRes = when (stage) {
-                ProcessingStage.INITIALIZING -> R.color.md_theme_primary
-                ProcessingStage.PREPROCESSING -> R.color.md_theme_primary
-                ProcessingStage.AI_ANALYSIS -> android.R.color.holo_blue_light
-                ProcessingStage.ABCDE_ANALYSIS -> android.R.color.holo_orange_light
-                ProcessingStage.FINALIZING -> android.R.color.holo_green_light
+            val color = when (stage) {
+                ProcessingStage.INITIALIZING -> normalColor
+                ProcessingStage.PREPROCESSING -> normalColor
+                ProcessingStage.AI_ANALYSIS -> getThemeColor(com.google.android.material.R.attr.colorSecondary)
+                ProcessingStage.ABCDE_ANALYSIS -> getThemeColor(com.google.android.material.R.attr.colorTertiary)
+                ProcessingStage.FINALIZING -> successColor
             }
             
-            bar.progressTintList = ContextCompat.getColorStateList(context, colorRes)
+            bar.setIndicatorColor(color)
         }
     }
     

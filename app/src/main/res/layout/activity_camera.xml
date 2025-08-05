@@ -27,19 +27,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Botón de configuración de guías -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/guidance_settings_button"
-        style="@style/GuidanceFAB.Mini"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/fab_margin"
-        android:layout_marginEnd="@dimen/fab_margin"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:src="@drawable/ic_settings_guidance"
-        android:contentDescription="@string/guidance_settings_description" />
-
     <!-- Mensaje de guía dinámico -->
     <TextView
         android:id="@+id/guidance_message"
