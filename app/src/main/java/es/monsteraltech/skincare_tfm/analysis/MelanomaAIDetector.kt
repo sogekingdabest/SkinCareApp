@@ -29,7 +29,7 @@ class MelanomaAIDetector(private val context: Context) {
     }
 
     private var interpreter: Interpreter? = null
-    private val abcdeAnalyzer = ABCDEAnalyzerOpenCV() // Usar la versión con OpenCV
+    private val abcdeAnalyzer = ABCDEAnalyzerOpenCV(context)
 
     init {
         loadModel()
