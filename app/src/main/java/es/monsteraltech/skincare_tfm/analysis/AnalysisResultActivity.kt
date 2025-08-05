@@ -526,17 +526,19 @@ class AnalysisResultActivity : AppCompatActivity() {
         binding.abcdeTotalScore.text = String.format("Score ABCDE: %.1f", abcdeResult.totalScore)
     }
 
-    private fun validateInputs(): Boolean {
+    private fun validateInputs(requireTitle: Boolean = true): Boolean {
         val currentUser = auth.currentUser
         if (currentUser == null) {
             Toast.makeText(this, "Por favor, inicia sesión para guardar", Toast.LENGTH_SHORT).show()
             return false
         }
 
-        val title = binding.titleEditText.text.toString()
-        if (title.isEmpty()) {
-            Toast.makeText(this, "Por favor, añade un título", Toast.LENGTH_SHORT).show()
-            return false
+        if (requireTitle) {
+            val title = binding.titleEditText.text.toString()
+            if (title.isEmpty()) {
+                Toast.makeText(this, "Por favor, añade un título", Toast.LENGTH_SHORT).show()
+                return false
+            }
         }
 
         if (selectedBodyPart.isEmpty()) {
@@ -548,7 +550,8 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun showMoleSelectorDialog() {
-        if (!validateInputs()) return
+        // Para asignar a lunar existente, no requerimos título
+        if (!validateInputs(requireTitle = false)) return
 
         val dialog = MoleSelectorDialog.newInstance()
         
@@ -568,7 +571,8 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun saveAnalysisAsNewMole() {
-        if (!validateInputs()) return
+        // Para crear nuevo lunar, sí requerimos título
+        if (!validateInputs(requireTitle = true)) return
 
         val title = binding.titleEditText.text.toString()
         val description = binding.descriptionEditText.text.toString()

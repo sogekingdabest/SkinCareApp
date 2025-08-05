@@ -238,12 +238,9 @@ class MelanomaAIDetector(private val context: Context) {
 
         // Explicación IA
         explanations.add(
-            "🤖 IA: Probabilidad de melanoma del ${(aiResult.probability * 100).toInt()}% " +
+            "IA: Probabilidad de melanoma del ${(aiResult.probability * 100).toInt()}% " +
                     "(confianza: ${(aiResult.confidence * 100).toInt()}%)"
         )
-
-        // Agregar nota sobre el análisis con OpenCV
-        explanations.add("🔬 Análisis ABCDE realizado con visión computacional avanzada (OpenCV)")
 
         // Explicaciones ABCDE con más detalle gracias a OpenCV
 
@@ -292,32 +289,7 @@ class MelanomaAIDetector(private val context: Context) {
             )
         }
 
-        // Agregar información sobre la calidad del análisis
-        explanations.add(
-            "📊 Calidad del análisis: ${assessAnalysisQuality(abcdeResult)}"
-        )
-
         return explanations
-    }
-
-    /**
-     * Evalúa la calidad del análisis ABCDE
-     */
-    private fun assessAnalysisQuality(abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult): String {
-        // Verificar si los valores parecen realistas
-        val hasRealisticValues = abcdeResult.asymmetryScore in 0f..2f &&
-                abcdeResult.borderScore in 0f..8f &&
-                abcdeResult.colorScore in 1f..6f &&
-                abcdeResult.diameterScore in 0f..5f
-
-        val hasDetailedAnalysis = abcdeResult.details.borderDetails.numberOfSegments > 0 &&
-                abcdeResult.details.colorDetails.colorCount > 0
-
-        return when {
-            hasRealisticValues && hasDetailedAnalysis -> "Alta (análisis completo con OpenCV)"
-            hasRealisticValues -> "Media (valores correctos)"
-            else -> "Baja (revisar manualmente)"
-        }
     }
 
     // [Mantener el resto de métodos sin cambios: analyzeWithAI, loadModel, etc.]

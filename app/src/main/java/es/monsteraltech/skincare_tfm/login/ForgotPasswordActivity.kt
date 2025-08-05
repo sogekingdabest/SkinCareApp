@@ -64,7 +64,6 @@ class ForgotPasswordActivity : AppCompatActivity() {
 
                             val options = ActivityOptions.makeSceneTransitionAnimation(this@ForgotPasswordActivity, *pairs)
                             startActivity(intent, options.toBundle())
-                            finish() // Close the activity
                         } else {
                             // Failed to send password reset email
                             Snackbar.make(it, R.string.error_password_reset_failed, Snackbar.LENGTH_LONG).show()
@@ -81,8 +80,21 @@ class ForgotPasswordActivity : AppCompatActivity() {
             }
         }
 
+        loginTextView.setOnClickListener {
+            val intent = Intent(this@ForgotPasswordActivity, LoginActivity::class.java)
 
+            val pairs = arrayOf(
+                Pair<View, String>(logoImageView, "logoImageView"),
+                Pair<View, String>(welcomeTextView, "textTrans"),
+                Pair<View, String>(instructionsTextView, "instructionsTextView"),
+                Pair<View, String>(emailEditText, "emailEditText"),
+                Pair<View, String>(recuperarButton, "registerOrLoginButton"),
+                Pair<View, String>(loginTextView, "registerOrLoginEditText")
+            )
 
+            val options = ActivityOptions.makeSceneTransitionAnimation(this@ForgotPasswordActivity, *pairs)
+            startActivity(intent, options.toBundle())
+        }
     }
     private fun validateEmail(): Boolean {
         val email = emailEditText.editText?.text.toString().trim()

@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -76,8 +77,30 @@ class MoleViewerActivity : AppCompatActivity() {
     private lateinit var diameterLayout: LinearLayout
     private lateinit var evolutionLayout: LinearLayout
 
+    // User Input Components
+    private lateinit var userInputCard: com.google.android.material.card.MaterialCardView
+    private lateinit var toggleUserInputButton: com.google.android.material.button.MaterialButton
+    private lateinit var userInputContainer: LinearLayout
+    private lateinit var userAsymmetrySlider: com.google.android.material.slider.Slider
+    private lateinit var userBorderSlider: com.google.android.material.slider.Slider
+    private lateinit var userColorSlider: com.google.android.material.slider.Slider
+    private lateinit var userDiameterSlider: com.google.android.material.slider.Slider
+    private lateinit var userEvolutionSlider: com.google.android.material.slider.Slider
+    private lateinit var userAsymmetryValue: TextView
+    private lateinit var userBorderValue: TextView
+    private lateinit var userColorValue: TextView
+    private lateinit var userDiameterValue: TextView
+    private lateinit var userEvolutionValue: TextView
+    private lateinit var aiTotalScore: TextView
+    private lateinit var userTotalScore: TextView
+    private lateinit var comparisonText: TextView
+    private lateinit var actionButtonsContainer: LinearLayout
+    private lateinit var saveButton: com.google.android.material.button.MaterialButton
+    private lateinit var cancelButton: com.google.android.material.button.MaterialButton
+
     private var currentMoleData: MoleData? = null
     private var isRetrying = false
+    private var isUserInputExpanded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -128,6 +151,29 @@ class MoleViewerActivity : AppCompatActivity() {
         diameterLayout = findViewById(R.id.diameterLayout)
         evolutionLayout = findViewById(R.id.evolutionLayout)
 
+        // User Input Components
+        userInputCard = findViewById(R.id.userInputCard)
+        toggleUserInputButton = findViewById(R.id.toggleUserInputButton)
+        userInputContainer = findViewById(R.id.userInputContainer)
+        userAsymmetrySlider = findViewById(R.id.userAsymmetrySlider)
+        userBorderSlider = findViewById(R.id.userBorderSlider)
+        userColorSlider = findViewById(R.id.userColorSlider)
+        userDiameterSlider = findViewById(R.id.userDiameterSlider)
+        userEvolutionSlider = findViewById(R.id.userEvolutionSlider)
+        userAsymmetryValue = findViewById(R.id.userAsymmetryValue)
+        userBorderValue = findViewById(R.id.userBorderValue)
+        userColorValue = findViewById(R.id.userColorValue)
+        userDiameterValue = findViewById(R.id.userDiameterValue)
+        userEvolutionValue = findViewById(R.id.userEvolutionValue)
+        aiTotalScore = findViewById(R.id.aiTotalScore)
+        userTotalScore = findViewById(R.id.userTotalScore)
+        comparisonText = findViewById(R.id.comparisonText)
+        actionButtonsContainer = findViewById(R.id.actionButtonsContainer)
+        saveButton = findViewById(R.id.saveButton)
+        cancelButton = findViewById(R.id.cancelButton)
+
+        setupUserInputListeners()
+
         viewHistoryButton.setOnClickListener {
             openAnalysisHistory()
         }
@@ -137,6 +183,143 @@ class MoleViewerActivity : AppCompatActivity() {
         val toolbar = findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+    }
+
+    private fun setupUserInputListeners() {
+        // Toggle button para expandir/contraer la entrada del usuario (como en AnalysisResultActivity)
+        toggleUserInputButton.setOnClickListener {
+            val isVisible = userInputContainer.visibility == View.VISIBLE
+            if (isVisible) {
+                userInputContainer.visibility = View.GONE
+                actionButtonsContainer.visibility = View.GONE
+                toggleUserInputButton.text = "Añadir"
+                isUserInputExpanded = false
+            } else {
+                userInputContainer.visibility = View.VISIBLE
+                actionButtonsContainer.visibility = View.VISIBLE
+                toggleUserInputButton.text = "Ocultar"
+                isUserInputExpanded = true
+            }
+        }
+
+        // Botón cancelar
+        cancelButton.setOnClickListener {
+            // Contraer la sección y resetear valores
+            isUserInputExpanded = false
+            userInputContainer.visibility = View.GONE
+            actionButtonsContainer.visibility = View.GONE
+            toggleUserInputButton.text = "Añadir"
+            resetUserInputValues()
+        }
+
+        // Botón guardar
+        saveButton.setOnClickListener {
+            saveUserABCDEValues()
+        }
+
+        // Configurar sliders con listeners (como en AnalysisResultActivity)
+        setupSliderListener(userAsymmetrySlider, userAsymmetryValue, 2.0f)
+        setupSliderListener(userBorderSlider, userBorderValue, 8.0f)
+        setupSliderListener(userColorSlider, userColorValue, 6.0f)
+        setupSliderListener(userDiameterSlider, userDiameterValue, 5.0f)
+        setupSliderListener(userEvolutionSlider, userEvolutionValue, 3.0f)
+
+        // Configurar botones de información (como en AnalysisResultActivity)
+        setupInfoButtons()
+    }
+
+    private fun updateUserTotalScore() {
+        val userTotal = calculateUserTotalScore()
+        userTotalScore.text = String.format("%.1f", userTotal)
+    }
+
+    private fun setupSliderListener(slider: com.google.android.material.slider.Slider, valueText: TextView, maxValue: Float) {
+        slider.addOnChangeListener { _, value, _ ->
+            valueText.text = String.format("%.1f/%.0f", value, maxValue)
+            updateUserTotalScore()
+            updateComparison()
+        }
+    }
+
+    private fun updateComparison() {
+        // Actualizar comparación en tiempo real
+        val aiTotal = aiTotalScore.text.toString().replace("--", "0").toFloatOrNull() ?: 0f
+        val userTotal = calculateUserTotalScore()
+        val difference = kotlin.math.abs(aiTotal - userTotal)
+        
+        val comparisonMessage = when {
+            aiTotal == 0f -> "Introduce valores para ver la comparación"
+            difference < 1.0f -> "¡Muy similar! Diferencia: ${String.format("%.1f", difference)} puntos"
+            difference < 3.0f -> "Bastante similar. Diferencia: ${String.format("%.1f", difference)} puntos"
+            difference < 5.0f -> "Algunas diferencias. Diferencia: ${String.format("%.1f", difference)} puntos"
+            else -> "Diferencias significativas. Diferencia: ${String.format("%.1f", difference)} puntos"
+        }
+        
+        comparisonText.text = comparisonMessage
+    }
+
+    private fun calculateUserTotalScore(): Float {
+        val userAsymmetry = userAsymmetrySlider.value
+        val userBorder = userBorderSlider.value
+        val userColor = userColorSlider.value
+        val userDiameter = userDiameterSlider.value
+        val userEvolution = userEvolutionSlider.value
+
+        // Aplicar los mismos pesos que usa la app en ABCDEAnalyzerOpenCV.calculateTotalScore()
+        var userTotal = (userAsymmetry * 1.3f) + (userBorder * 0.1f) + (userColor * 0.5f) + (userDiameter * 0.5f)
+        
+        // Si hay evolución, aplicar el multiplicador como en la app
+        if (userEvolution > 0) {
+            userTotal *= (1 + userEvolution * 0.2f)
+        }
+        
+        return userTotal
+    }
+
+    private fun setupInfoButtons() {
+        findViewById<ImageButton>(R.id.asymmetryInfoButton).setOnClickListener {
+            showABCDECriterionInfo(
+                getString(R.string.abcde_asymmetry_info_title),
+                getString(R.string.abcde_asymmetry_info_content)
+            )
+        }
+        
+        findViewById<ImageButton>(R.id.borderInfoButton).setOnClickListener {
+            showABCDECriterionInfo(
+                getString(R.string.abcde_border_info_title),
+                getString(R.string.abcde_border_info_content)
+            )
+        }
+        
+        findViewById<ImageButton>(R.id.colorInfoButton).setOnClickListener {
+            showABCDECriterionInfo(
+                getString(R.string.abcde_color_info_title),
+                getString(R.string.abcde_color_info_content)
+            )
+        }
+        
+        findViewById<ImageButton>(R.id.diameterInfoButton).setOnClickListener {
+            showABCDECriterionInfo(
+                getString(R.string.abcde_diameter_info_title),
+                getString(R.string.abcde_diameter_info_content)
+            )
+        }
+        
+        findViewById<ImageButton>(R.id.evolutionInfoButton).setOnClickListener {
+            showABCDECriterionInfo(
+                getString(R.string.abcde_evolution_info_title),
+                getString(R.string.abcde_evolution_info_content)
+            )
+        }
+    }
+
+    private fun showABCDECriterionInfo(title: String, content: String) {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(content)
+            .setPositiveButton("Entendido", null)
+            .setIcon(R.drawable.ic_info)
+            .show()
     }
 
     private fun loadMoleData() {
@@ -821,13 +1004,14 @@ class MoleViewerActivity : AppCompatActivity() {
             
             Log.d("MoleViewerActivity", "User values - A:$userAsymmetry, B:$userBorder, C:$userColor, D:$userDiameter, E:$userEvolution, Total:$userTotal")
             
-            // Solo mostrar la sección si hay valores del usuario
-            if (userAsymmetry != null || userBorder != null || userColor != null || 
-                userDiameter != null || userEvolution != null) {
-                
-                Log.d("MoleViewerActivity", "User values found, showing user ABCDE card")
-                
-                // Mostrar la tarjeta del usuario
+            // Decidir qué tarjeta mostrar
+            val hasUserData = userAsymmetry != null || userBorder != null || userColor != null || 
+                             userDiameter != null || userEvolution != null
+            
+            if (hasUserData) {
+                // Mostrar tarjeta de resultados del usuario y ocultar tarjeta de entrada
+                Log.d("MoleViewerActivity", "User values found, showing user ABCDE results card")
+                userInputCard.visibility = View.GONE
                 findViewById<View>(R.id.userAbcdeCard)?.visibility = View.VISIBLE
                 
                 // Mostrar valores individuales usando findViewById
@@ -885,20 +1069,113 @@ class MoleViewerActivity : AppCompatActivity() {
                 Log.d("MoleViewerActivity", "User ABCDE values displayed successfully")
                 
             } else {
-                // Ocultar la sección si no hay valores del usuario
+                // Mostrar tarjeta de entrada del usuario y ocultar tarjeta de resultados
+                Log.d("MoleViewerActivity", "No user values found, showing user input card")
                 findViewById<View>(R.id.userAbcdeCard)?.visibility = View.GONE
-                Log.d("MoleViewerActivity", "No user values found, hiding user ABCDE card")
+                userInputCard.visibility = View.VISIBLE
+                
+                // Configurar el score de la IA en la comparación
+                val appTotal = analysisData.abcdeScores.totalScore
+                aiTotalScore.text = if (appTotal > 0f) String.format("%.1f", appTotal) else "--"
+                
+                // Resetear valores de entrada
+                resetUserInputValues()
             }
         } catch (e: Exception) {
             Log.e("MoleViewerActivity", "Error displaying user ABCDE values", e)
-            // En caso de error, simplemente ocultar la sección
+            // En caso de error, ocultar ambas secciones
             findViewById<View>(R.id.userAbcdeCard)?.visibility = View.GONE
+            userInputCard.visibility = View.GONE
         }
     }
 
-    /**
-     * Formatea una fecha en formato español DD/MM/YYYY
-     */
+    private fun resetUserInputValues() {
+        userAsymmetrySlider.value = 0f
+        userBorderSlider.value = 0f
+        userColorSlider.value = 0f
+        userDiameterSlider.value = 0f
+        userEvolutionSlider.value = 0f
+        
+        userAsymmetryValue.text = "0.0/2"
+        userBorderValue.text = "0.0/8"
+        userColorValue.text = "0.0/6"
+        userDiameterValue.text = "0.0/5"
+        userEvolutionValue.text = "0.0/3"
+        
+        userTotalScore.text = "0.0"
+        comparisonText.text = "Ajusta los valores para comparar con el análisis de la IA"
+
+        // Resetear estado de la UI
+        isUserInputExpanded = false
+        userInputContainer.visibility = View.GONE
+        actionButtonsContainer.visibility = View.GONE
+        toggleUserInputButton.visibility = View.VISIBLE
+        toggleUserInputButton.text = "Añadir"
+    }
+
+    private fun saveUserABCDEValues() {
+        val currentUser = auth.currentUser
+        val moleId = currentMoleData?.id
+        
+        if (currentUser == null || moleId.isNullOrEmpty()) {
+            Toast.makeText(this, "Error: No se puede guardar sin usuario o ID de lunar", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Recopilar valores del usuario usando el método consistente
+        val asymmetry = userAsymmetrySlider.value
+        val border = userBorderSlider.value
+        val color = userColorSlider.value
+        val diameter = userDiameterSlider.value
+        val evolution = userEvolutionSlider.value
+        val userTotal = calculateUserTotalScore()
+        
+        val userValues = mapOf(
+            "userAsymmetry" to asymmetry,
+            "userBorder" to border,
+            "userColor" to color,
+            "userDiameter" to diameter,
+            "userEvolution" to evolution,
+            "userTotal" to userTotal
+        )
+
+        Log.d("MoleViewerActivity", "Saving user ABCDE values: $userValues")
+
+        // Mostrar indicador de carga
+        saveButton.isEnabled = false
+        saveButton.text = "Guardando..."
+
+        lifecycleScope.launch {
+            try {
+                val result = moleRepository.updateMoleAnalysisMetadata(currentUser.uid, moleId, userValues)
+                
+                if (result.isSuccess) {
+                    Log.d("MoleViewerActivity", "User ABCDE values saved successfully")
+                    Toast.makeText(this@MoleViewerActivity, "Valores guardados correctamente", Toast.LENGTH_SHORT).show()
+                    
+                    // Contraer la sección y recargar datos
+                    isUserInputExpanded = false
+                    userInputContainer.visibility = View.GONE
+                    actionButtonsContainer.visibility = View.GONE
+                    toggleUserInputButton.visibility = View.VISIBLE
+
+                    loadMoleData()
+                    
+                } else {
+                    Log.e("MoleViewerActivity", "Failed to save user ABCDE values: ${result.exceptionOrNull()}")
+                    Toast.makeText(this@MoleViewerActivity, "Error al guardar los valores", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("MoleViewerActivity", "Exception saving user ABCDE values", e)
+                Toast.makeText(this@MoleViewerActivity, "Error inesperado al guardar", Toast.LENGTH_SHORT).show()
+            } finally {
+                // Restaurar botón
+                saveButton.isEnabled = true
+                saveButton.text = "Guardar"
+            }
+        }
+    }
+
     private fun formatDate(date: java.util.Date): String {
         val formatter = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
         return formatter.format(date)

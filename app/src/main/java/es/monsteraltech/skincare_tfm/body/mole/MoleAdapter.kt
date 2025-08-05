@@ -14,8 +14,11 @@ import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import java.io.File
 
-class MoleAdapter(private val moleList: List<Mole>, private val onClick: (Mole) -> Unit) :
-    RecyclerView.Adapter<MoleAdapter.MoleViewHolder>(), Filterable {
+class MoleAdapter(
+    private val moleList: List<Mole>, 
+    private val onClick: (Mole) -> Unit,
+    private val onFilterChanged: ((Boolean) -> Unit)? = null
+) : RecyclerView.Adapter<MoleAdapter.MoleViewHolder>(), Filterable {
 
     private var filteredMoleList: List<Mole> = moleList
     private val firebaseDataManager = FirebaseDataManager()
@@ -119,6 +122,9 @@ class MoleAdapter(private val moleList: List<Mole>, private val onClick: (Mole) 
 
                 // Notifica los cambios al adaptador y anima las transiciones
                 diffResult.dispatchUpdatesTo(this@MoleAdapter)
+                
+                // Notificar si la lista filtrada está vacía
+                onFilterChanged?.invoke(filteredMoleList.isEmpty())
             }
         }
     }
