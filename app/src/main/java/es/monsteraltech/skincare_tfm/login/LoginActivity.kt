@@ -6,7 +6,6 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -22,6 +21,7 @@ import es.monsteraltech.skincare_tfm.MainActivity
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import es.monsteraltech.skincare_tfm.data.SessionManager
+import es.monsteraltech.skincare_tfm.utils.UIUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -105,7 +105,7 @@ class LoginActivity : AppCompatActivity() {
     }
     private fun loginUser(email: String, password: String) {
         if (email.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Please enter email and password", Toast.LENGTH_SHORT).show()
+            UIUtils.showErrorToast(this, getString(R.string.error_empty_fields))
             return
         }
         auth.signInWithEmailAndPassword(email, password)
@@ -114,7 +114,7 @@ class LoginActivity : AppCompatActivity() {
                     val user = auth.currentUser
                     initializeUserSettingsAndNavigate(user)
                 } else {
-                    Toast.makeText(baseContext, "Authentication failed.", Toast.LENGTH_SHORT).show()
+                    UIUtils.showErrorToast(this@LoginActivity, getString(R.string.error_authentication))
                     updateUI(null)
                 }
             })
@@ -131,7 +131,7 @@ class LoginActivity : AppCompatActivity() {
                 val account = task.getResult(ApiException::class.java)!!
                 firebaseAuthWithGoogle(account)
             } catch (e: ApiException) {
-                Toast.makeText(this, "Google sign in failed", Toast.LENGTH_SHORT).show()
+                UIUtils.showErrorToast(this, getString(R.string.error_authentication))
             }
         }
     }
@@ -143,7 +143,7 @@ class LoginActivity : AppCompatActivity() {
                     val user = auth.currentUser
                     initializeUserSettingsAndNavigate(user)
                 } else {
-                    Toast.makeText(this, "Authentication Failed.", Toast.LENGTH_SHORT).show()
+                    UIUtils.showErrorToast(this, getString(R.string.error_authentication))
                     updateUI(null)
                 }
             }

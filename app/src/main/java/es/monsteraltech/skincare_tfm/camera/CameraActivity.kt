@@ -11,7 +11,6 @@ import android.util.Log
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -39,6 +38,7 @@ import es.monsteraltech.skincare_tfm.camera.guidance.MoleDetectionProcessor
 import es.monsteraltech.skincare_tfm.camera.guidance.PerformanceManager
 import es.monsteraltech.skincare_tfm.camera.guidance.ROIOptimizer
 import es.monsteraltech.skincare_tfm.camera.guidance.ThermalStateDetector
+import es.monsteraltech.skincare_tfm.utils.UIUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -92,9 +92,9 @@ class CameraActivity : AppCompatActivity() {
         previewLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
                 val confirmedPath = result.data?.getStringExtra("CONFIRMED_PATH")
-                Toast.makeText(this, "Foto confirmada: $confirmedPath", Toast.LENGTH_LONG).show()
+                UIUtils.showSuccessToast(this, getString(R.string.ui_operation_completed))
             } else if (result.resultCode == RESULT_CANCELED) {
-                Toast.makeText(this, "Foto descartada", Toast.LENGTH_SHORT).show()
+                UIUtils.showInfoToast(this, getString(R.string.ui_changes_discarded))
             }
         }
         setupUI()
@@ -120,7 +120,7 @@ class CameraActivity : AppCompatActivity() {
             if (granted) {
                 startCamera()
             } else {
-                Toast.makeText(this, "Permiso de cámara requerido", Toast.LENGTH_LONG).show()
+                UIUtils.showErrorToast(this, getString(R.string.error_permission_denied))
             }
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
@@ -207,12 +207,12 @@ class CameraActivity : AppCompatActivity() {
                     setupImageAnalysis()
                 } else {
                     Log.e(TAG, "OpenCV initialization failed")
-                    Toast.makeText(this, "Error inicializando análisis de imagen", Toast.LENGTH_SHORT).show()
+                    UIUtils.showErrorToast(this, getString(R.string.ui_error))
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error during OpenCV initialization", e)
-            Toast.makeText(this, "Error inicializando OpenCV: ${e.message}", Toast.LENGTH_SHORT).show()
+            UIUtils.showErrorToast(this, getString(R.string.ui_error))
         }
     }
     private fun setupImageAnalysis() {
@@ -262,7 +262,7 @@ class CameraActivity : AppCompatActivity() {
                 Log.d(TAG, "Cámara iniciada con análisis en tiempo real")
             } catch (e: Exception) {
                 Log.e(TAG, "Error iniciando cámara", e)
-                Toast.makeText(this, "Error iniciando cámara: ${e.message}", Toast.LENGTH_LONG).show()
+                UIUtils.showErrorToast(this, getString(R.string.ui_error))
             }
         }, ContextCompat.getMainExecutor(this))
     }
@@ -426,7 +426,7 @@ class CameraActivity : AppCompatActivity() {
         if (validationResult == null || !validationResult.canCapture) {
             hapticManager.provideErrorFeedback()
             accessibilityManager.announceForAccessibility("No se puede capturar - ajusta la posición")
-            Toast.makeText(this, "Ajusta la posición antes de capturar", Toast.LENGTH_SHORT).show()
+            UIUtils.showInfoToast(this, getString(R.string.guidance_centering))
             return
         }
         Log.d(TAG, "Iniciando captura validada")
@@ -455,14 +455,14 @@ class CameraActivity : AppCompatActivity() {
                     } else {
                         Log.e(TAG, "Error: Archivo de imagen no encontrado después de captura")
                         runOnUiThread {
-                            Toast.makeText(this@CameraActivity, "Error: Archivo no encontrado", Toast.LENGTH_LONG).show()
+                            UIUtils.showErrorToast(this@CameraActivity, getString(R.string.error_data_not_found))
                         }
                     }
                 }
                 override fun onError(exception: ImageCaptureException) {
                     Log.e(TAG, "Error capturando foto", exception)
                     runOnUiThread {
-                        Toast.makeText(this@CameraActivity, "Error al capturar foto: ${exception.message}", Toast.LENGTH_LONG).show()
+                        UIUtils.showErrorToast(this@CameraActivity, getString(R.string.ui_error))
                         hapticManager.provideErrorFeedback()
                         accessibilityManager.announceForAccessibility("Error al capturar imagen")
                     }

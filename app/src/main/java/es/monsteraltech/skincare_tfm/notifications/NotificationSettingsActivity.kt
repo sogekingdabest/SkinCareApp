@@ -97,9 +97,9 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 }
                 is AccountResult.Error<*> -> {
                     Log.e(TAG, "Error al cargar configuraciones: ${result.message}")
-                    UIUtils.showErrorSnackbar(
-                            binding.root,
-                            "Error al cargar configuraciones: ${result.message}"
+                    UIUtils.showErrorToast(
+                            this@NotificationSettingsActivity,
+                            getString(R.string.error_unknown)
                     )
                     currentAccountSettings = AccountSettings()
                     currentSettings = NotificationSettings()
@@ -257,18 +257,16 @@ class NotificationSettingsActivity : AppCompatActivity() {
                             notificationManager.cancelAllNotifications()
                             Log.d(TAG, "Notificaciones canceladas")
                         }
-                        Toast.makeText(
+                        UIUtils.showSuccessToast(
                                         this@NotificationSettingsActivity,
-                                        "Configuración guardada",
-                                        Toast.LENGTH_SHORT
+                                        getString(R.string.settings_saved)
                                 )
-                                .show()
                     }
                     is AccountResult.Error<*> -> {
                         Log.e(TAG, "Error al guardar configuraciones: ${result.message}")
-                        UIUtils.showErrorSnackbar(
-                                binding.root,
-                                "Error al guardar configuraciones: ${result.message}"
+                        UIUtils.showErrorToast(
+                                this@NotificationSettingsActivity,
+                                getString(R.string.settings_error)
                         )
                     }
                     is AccountResult.Loading<*> -> {
@@ -277,7 +275,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error inesperado al guardar configuraciones: ${e.message}", e)
-                UIUtils.showErrorSnackbar(binding.root, "Error al guardar configuraciones")
+                UIUtils.showErrorToast(this@NotificationSettingsActivity, getString(R.string.settings_error))
             }
         }
     }
@@ -313,12 +311,10 @@ class NotificationSettingsActivity : AppCompatActivity() {
                     saveSettings()
                 } else {
                     Log.d(TAG, "Permiso de notificaciones denegado")
-                    Toast.makeText(
+                    UIUtils.showErrorToast(
                                     this,
-                                    getString(R.string.notification_permission_denied),
-                                    Toast.LENGTH_LONG
+                                    getString(R.string.notification_permission_denied)
                             )
-                            .show()
                 }
             }
         }

@@ -19,7 +19,9 @@ import es.monsteraltech.skincare_tfm.body.mole.util.ImageLoadingUtil
 import es.monsteraltech.skincare_tfm.body.mole.view.EmptyStateView
 import es.monsteraltech.skincare_tfm.data.FirebaseDataManager
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisHistoryBinding
+import es.monsteraltech.skincare_tfm.utils.UIUtils
 import kotlinx.coroutines.launch
+
 class MoleAnalysisHistoryActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAnalysisHistoryBinding
     private lateinit var adapter: AnalysisHistoryAdapter
@@ -90,11 +92,10 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
                 onRetryAttempt = { attempt, _ ->
                     isRetrying = true
                     runOnUiThread {
-                        Toast.makeText(
+                        UIUtils.showInfoToast(
                             this@MoleAnalysisHistoryActivity,
-                            getString(R.string.retry_attempting, attempt, RetryManager.databaseConfig().maxAttempts),
-                            Toast.LENGTH_SHORT
-                        ).show()
+                            getString(R.string.retry_attempting, attempt, RetryManager.databaseConfig().maxAttempts)
+                        )
                     }
                 }
             ) {

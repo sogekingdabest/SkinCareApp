@@ -5,11 +5,11 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.analysis.AnalysisResultActivity
 import es.monsteraltech.skincare_tfm.databinding.ActivityPreviewBinding
+import es.monsteraltech.skincare_tfm.utils.UIUtils
 import java.io.File
 class PreviewActivity : AppCompatActivity() {
     companion object {
@@ -74,7 +74,7 @@ class PreviewActivity : AppCompatActivity() {
             } else {
                 "✅ Imagen mejorada automáticamente\n$processingMetadata"
             }
-            Toast.makeText(this, "Imagen procesada exitosamente", Toast.LENGTH_SHORT).show()
+            UIUtils.showSuccessToast(this, getString(R.string.ui_operation_completed))
             Log.d(TAG, "Info de procesamiento: $processingInfo")
         }
     }
@@ -89,7 +89,7 @@ class PreviewActivity : AppCompatActivity() {
     private fun confirmAndNavigateToAnalysis() {
         val photoPath = photoFile?.absolutePath
         if (photoPath == null || !File(photoPath).exists()) {
-            Toast.makeText(this, "Error: Imagen no disponible", Toast.LENGTH_LONG).show()
+            UIUtils.showErrorToast(this, getString(R.string.error_data_not_found))
             return
         }
         Log.d(TAG, "Confirmando imagen y navegando a análisis: $photoPath")
@@ -130,7 +130,7 @@ class PreviewActivity : AppCompatActivity() {
     private fun handleImageError(message: String) {
         Log.e(TAG, "Error de imagen: $message")
         binding.previewImage.setImageResource(R.drawable.cat)
-        Toast.makeText(this, "Error: $message", Toast.LENGTH_LONG).show()
+        UIUtils.showErrorToast(this, getString(R.string.ui_error))
         binding.confirmButton.isEnabled = false
     }
     override fun onDestroy() {

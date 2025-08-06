@@ -140,8 +140,8 @@ class PasswordChangeActivity : AppCompatActivity() {
             showLoading(false)
             when (result) {
                 is AccountResult.Success -> {
-                    UIUtils.showSuccessSnackbar(
-                        findViewById(android.R.id.content),
+                    UIUtils.showSuccessToast(
+                        this@PasswordChangeActivity,
                         getString(R.string.password_change_success)
                     )
                     setResult(RESULT_OK)
@@ -169,30 +169,30 @@ class PasswordChangeActivity : AppCompatActivity() {
                 }
             }
             AccountResult.ErrorType.NETWORK_ERROR -> {
-                UIUtils.showErrorSnackbar(
-                    findViewById(android.R.id.content),
-                    error.message
+                UIUtils.showErrorToast(
+                    this@PasswordChangeActivity,
+                    getString(R.string.error_network_connection)
                 )
             }
             AccountResult.ErrorType.AUTHENTICATION_ERROR -> {
-                UIUtils.showErrorSnackbar(
-                    findViewById(android.R.id.content),
-                    error.message
+                UIUtils.showErrorToast(
+                    this@PasswordChangeActivity,
+                    getString(R.string.error_authentication)
                 )
                 findViewById<View>(android.R.id.content).postDelayed({
                     finishWithAnimation()
                 }, 2000)
             }
             AccountResult.ErrorType.FIREBASE_ERROR -> {
-                UIUtils.showErrorSnackbar(
-                    findViewById(android.R.id.content),
-                    error.message
+                UIUtils.showErrorToast(
+                    this@PasswordChangeActivity,
+                    getString(R.string.error_unknown)
                 )
             }
             else -> {
-                UIUtils.showErrorSnackbar(
-                    findViewById(android.R.id.content),
-                    error.message
+                UIUtils.showErrorToast(
+                    this@PasswordChangeActivity,
+                    getString(R.string.error_unknown)
                 )
             }
         }

@@ -21,9 +21,9 @@ class MoleDetectionProcessor(
 ) {
     companion object {
         private const val TAG = "MoleDetectionProcessor"
-        private const val MIN_MOLE_SIZE = 50
-        private const val MAX_MOLE_SIZE = 500
-        private const val CONFIDENCE_THRESHOLD = 0.7f
+        private const val MIN_MOLE_SIZE = 30
+        private const val MAX_MOLE_SIZE = 800
+        private const val CONFIDENCE_THRESHOLD = 0.4f
         private const val BLUR_SIZE = 5
         private const val MORPH_SIZE = 3
         private const val CANNY_LOW = 50.0
@@ -153,7 +153,7 @@ class MoleDetectionProcessor(
                 gray, binary, 255.0,
                 Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
                 Imgproc.THRESH_BINARY_INV,
-                11, 2.0
+                15, 3.0
             )
             val kernel = Mat.ones(3, 3, CvType.CV_8U)
             Imgproc.morphologyEx(binary, binary, Imgproc.MORPH_OPEN, kernel)

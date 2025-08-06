@@ -6,10 +6,8 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
@@ -17,6 +15,7 @@ import com.google.firebase.auth.FirebaseUser
 import es.monsteraltech.skincare_tfm.MainActivity
 import es.monsteraltech.skincare_tfm.R
 import es.monsteraltech.skincare_tfm.account.PasswordChangeManager
+import es.monsteraltech.skincare_tfm.utils.UIUtils
 class RegisterActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var passwordChangeManager: PasswordChangeManager
@@ -54,10 +53,16 @@ class RegisterActivity : AppCompatActivity() {
             val confirmPassword = confirmPasswordEditText.editText?.text.toString()
             if (email.isNotEmpty() &&
                 confirmEmail.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty()) {
-                if (validateEmail()) Snackbar.make(it, R.string.error_invalid_email, Snackbar.LENGTH_LONG).show()
+                if (validateEmail()) {
+                    UIUtils.showErrorToast(this@RegisterActivity, getString(R.string.error_invalid_email))
+                    return@setOnClickListener
+                }
                 val validPassword = passwordChangeManager.validatePassword(password)
                 if (!validPassword.isValid) {
-                    validPassword.errorMessage?.let { it1 -> Snackbar.make(it, it1, Snackbar.LENGTH_LONG).show() }
+                    validPassword.errorMessage?.let { errorMsg -> 
+                        UIUtils.showErrorToast(this@RegisterActivity, errorMsg)
+                    }
+                    return@setOnClickListener
                 }
                 if (email == confirmEmail && password == confirmPassword) {
                     auth.createUserWithEmailAndPassword(email, password)
@@ -69,18 +74,18 @@ class RegisterActivity : AppCompatActivity() {
                                 try {
                                     throw task.exception!!
                                 } catch (e: FirebaseAuthUserCollisionException) {
-                                    Toast.makeText(baseContext, "This email is already in use.", Toast.LENGTH_SHORT).show()
+                                    UIUtils.showErrorToast(this@RegisterActivity, getString(R.string.error_authentication))
                                 } catch (e: Exception) {
-                                    Toast.makeText(baseContext, "Authentication failed.", Toast.LENGTH_SHORT).show()
+                                    UIUtils.showErrorToast(this@RegisterActivity, getString(R.string.error_authentication))
                                 }
                                 updateUI(null)
                             }
                         }
                 } else {
-                    Toast.makeText(this, "Email or password do not match.", Toast.LENGTH_SHORT).show()
+                    UIUtils.showErrorToast(this, getString(R.string.error_password_mismatch))
                 }
             } else {
-                Toast.makeText(this, "Please fill out all fields.", Toast.LENGTH_SHORT).show()
+                UIUtils.showErrorToast(this, getString(R.string.error_empty_fields))
             }
         }
         val callback = object : OnBackPressedCallback(

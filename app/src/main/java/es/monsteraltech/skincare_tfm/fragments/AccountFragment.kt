@@ -230,9 +230,9 @@ class AccountFragment : Fragment() {
             Log.d(TAG, "Guardando configuración '$settingName': $value")
             if (!userProfileManager.isUserAuthenticated()) {
                 Log.w(TAG, "Usuario no autenticado, no se puede guardar configuración")
-                UIUtils.showErrorSnackbar(
-                    binding.root,
-                    "Debes estar autenticado para guardar configuraciones"
+                UIUtils.showErrorToast(
+                    requireContext(),
+                    getString(R.string.error_authentication)
                 )
                 return@launch
             }
@@ -250,35 +250,35 @@ class AccountFragment : Fragment() {
                         updateAppTheme(value)
                     }
                     _binding?.let { binding ->
-                        UIUtils.showSuccessSnackbar(
-                            binding.root,
+                        UIUtils.showSuccessToast(
+                            requireContext(),
                             getString(R.string.settings_saved)
                         )
                     } ?: run {
-                        Log.w(TAG, "Binding es null, no se puede mostrar snackbar de éxito")
+                        Log.w(TAG, "Binding es null, no se puede mostrar toast de éxito")
                     }
                 }.onError { error ->
                     Log.e(TAG, "Error al guardar configuración '$settingName': ${error.message}", error.exception)
                     _binding?.let { binding ->
-                        UIUtils.showErrorSnackbar(
-                            binding.root,
-                            error.message
+                        UIUtils.showErrorToast(
+                            requireContext(),
+                            getString(R.string.settings_error)
                         )
                         revertSettingInUI(settingName, !value)
                     } ?: run {
-                        Log.w(TAG, "Binding es null, no se puede mostrar snackbar de error ni revertir UI")
+                        Log.w(TAG, "Binding es null, no se puede mostrar toast de error ni revertir UI")
                     }
                 }
             }.onError { error ->
                 Log.e(TAG, "Error al obtener configuraciones actuales: ${error.message}", error.exception)
                 _binding?.let { binding ->
-                    UIUtils.showErrorSnackbar(
-                        binding.root,
-                        "Error al cargar configuraciones actuales"
+                    UIUtils.showErrorToast(
+                        requireContext(),
+                        getString(R.string.settings_error)
                     )
                     revertSettingInUI(settingName, !value)
                 } ?: run {
-                    Log.w(TAG, "Binding es null, no se puede mostrar snackbar de error ni revertir UI")
+                    Log.w(TAG, "Binding es null, no se puede mostrar toast de error ni revertir UI")
                 }
             }
         }
@@ -367,9 +367,9 @@ class AccountFragment : Fragment() {
             Log.d(TAG, "NotificationSettingsActivity lanzada exitosamente")
         } catch (e: Exception) {
             Log.e(TAG, "Error al navegar a configuración de notificaciones: ${e.message}", e)
-            UIUtils.showErrorSnackbar(
-                binding.root,
-                "Error al abrir configuración de notificaciones"
+            UIUtils.showErrorToast(
+                requireContext(),
+                getString(R.string.error_unknown)
             )
         }
     }
@@ -378,9 +378,9 @@ class AccountFragment : Fragment() {
             Log.d(TAG, "Iniciando navegación a PasswordChangeActivity")
             if (!userProfileManager.isUserAuthenticated()) {
                 Log.w(TAG, "Usuario no autenticado, no se puede cambiar contraseña")
-                UIUtils.showErrorSnackbar(
-                    binding.root,
-                    "Debes estar autenticado para cambiar la contraseña"
+                UIUtils.showErrorToast(
+                    requireContext(),
+                    getString(R.string.error_authentication)
                 )
                 return
             }
@@ -389,9 +389,9 @@ class AccountFragment : Fragment() {
                 userInfoResult.onSuccess { userInfo ->
                     if (userInfo.isGoogleUser) {
                         Log.w(TAG, "Usuario de Google intentando cambiar contraseña")
-                        UIUtils.showErrorSnackbar(
-                            binding.root,
-                            "Los usuarios de Google no pueden cambiar la contraseña desde la aplicación"
+                        UIUtils.showInfoToast(
+                            requireContext(),
+                            getString(R.string.account_google_user_info)
                         )
                         return@onSuccess
                     }
@@ -400,17 +400,17 @@ class AccountFragment : Fragment() {
                     Log.d(TAG, "PasswordChangeActivity lanzada exitosamente")
                 }.onError { error ->
                     Log.e(TAG, "Error al verificar tipo de usuario: ${error.message}")
-                    UIUtils.showErrorSnackbar(
-                        binding.root,
-                        "Error al verificar información del usuario"
+                    UIUtils.showErrorToast(
+                        requireContext(),
+                        getString(R.string.error_unknown)
                     )
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error al navegar a cambio de contraseña: ${e.message}", e)
-            UIUtils.showErrorSnackbar(
-                binding.root,
-                "Error al abrir cambio de contraseña"
+            UIUtils.showErrorToast(
+                requireContext(),
+                getString(R.string.error_unknown)
             )
         }
     }
@@ -419,8 +419,8 @@ class AccountFragment : Fragment() {
         when (resultCode) {
             Activity.RESULT_OK -> {
                 Log.d(TAG, "Cambio de contraseña exitoso")
-                UIUtils.showSuccessSnackbar(
-                    binding.root,
+                UIUtils.showSuccessToast(
+                    requireContext(),
                     getString(R.string.password_change_success_message)
                 )
             }
@@ -429,9 +429,9 @@ class AccountFragment : Fragment() {
             }
             else -> {
                 Log.w(TAG, "Resultado inesperado del cambio de contraseña: $resultCode")
-                UIUtils.showErrorSnackbar(
-                    binding.root,
-                    "Error inesperado en el cambio de contraseña"
+                UIUtils.showErrorToast(
+                    requireContext(),
+                    getString(R.string.error_unknown)
                 )
             }
         }
@@ -454,9 +454,9 @@ class AccountFragment : Fragment() {
                 .show()
         } catch (e: Exception) {
             Log.e(TAG, "Error al mostrar diálogo de confirmación: ${e.message}", e)
-            UIUtils.showErrorSnackbar(
-                binding.root,
-                "Error al mostrar confirmación"
+            UIUtils.showErrorToast(
+                requireContext(),
+                getString(R.string.error_unknown)
             )
         }
     }
@@ -470,9 +470,9 @@ class AccountFragment : Fragment() {
                 navigateToLogin()
             }.onError { error ->
                 Log.e(TAG, "Error durante el logout: ${error.message}", error.exception)
-                UIUtils.showErrorSnackbar(
-                    binding.root,
-                    error.message
+                UIUtils.showErrorToast(
+                    requireContext(),
+                    getString(R.string.error_unknown)
                 )
                 if (error.errorType == AccountResult.ErrorType.AUTHENTICATION_ERROR) {
                     Log.d(TAG, "Error de autenticación durante logout, navegando al login de todas formas")
@@ -509,9 +509,9 @@ class AccountFragment : Fragment() {
             Log.d(TAG, "Navegación a LoginActivity completada")
         } catch (e: Exception) {
             Log.e(TAG, "Error al navegar a LoginActivity: ${e.message}", e)
-            UIUtils.showErrorSnackbar(
-                binding.root,
-                "Error al navegar al login"
+            UIUtils.showErrorToast(
+                requireContext(),
+                getString(R.string.error_unknown)
             )
         }
     }
@@ -541,9 +541,8 @@ class AccountFragment : Fragment() {
                     grantResults[0] == PackageManager.PERMISSION_GRANTED
                 Log.d(TAG, "Resultado de permisos de notificaciones: $granted")
                 if (!granted) {
-                    Toast.makeText(requireContext(),
-                        getString(R.string.notification_permission_denied),
-                        Toast.LENGTH_LONG).show()
+                    UIUtils.showErrorToast(requireContext(),
+                        getString(R.string.notification_permission_denied))
                 }
                 permissionCallback?.invoke(granted)
                 permissionCallback = null
