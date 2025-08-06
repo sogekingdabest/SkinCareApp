@@ -423,72 +423,248 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
         )
     }
     private fun analyzeColor(src: Mat, mask: Mat): ColorDetails {
+
+        val cleanedMask = removeHairArtifacts(src, mask)
+        
         val lab = Mat()
         Imgproc.cvtColor(src, lab, Imgproc.COLOR_BGR2Lab)
+        
         val molePixels = mutableListOf<DoubleArray>()
         for (y in 0 until lab.rows()) {
             for (x in 0 until lab.cols()) {
-                if (mask.get(y, x)[0] > 0) {
+                if (cleanedMask.get(y, x)[0] > 0) {
                     molePixels.add(lab.get(y, x))
                 }
             }
         }
-        val k = 6
+        
+        if (molePixels.isEmpty()) {
+            Log.w(TAG, "No hay píxeles válidos para análisis de color")
+            cleanedMask.release()
+            lab.release()
+            return ColorDetails(emptyList(), 0, false, false, "❌ No se pudieron extraer colores")
+        }
+        
+
+        val optimalK = determineOptimalClusters(molePixels)
+        Log.d(TAG, "Usando $optimalK clusters para análisis de color")
+        
         val data = Mat(molePixels.size, 3, CvType.CV_32F)
         molePixels.forEachIndexed { i, pixel ->
             data.put(i, 0, floatArrayOf(pixel[0].toFloat(), pixel[1].toFloat(), pixel[2].toFloat()))
         }
+        
         val labels = Mat()
         val centers = Mat()
         val criteria = TermCriteria(TermCriteria.EPS + TermCriteria.COUNT, 100, 0.2)
-        Core.kmeans(data, k, labels, criteria, 10, Core.KMEANS_PP_CENTERS, centers)
-        val clusterSizes = IntArray(k)
+        Core.kmeans(data, optimalK, labels, criteria, 10, Core.KMEANS_PP_CENTERS, centers)
+        
+        val clusterSizes = IntArray(optimalK)
         for (i in 0 until labels.rows()) {
             val label = labels.get(i, 0)[0].toInt()
             clusterSizes[label]++
         }
-        val sortedClusters = centers.toList()
+        
+
+        val significantThreshold = molePixels.size * 0.03
+        val significantClusters = centers.toList()
             .mapIndexed { i, center -> Pair(center, clusterSizes[i]) }
+            .filter { it.second > significantThreshold }
             .sortedByDescending { it.second }
-            .take(k)
-        val hasBlueWhite = sortedClusters.any { (center, size) ->
+        
+
+        val mergedClusters = mergeNearbyColors(significantClusters)
+        
+        val hasBlueWhite = mergedClusters.any { (center, size) ->
             val l = center[0]
             val a = center[1]
             val b = center[2]
-            l > 80 && abs(a) < 5 && b in -15.0..-5.0 &&
-                    size > molePixels.size * 0.05
+            l > 75 && abs(a) < 8 && b in -20.0..-3.0 &&
+                    size > molePixels.size * 0.03
         }
-        val hasRedBlue = detectRedBlueCombination(sortedClusters)
-        val dominantColors = sortedClusters.map { (center, _) ->
+        
+        val hasRedBlue = detectRedBlueCombination(mergedClusters)
+        
+        val dominantColors = mergedClusters.map { (center, _) ->
             labToRgb(center[0], center[1], center[2])
         }
-        val colorDiversity = calculateColorDiversity(centers)
+        
+        val actualColorCount = mergedClusters.size
+        val colorDiversity = if (mergedClusters.size > 1) {
+            calculateColorDiversityFromClusters(mergedClusters)
+        } else 0f
+        
         val description = buildString {
-            append("${sortedClusters.filter { it.second > molePixels.size * 0.05 }.size} colores significativos. ")
+            append("$actualColorCount color${if (actualColorCount != 1) "es" else ""} detectado${if (actualColorCount != 1) "s" else ""}. ")
+            when (actualColorCount) {
+                1 -> append("Lunar monocromático - Bajo riesgo. ")
+                2 -> append("Dos tonos presentes - Normal. ")
+                3 -> append("Tres colores - Vigilar evolución. ")
+                4 -> append("Cuatro colores - Evaluar con especialista. ")
+                else -> append("Múltiples colores - Alto riesgo cromático. ")
+            }
             if (hasBlueWhite) append("⚠️ Velo azul-blanquecino detectado. ")
             if (hasRedBlue) append("⚠️ Combinación rojo-azul presente. ")
-            if (colorDiversity > 0.7f) append("Alta diversidad cromática. ")
+            if (colorDiversity > 0.6f) append("Alta variabilidad cromática. ")
         }
+        
+        cleanedMask.release()
         lab.release()
         data.release()
         labels.release()
         centers.release()
+        
         return ColorDetails(
             dominantColors = dominantColors,
-            colorCount = sortedClusters.filter { it.second > molePixels.size * 0.05 }.size,
+            colorCount = actualColorCount,
             hasBlueWhite = hasBlueWhite,
             hasRedBlueCombination = hasRedBlue,
             description = description
         )
     }
+    private fun removeHairArtifacts(src: Mat, mask: Mat): Mat {
+        val gray = Mat()
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY)
+        
+
+        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(1.0, 15.0))
+        val blackhat = Mat()
+        Imgproc.morphologyEx(gray, blackhat, Imgproc.MORPH_BLACKHAT, kernel)
+        
+
+        val hairMask = Mat()
+        Imgproc.threshold(blackhat, hairMask, 10.0, 255.0, Imgproc.THRESH_BINARY)
+        
+
+        val dilateKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(3.0, 3.0))
+        Imgproc.dilate(hairMask, hairMask, dilateKernel)
+        
+
+        val cleanedMask = Mat()
+        mask.copyTo(cleanedMask)
+        Core.subtract(cleanedMask, hairMask, cleanedMask)
+        
+        gray.release()
+        kernel.release()
+        blackhat.release()
+        hairMask.release()
+        dilateKernel.release()
+        
+        return cleanedMask
+    }
+    
+    private fun determineOptimalClusters(pixels: List<DoubleArray>): Int {
+        if (pixels.size < 100) return 2
+        
+
+        val maxK = minOf(8, pixels.size / 50)
+        var bestK = 2
+        var bestScore = Double.MAX_VALUE
+        
+        for (k in 2..maxK) {
+            val data = Mat(pixels.size, 3, CvType.CV_32F)
+            pixels.forEachIndexed { i, pixel ->
+                data.put(i, 0, floatArrayOf(pixel[0].toFloat(), pixel[1].toFloat(), pixel[2].toFloat()))
+            }
+            
+            val labels = Mat()
+            val centers = Mat()
+            val criteria = TermCriteria(TermCriteria.EPS + TermCriteria.COUNT, 50, 0.5)
+            
+            val compactness = Core.kmeans(data, k, labels, criteria, 3, Core.KMEANS_PP_CENTERS, centers)
+            
+
+            val penalty = k * 0.1
+            val score = compactness + penalty
+            
+            if (score < bestScore) {
+                bestScore = score
+                bestK = k
+            }
+            
+            data.release()
+            labels.release()
+            centers.release()
+        }
+        
+        return bestK
+    }
+    
+    private fun mergeNearbyColors(clusters: List<Pair<DoubleArray, Int>>): List<Pair<DoubleArray, Int>> {
+        if (clusters.size <= 1) return clusters
+        
+        val merged = mutableListOf<Pair<DoubleArray, Int>>()
+        val used = BooleanArray(clusters.size)
+        
+        for (i in clusters.indices) {
+            if (used[i]) continue
+            
+            var currentCenter = clusters[i].first.clone()
+            var currentSize = clusters[i].second
+            used[i] = true
+            
+
+            for (j in i + 1 until clusters.size) {
+                if (used[j]) continue
+                
+                val distance = calculateLabDistance(currentCenter, clusters[j].first)
+                
+
+                if (distance < 15.0) {
+                    val totalSize = currentSize + clusters[j].second
+                    
+
+                    for (k in 0..2) {
+                        currentCenter[k] = (currentCenter[k] * currentSize + 
+                                          clusters[j].first[k] * clusters[j].second) / totalSize
+                    }
+                    currentSize = totalSize
+                    used[j] = true
+                }
+            }
+            
+            merged.add(Pair(currentCenter, currentSize))
+        }
+        
+        return merged.sortedByDescending { it.second }
+    }
+    
+    private fun calculateLabDistance(lab1: DoubleArray, lab2: DoubleArray): Double {
+        val dL = lab1[0] - lab2[0]
+        val da = lab1[1] - lab2[1]
+        val db = lab1[2] - lab2[2]
+        return sqrt(dL * dL + da * da + db * db)
+    }
+    
+    private fun calculateColorDiversityFromClusters(clusters: List<Pair<DoubleArray, Int>>): Float {
+        if (clusters.size < 2) return 0f
+        
+        var totalDistance = 0.0
+        var count = 0
+        
+        for (i in clusters.indices) {
+            for (j in i + 1 until clusters.size) {
+                val distance = calculateLabDistance(clusters[i].first, clusters[j].first)
+                totalDistance += distance
+                count++
+            }
+        }
+        
+        val avgDistance = if (count > 0) totalDistance / count else 0.0
+        return (avgDistance / 100.0).toFloat().coerceIn(0f, 1f)
+    }
+    
     private fun detectRedBlueCombination(clusters: List<Pair<DoubleArray, Int>>): Boolean {
-        val significantClusters = clusters.filter { it.second > clusters.sumOf { c -> c.second } * 0.05 }
+        val significantClusters = clusters.filter { it.second > clusters.sumOf { c -> c.second } * 0.03 }
+        
         val hasRed = significantClusters.any { (center, _) ->
-            center[1] > 20 && center[2] > 0
+            center[1] > 15 && center[2] > 5
         }
+        
         val hasBlue = significantClusters.any { (center, _) ->
-            center[2] < -10
+            center[2] < -8
         }
+        
         return hasRed && hasBlue
     }
     private fun calculateColorDiversity(centers: Mat): Float {
@@ -677,9 +853,17 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
         return minOf(8f, details.numberOfSegments.toFloat() + details.irregularityIndex * 4)
     }
     private fun calculateColorScore(details: ColorDetails): Float {
-        var score = details.colorCount.toFloat()
-        if (details.hasBlueWhite) score += 1f
+        var score = when (details.colorCount) {
+            1 -> 0f
+            2 -> 0.5f
+            3 -> 1.5f
+            4 -> 3f
+            else -> 4f
+        }
+
+        if (details.hasBlueWhite) score += 1.5f
         if (details.hasRedBlueCombination) score += 1f
+        
         return minOf(6f, score)
     }
     private fun calculateDiameterScore(details: DiameterDetails): Float {
