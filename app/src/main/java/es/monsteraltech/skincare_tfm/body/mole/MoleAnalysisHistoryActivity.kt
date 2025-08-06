@@ -275,7 +275,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
         return Intent(this, MoleViewerActivity::class.java).apply {
             putExtra("MOLE_ID", analysis.moleId)
             putExtra("LUNAR_TITLE", moleData?.title ?: "Análisis Histórico")
-            putExtra("LUNAR_DESCRIPTION", moleData?.description ?: "")
+            putExtra("LUNAR_DESCRIPTION", analysis.description)
             putExtra("LUNAR_IMAGE_URL", analysis.imageUrl)
             putExtra("IS_HISTORICAL_ANALYSIS", true)
             putExtra("ANALYSIS_COUNT", 1)
