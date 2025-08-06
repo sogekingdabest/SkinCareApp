@@ -124,7 +124,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
                     val lastAnalysisDate = mole.lastAnalysisDate?.toDate()
                     if (analysisCount > 0 && lastAnalysisDate != null) {
                         val dateFormat = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
-                        binding.historyTitleText.text = "Historial de Análisis ($analysisCount análisis - Último: ${dateFormat.format(lastAnalysisDate)})"
+                        binding.historyTitleText.text = "Historial de Análisis\n($analysisCount análisis - Último: ${dateFormat.format(lastAnalysisDate)})"
                     }
                 }
                 if (retryResult.attemptsMade > 1) {
