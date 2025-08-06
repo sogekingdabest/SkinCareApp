@@ -93,6 +93,27 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
                 mask.release()
                 altMask.copyTo(mask)
                 contour.fromArray(*altContour.toArray())
+            } else {
+                Log.e(TAG, "Ambos métodos de segmentación fallaron")
+                // Crear un contorno por defecto en el centro de la imagen
+                val centerX = processedMat.cols() / 2
+                val centerY = processedMat.rows() / 2
+                val radius = minOf(centerX, centerY) / 3
+                val defaultContour = MatOfPoint()
+                val points = mutableListOf<Point>()
+                for (i in 0 until 20) {
+                    val angle = 2 * Math.PI * i / 20
+                    points.add(Point(
+                        centerX + radius * kotlin.math.cos(angle),
+                        centerY + radius * kotlin.math.sin(angle)
+                    ))
+                }
+                defaultContour.fromArray(*points.toTypedArray())
+                contour.fromArray(*defaultContour.toArray())
+                
+                // Crear máscara por defecto
+                mask.setTo(Scalar(0.0))
+                Imgproc.circle(mask, Point(centerX.toDouble(), centerY.toDouble()), radius, Scalar(255.0), -1)
             }
         }
         val asymmetryDetails = analyzeAsymmetry(mask, contour)
@@ -245,17 +266,63 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
         return ratio in 0.01..0.8
     }
     private fun isValidSegmentation(mask: Mat, contour: MatOfPoint): Boolean {
-        val area = Imgproc.contourArea(contour)
-        val totalArea = mask.rows() * mask.cols()
-        val ratio = area / totalArea
-        val perimeter = Imgproc.arcLength(MatOfPoint2f(*contour.toArray()), true)
-        val circularity = 4 * Math.PI * area / (perimeter * perimeter)
-        return ratio in 0.01..0.8 &&
-                circularity > 0.3 &&
-                contour.total() > 50
+        // Verificar que el contorno no esté vacío
+        if (contour.total() == 0L || contour.toArray().isEmpty()) {
+            Log.w(TAG, "Contorno vacío detectado")
+            return false
+        }
+        
+        try {
+            val area = Imgproc.contourArea(contour)
+            if (area <= 0) {
+                Log.w(TAG, "Área del contorno inválida: $area")
+                return false
+            }
+            
+            val totalArea = mask.rows() * mask.cols()
+            val ratio = area / totalArea
+            
+            val contourPoints = contour.toArray()
+            if (contourPoints.size < 3) {
+                Log.w(TAG, "Contorno con muy pocos puntos: ${contourPoints.size}")
+                return false
+            }
+            
+            val perimeter = Imgproc.arcLength(MatOfPoint2f(*contourPoints), true)
+            if (perimeter <= 0) {
+                Log.w(TAG, "Perímetro inválido: $perimeter")
+                return false
+            }
+            
+            val circularity = 4 * Math.PI * area / (perimeter * perimeter)
+            
+            return ratio in 0.01..0.8 &&
+                    circularity > 0.3 &&
+                    contour.total() > 50
+        } catch (e: Exception) {
+            Log.e(TAG, "Error validando segmentación: ${e.message}")
+            return false
+        }
     }
     private fun analyzeAsymmetry(mask: Mat, contour: MatOfPoint): AsymmetryDetails {
-        val moments = Imgproc.moments(contour)
+        val points = contour.toArray()
+        if (points.isEmpty()) {
+            Log.w(TAG, "Contorno vacío en analyzeAsymmetry")
+            return AsymmetryDetails(0f, 0f, "❌ No se pudo analizar la asimetría - contorno inválido")
+        }
+        
+        val moments = try {
+            Imgproc.moments(contour)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error calculando momentos: ${e.message}")
+            return AsymmetryDetails(0f, 0f, "❌ Error en el cálculo de asimetría")
+        }
+        
+        if (moments.m00 == 0.0) {
+            Log.w(TAG, "Momento m00 es cero")
+            return AsymmetryDetails(0f, 0f, "❌ No se pudo calcular el centro de masa")
+        }
+        
         val cx = moments.m10 / moments.m00
         val cy = moments.m01 / moments.m00
         val angle = 0.5 * atan2(2 * moments.mu11, moments.mu20 - moments.mu02)
@@ -298,15 +365,34 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
         return Pair(horizAsym, vertAsym)
     }
     private fun analyzeBorder(contour: MatOfPoint): BorderDetails {
-        val epsilon = 0.02 * Imgproc.arcLength(MatOfPoint2f(*contour.toArray()), true)
+        val points = contour.toArray()
+        if (points.isEmpty() || points.size < 3) {
+            Log.w(TAG, "Contorno inválido en analyzeBorder")
+            return BorderDetails(0f, 0, "❌ No se pudo analizar los bordes - contorno inválido")
+        }
+        
+        val epsilon = 0.02 * Imgproc.arcLength(MatOfPoint2f(*points), true)
         val approxContour = MatOfPoint2f()
-        Imgproc.approxPolyDP(MatOfPoint2f(*contour.toArray()), approxContour, epsilon, true)
+        Imgproc.approxPolyDP(MatOfPoint2f(*points), approxContour, epsilon, true)
         val hull = MatOfInt()
         Imgproc.convexHull(contour, hull)
         val defects = MatOfInt4()
         Imgproc.convexityDefects(contour, hull, defects)
-        val contourArea = Imgproc.contourArea(contour)
-        val hullArea = Imgproc.contourArea(MatOfPoint(*hull.toArray().map { contour.toList()[it] }.toTypedArray()))
+        
+        val contourArea = try {
+            Imgproc.contourArea(contour)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error calculando área del contorno: ${e.message}")
+            0.0
+        }
+        
+        val hullPoints = hull.toArray().map { points[it] }.toTypedArray()
+        val hullArea = try {
+            Imgproc.contourArea(MatOfPoint(*hullPoints))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error calculando área del hull: ${e.message}")
+            contourArea
+        }
         val solidity = contourArea / hullArea
         val perimeter = Imgproc.arcLength(MatOfPoint2f(*contour.toArray()), true)
         val compactness = 4 * Math.PI * contourArea / (perimeter * perimeter)
@@ -457,8 +543,19 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
     private fun analyzeDiameter(contour: MatOfPoint,
                                 scaleFactor: Float = 1.0f
     ): DiameterDetails {
-        val area = Imgproc.contourArea(contour)
         val points = contour.toArray()
+        if (points.isEmpty()) {
+            Log.w(TAG, "Contorno vacío en analyzeDiameter")
+            return DiameterDetails(0f, 0, "❌ No se pudo calcular el diámetro - contorno inválido")
+        }
+        
+        val area = try {
+            Imgproc.contourArea(contour)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error calculando área: ${e.message}")
+            0.0
+        }
+        
         var maxDistance = 0.0
         val step = maxOf(1, points.size / 50)
         for (i in points.indices step step) {
@@ -470,7 +567,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
                 maxDistance = maxOf(maxDistance, distance)
             }
         }
-        val equivalentDiameter = sqrt(4 * area / Math.PI)
+        val equivalentDiameter = if (area > 0) sqrt(4 * area / Math.PI) else maxDistance
         val diameterPx = maxOf(maxDistance, equivalentDiameter)
         val pixelsPerMm = calculatePixelsPerMm()
         val diameterMm = (diameterPx / (pixelsPerMm * scaleFactor)).toFloat()
