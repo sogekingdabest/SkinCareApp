@@ -1,10 +1,9 @@
 ﻿package es.monsteraltech.skincare_tfm.utils
 import android.animation.ObjectAnimator
+import android.content.Context
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
-import androidx.core.content.ContextCompat
-import com.google.android.material.snackbar.Snackbar
-import es.monsteraltech.skincare_tfm.R
+import android.widget.Toast
 object UIUtils {
     fun fadeIn(view: View, duration: Long = 300) {
         view.alpha = 0f
@@ -23,17 +22,16 @@ object UIUtils {
         scaleX.start()
         scaleY.start()
     }
-    fun showSuccessSnackbar(view: View, message: String, duration: Int = Snackbar.LENGTH_SHORT) {
-        val snackbar = Snackbar.make(view, message, duration)
-        snackbar.setBackgroundTint(ContextCompat.getColor(view.context, R.color.risk_very_low))
-        snackbar.setTextColor(ContextCompat.getColor(view.context, R.color.white))
-        snackbar.show()
+    fun showSuccessToast(context: Context, message: String, duration: Int = Toast.LENGTH_SHORT) {
+        Toast.makeText(context, message, duration).show()
     }
-    fun showErrorSnackbar(view: View, message: String, duration: Int = Snackbar.LENGTH_LONG) {
-        val snackbar = Snackbar.make(view, message, duration)
-        snackbar.setBackgroundTint(ContextCompat.getColor(view.context, R.color.md_theme_error))
-        snackbar.setTextColor(ContextCompat.getColor(view.context, R.color.white))
-        snackbar.show()
+    
+    fun showErrorToast(context: Context, message: String, duration: Int = Toast.LENGTH_LONG) {
+        Toast.makeText(context, message, duration).show()
+    }
+
+    fun showInfoToast(context: Context, message: String, duration: Int = Toast.LENGTH_SHORT) {
+        Toast.makeText(context, message, duration).show()
     }
     fun shakeView(view: View) {
         val shake = ObjectAnimator.ofFloat(view, "translationX", 0f, 25f, -25f, 25f, -25f, 15f, -15f, 6f, -6f, 0f)

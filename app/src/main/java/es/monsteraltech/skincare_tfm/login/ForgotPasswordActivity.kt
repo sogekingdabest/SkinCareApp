@@ -8,10 +8,10 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import es.monsteraltech.skincare_tfm.R
+import es.monsteraltech.skincare_tfm.utils.UIUtils
 class ForgotPasswordActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var logoImageView: ImageView
@@ -38,7 +38,7 @@ class ForgotPasswordActivity : AppCompatActivity() {
                 auth.sendPasswordResetEmail(email)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            Snackbar.make(it, R.string.password_reset_email_sent, Snackbar.LENGTH_LONG).show()
+                            UIUtils.showSuccessToast(this@ForgotPasswordActivity, getString(R.string.password_reset_email_sent))
                             val intent = Intent(this@ForgotPasswordActivity, LoginActivity::class.java)
                             val pairs = arrayOf(
                                 Pair<View, String>(logoImageView, "logoImageView"),
@@ -51,14 +51,14 @@ class ForgotPasswordActivity : AppCompatActivity() {
                             val options = ActivityOptions.makeSceneTransitionAnimation(this@ForgotPasswordActivity, *pairs)
                             startActivity(intent, options.toBundle())
                         } else {
-                            Snackbar.make(it, R.string.error_password_reset_failed, Snackbar.LENGTH_LONG).show()
+                            UIUtils.showErrorToast(this@ForgotPasswordActivity, getString(R.string.error_password_reset_failed))
                         }
                     }
             } else {
                 val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
                 inputMethodManager.hideSoftInputFromWindow(emailEditText.editText?.windowToken, 0)
                 emailEditText.editText?.clearFocus()
-                Snackbar.make(it, R.string.error_invalid_email, Snackbar.LENGTH_LONG).show()
+                UIUtils.showErrorToast(this@ForgotPasswordActivity, getString(R.string.error_invalid_email))
             }
         }
         loginTextView.setOnClickListener {
