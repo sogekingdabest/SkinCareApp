@@ -8,6 +8,7 @@ data class AnalysisData(
     @DocumentId
     val id: String = UUID.randomUUID().toString(),
     val moleId: String = "",
+    val description: String = "",
     val analysisResult: String = "",
     val aiProbability: Float = 0f,
     val aiConfidence: Float = 0f,
@@ -20,10 +21,11 @@ data class AnalysisData(
     val createdAt: Timestamp = Timestamp.now(),
     val analysisMetadata: Map<String, Any> = emptyMap()
 ) : Serializable {
-    constructor() : this("", "", "", 0f, 0f, ABCDEScores(), 0f, "", "", "", null, Timestamp.now(), emptyMap())
+    constructor() : this("", "", "", "", 0f, 0f, ABCDEScores(), 0f, "", "", "", null, Timestamp.now(), emptyMap())
     fun toMap(): Map<String, Any> {
         return mapOf(
             "moleId" to moleId,
+            "description" to description,
             "analysisResult" to analysisResult,
             "aiProbability" to aiProbability,
             "aiConfidence" to aiConfidence,
@@ -41,6 +43,7 @@ data class AnalysisData(
             return AnalysisData(
                 id = id,
                 moleId = data["moleId"] as? String ?: "",
+                description = data["description"] as? String ?: "",
                 analysisResult = data["analysisResult"] as? String ?: "",
                 aiProbability = (data["aiProbability"] as? Number)?.toFloat() ?: 0f,
                 aiConfidence = (data["aiConfidence"] as? Number)?.toFloat() ?: 0f,

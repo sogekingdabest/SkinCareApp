@@ -552,6 +552,7 @@ class AnalysisResultActivity : AppCompatActivity() {
         ) + userValues
         return AnalysisData(
             moleId = moleId,
+            description = description,
             analysisResult = createAnalysisSummary(),
             aiProbability = result.aiProbability,
             aiConfidence = result.aiConfidence,

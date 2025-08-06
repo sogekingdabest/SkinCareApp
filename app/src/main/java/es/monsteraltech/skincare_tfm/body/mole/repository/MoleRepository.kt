@@ -222,6 +222,7 @@ class MoleRepository {
                                             AnalysisData(
                                                     id = "${moleId}_analysis_${currentCount}",
                                                     moleId = moleId,
+                                                    description = moleSnapshot.getString("description") ?: "",
                                                     analysisResult = currentCount.toString(),
                                                     aiProbability =
                                                             moleSnapshot
@@ -338,13 +339,9 @@ class MoleRepository {
                                                 "analysisCount" to (currentCount + 1),
                                                 "lastAnalysisDate" to currentTimestamp,
                                                 "updatedAt" to currentTimestamp,
-                                                "analysisMetadata" to newAnalysis.analysisMetadata
+                                                "analysisMetadata" to newAnalysis.analysisMetadata,
+                                                "description" to newAnalysis.description
                                         )
-                                newAnalysis.analysisMetadata["description"]?.let { description ->
-                                    if (description is String && description.isNotBlank()) {
-                                        updates["description"] = description
-                                    }
-                                }
                                 if (currentCount == 0L) {
                                     updates["firstAnalysisDate"] = currentTimestamp
                                 }
