@@ -5,8 +5,6 @@ import android.content.pm.PackageManager
 import android.graphics.PointF
 import android.graphics.RectF
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -27,17 +25,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import es.monsteraltech.skincare_tfm.R
-import es.monsteraltech.skincare_tfm.camera.guidance.AccessibilityManager
 import es.monsteraltech.skincare_tfm.camera.guidance.CaptureGuidanceConfig
 import es.monsteraltech.skincare_tfm.camera.guidance.CaptureGuidanceOverlay
-import es.monsteraltech.skincare_tfm.camera.guidance.CaptureValidationManager
-import es.monsteraltech.skincare_tfm.camera.guidance.HapticFeedbackManager
-import es.monsteraltech.skincare_tfm.camera.guidance.ImagePreprocessor
-import es.monsteraltech.skincare_tfm.camera.guidance.ImageQualityAnalyzer
-import es.monsteraltech.skincare_tfm.camera.guidance.MoleDetectionProcessor
-import es.monsteraltech.skincare_tfm.camera.guidance.PerformanceManager
-import es.monsteraltech.skincare_tfm.camera.guidance.ROIOptimizer
-import es.monsteraltech.skincare_tfm.camera.guidance.ThermalStateDetector
+import es.monsteraltech.skincare_tfm.camera.guidance.GuideState
+import es.monsteraltech.skincare_tfm.camera.guidance.SimplifiedGuidanceManager
 import es.monsteraltech.skincare_tfm.utils.UIUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -49,7 +40,7 @@ import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
-import org.opencv.core.Size as OpenCVSize
+
 class CameraActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "CameraActivity"
@@ -63,17 +54,9 @@ class CameraActivity : AppCompatActivity() {
     private var currentCameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     private var isFlashEnabled: Boolean = false
     private lateinit var guidanceOverlay: CaptureGuidanceOverlay
-    private lateinit var moleDetector: MoleDetectionProcessor
-    private lateinit var qualityAnalyzer: ImageQualityAnalyzer
-    private lateinit var validationManager: CaptureValidationManager
-    private lateinit var preprocessor: ImagePreprocessor
-    private lateinit var performanceManager: PerformanceManager
-    private lateinit var roiOptimizer: ROIOptimizer
-    private lateinit var thermalDetector: ThermalStateDetector
-    private lateinit var hapticManager: HapticFeedbackManager
-    private lateinit var accessibilityManager: AccessibilityManager
+    private lateinit var simplifiedGuidanceManager: SimplifiedGuidanceManager
     private var guidanceConfig = CaptureGuidanceConfig()
-    private var currentValidationResult: CaptureValidationManager.ValidationResult? = null
+    private var currentGuidanceResult: SimplifiedGuidanceManager.GuidanceResult? = null
     private var isAnalysisEnabled = true
     private val lastAnalysisTime = AtomicLong(0)
     private lateinit var previewLauncher: ActivityResultLauncher<Intent>
@@ -88,10 +71,10 @@ class CameraActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
         bodyPartColor = intent.getStringExtra("BODY_PART_COLOR")
-        initializeGuidanceComponents()
+        simplifiedGuidanceManager = SimplifiedGuidanceManager(this, guidanceConfig)
+        
         previewLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
-                val confirmedPath = result.data?.getStringExtra("CONFIRMED_PATH")
                 UIUtils.showSuccessToast(this, getString(R.string.ui_operation_completed))
             } else if (result.resultCode == RESULT_CANCELED) {
                 UIUtils.showInfoToast(this, getString(R.string.ui_changes_discarded))
@@ -129,58 +112,7 @@ class CameraActivity : AppCompatActivity() {
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
-    private fun initializeGuidanceComponents() {
-        Log.d(TAG, "Inicializando componentes de guía inteligente con optimizaciones de rendimiento")
-        performanceManager = PerformanceManager(this)
-        roiOptimizer = ROIOptimizer()
-        thermalDetector = ThermalStateDetector(this)
-        moleDetector = MoleDetectionProcessor(this, performanceManager, roiOptimizer, thermalDetector)
-        qualityAnalyzer = ImageQualityAnalyzer(performanceManager, thermalDetector)
-        validationManager = CaptureValidationManager()
-        preprocessor = ImagePreprocessor()
-        lifecycleScope.launch {
-            performanceManager.currentPerformanceLevel.collect {
-                updateAnalysisFrequency()
-            }
-        }
-        lifecycleScope.launch {
-            thermalDetector.currentThermalState.collect { state ->
-                Log.d(TAG, "Estado térmico actualizado: $state")
-                handleThermalStateChange(state)
-            }
-        }
-        hapticManager = HapticFeedbackManager(this)
-        accessibilityManager = AccessibilityManager(this)
-        Log.d(TAG, "Componentes de guía inicializados")
-    }
-    private fun updateAnalysisFrequency() {
-        val config = performanceManager.currentConfig.value
-        imageAnalyzer?.let { analyzer ->
-            analyzer.setAnalyzer(cameraExecutor) { imageProxy ->
-                processImageFrame(imageProxy)
-            }
-        }
-        Log.d(TAG, "Frecuencia de análisis actualizada: ${config.processingFrequency} FPS")
-    }
-    private fun handleThermalStateChange(state: ThermalStateDetector.ThermalState) {
-        when (state) {
-            ThermalStateDetector.ThermalState.SEVERE,
-            ThermalStateDetector.ThermalState.CRITICAL,
-            ThermalStateDetector.ThermalState.EMERGENCY -> {
-                runOnUiThread {
-                }
-                if (state == ThermalStateDetector.ThermalState.EMERGENCY) {
-                    isAnalysisEnabled = false
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        isAnalysisEnabled = true
-                    }, 10000)
-                }
-            }
-            else -> {
-                isAnalysisEnabled = true
-            }
-        }
-    }
+
     private fun setupUI() {
         previewView = findViewById(R.id.preview_view)
         captureButton = findViewById(R.id.capture_button)
@@ -312,19 +244,14 @@ class CameraActivity : AppCompatActivity() {
     }
     private suspend fun processAnalysisPipeline(frame: Mat) {
         try {
-            val moleDetection = moleDetector.detectMole(frame)
-            val qualityMetrics = qualityAnalyzer.analyzeQuality(frame)
-            val guideArea = getGuideArea()
-            val validationResult = validationManager.validateCapture(
-                moleDetection,
-                qualityMetrics,
-                guideArea
-            )
+
+            val guidanceResult = simplifiedGuidanceManager.processFrame(frame)
+            
             withContext(Dispatchers.Main) {
-                updateUI(moleDetection, validationResult)
+                updateUI(guidanceResult)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error en pipeline de análisis", e)
+            Log.e(TAG, "Error en pipeline de análisis simplificado", e)
         }
     }
     private fun imageProxyToMat(imageProxy: ImageProxy): Mat? {
@@ -340,98 +267,104 @@ class CameraActivity : AppCompatActivity() {
             null
         }
     }
-    private fun getGuideArea(): RectF {
-        val centerX = previewView.width / 2f
-        val centerY = previewView.height / 2f
-        val radius = guidanceConfig.guideCircleRadius
-        return RectF(
-            centerX - radius,
-            centerY - radius,
-            centerX + radius,
-            centerY + radius
-        )
-    }
-    private fun updateUI(
-        moleDetection: MoleDetectionProcessor.MoleDetection?,
-        validationResult: CaptureValidationManager.ValidationResult
-    ) {
-        currentValidationResult = validationResult
-        val molePosition = moleDetection?.let {
-            PointF(it.centerPoint.x.toFloat(), it.centerPoint.y.toFloat())
+
+    private fun updateUI(guidanceResult: SimplifiedGuidanceManager.GuidanceResult) {
+        currentGuidanceResult = guidanceResult
+
+        val molePosition = guidanceResult.molePosition?.let {
+            PointF(it.x.toFloat(), it.y.toFloat())
         }
-        guidanceOverlay.updateMolePosition(molePosition, moleDetection?.confidence ?: 0f)
-        guidanceOverlay.updateGuideState(validationResult.guideState)
-        val detailedMessage = validationManager.getDetailedGuidanceMessage(validationResult)
-        guidanceOverlay.setGuidanceMessage(detailedMessage)
-        accessibilityManager.setupGuidanceOverlayAccessibility(
-            guidanceOverlay,
-            validationResult.guideState,
-            moleDetection != null
-        )
-        val statusIcon = when (validationResult.guideState) {
-            CaptureValidationManager.GuideState.SEARCHING -> R.drawable.ic_search
-            CaptureValidationManager.GuideState.CENTERING -> R.drawable.ic_center_focus_weak
-            CaptureValidationManager.GuideState.TOO_FAR -> R.drawable.ic_zoom_in
-            CaptureValidationManager.GuideState.TOO_CLOSE -> R.drawable.ic_zoom_out
-            CaptureValidationManager.GuideState.POOR_LIGHTING -> R.drawable.ic_wb_sunny
-            CaptureValidationManager.GuideState.BLURRY -> R.drawable.ic_blur_on
-            CaptureValidationManager.GuideState.READY -> R.drawable.ic_check_circle
+
+        val confidence = when (val state = guidanceResult.state) {
+            is es.monsteraltech.skincare_tfm.camera.guidance.CaptureState.MoleDetected -> state.confidence
+            else -> 0f
+        }
+        
+        guidanceOverlay.updateMolePosition(molePosition, confidence)
+        guidanceOverlay.updateGuideState(guidanceResult.guideState)
+        guidanceOverlay.setGuidanceMessage(guidanceResult.message)
+
+        val statusIcon = when (guidanceResult.guideState) {
+            GuideState.SEARCHING -> R.drawable.ic_search
+            GuideState.CENTERING -> R.drawable.ic_center_focus_weak
+            GuideState.POOR_LIGHTING -> R.drawable.ic_wb_sunny
+            GuideState.READY -> R.drawable.ic_check_circle
         }
         captureStatusIndicator.setImageResource(statusIcon)
-        captureButton.isEnabled = validationResult.canCapture
-        accessibilityManager.setupCaptureButtonAccessibility(
-            captureButton,
-            validationResult.canCapture,
-            validationResult.guideState
-        )
-        val buttonColor = if (validationResult.canCapture) {
+
+        val canCapture = guidanceResult.state is es.monsteraltech.skincare_tfm.camera.guidance.CaptureState.ReadyToCapture
+        captureButton.isEnabled = canCapture
+
+        val buttonColor = if (canCapture) {
             ContextCompat.getColor(this, R.color.risk_very_low)
         } else {
             ContextCompat.getColor(this, R.color.risk_high)
         }
         captureButton.backgroundTintList = android.content.res.ColorStateList.valueOf(buttonColor)
-        val messageColor = when (validationResult.guideState) {
-            CaptureValidationManager.GuideState.READY -> ContextCompat.getColor(this, R.color.risk_very_low)
-            CaptureValidationManager.GuideState.SEARCHING, CaptureValidationManager.GuideState.CENTERING -> ContextCompat.getColor(this, R.color.risk_moderate)
-            else -> ContextCompat.getColor(this, R.color.risk_high)
+
+        val messageColor = when (guidanceResult.guideState) {
+            GuideState.READY -> ContextCompat.getColor(this, R.color.risk_very_low)
+            GuideState.SEARCHING, GuideState.CENTERING -> ContextCompat.getColor(this, R.color.risk_moderate)
+            GuideState.POOR_LIGHTING -> ContextCompat.getColor(this, R.color.risk_high)
         }
         guidanceMessageText.setTextColor(messageColor)
-        Log.d("DEBUG", "Actualizando guidanceMessageText: $detailedMessage")
-        guidanceMessageText.text = detailedMessage
-        Log.d("DEBUG", "Texto actual guidanceMessageText: ${guidanceMessageText.text}")
-        if (validationResult.guideState == CaptureValidationManager.GuideState.CENTERING && moleDetection != null) {
-            val guideCenter = PointF(getGuideArea().centerX(), getGuideArea().centerY())
-            val moleCenter = PointF(moleDetection.centerPoint.x.toFloat(), moleDetection.centerPoint.y.toFloat())
-            val centeringPercentage = validationManager.calculateCenteringPercentage(moleCenter, guideCenter)
-            accessibilityManager.announceCenteringProgress(centeringPercentage)
+        guidanceMessageText.text = guidanceResult.message
+
+        updateQualityIndicators(guidanceResult)
+        
+        Log.d(TAG, "UI actualizada - Estado: ${guidanceResult.guideState}, Mensaje: ${guidanceResult.message}")
+    }
+    
+    private fun updateQualityIndicators(guidanceResult: SimplifiedGuidanceManager.GuidanceResult) {
+        val lightingIndicator = findViewById<ImageView>(R.id.lighting_indicator)
+        val lightingText = findViewById<TextView>(R.id.lighting_indicator_text)
+        
+        val isLightingGood = guidanceResult.guideState != GuideState.POOR_LIGHTING
+        val lightingColor = if (isLightingGood) {
+            ContextCompat.getColor(this, R.color.risk_very_low)
+        } else {
+            ContextCompat.getColor(this, R.color.risk_high)
         }
+        
+        lightingIndicator.setColorFilter(lightingColor)
+        lightingText.text = if (isLightingGood) "Luz ✓" else "Luz ✗"
+        lightingText.setTextColor(lightingColor)
+
+        val moleIndicator = findViewById<ImageView>(R.id.mole_detection_indicator)
+        val moleText = findViewById<TextView>(R.id.mole_detection_indicator_text)
+        
+        val isMoleDetected = guidanceResult.state !is es.monsteraltech.skincare_tfm.camera.guidance.CaptureState.Searching
+        val moleColor = when {
+            guidanceResult.state is es.monsteraltech.skincare_tfm.camera.guidance.CaptureState.ReadyToCapture -> 
+                ContextCompat.getColor(this, R.color.risk_very_low)
+            isMoleDetected -> 
+                ContextCompat.getColor(this, R.color.risk_moderate)
+            else -> 
+                ContextCompat.getColor(this, R.color.risk_high)
+        }
+        
+        moleIndicator.setColorFilter(moleColor)
+        moleText.text = when {
+            guidanceResult.state is es.monsteraltech.skincare_tfm.camera.guidance.CaptureState.ReadyToCapture -> "Lunar ✓"
+            isMoleDetected -> "Lunar ~"
+            else -> "Lunar ✗"
+        }
+        moleText.setTextColor(moleColor)
     }
     private fun setupInitialAccessibility() {
-        accessibilityManager.setupViewAccessibility(
-            previewView,
-            "Vista previa de la cámara para captura de lunares",
-            "Mueve la cámara para encontrar y centrar un lunar"
-        )
-        accessibilityManager.setupViewAccessibility(
-            captureButton,
-            "Botón de captura",
-            "Toca dos veces para capturar cuando esté habilitado"
-        )
-        if (accessibilityManager.isTalkBackEnabled()) {
-            accessibilityManager.announceGestureInstructions()
-        }
+        previewView.contentDescription = "Vista previa de la cámara para captura de lunares"
+        captureButton.contentDescription = "Botón de captura"
     }
     private fun takePhotoWithValidation() {
-        val validationResult = currentValidationResult
-        if (validationResult == null || !validationResult.canCapture) {
-            hapticManager.provideErrorFeedback()
-            accessibilityManager.announceForAccessibility("No se puede capturar - ajusta la posición")
-            UIUtils.showInfoToast(this, getString(R.string.guidance_centering))
+        val guidanceResult = currentGuidanceResult
+        val canCapture = guidanceResult?.state is es.monsteraltech.skincare_tfm.camera.guidance.CaptureState.ReadyToCapture
+        
+        if (guidanceResult == null || !canCapture) {
+            UIUtils.showInfoToast(this, guidanceResult?.message ?: getString(R.string.guidance_centering))
             return
         }
+        
         Log.d(TAG, "Iniciando captura validada")
-        hapticManager.provideCaptureSuccessFeedback()
-        accessibilityManager.announceForAccessibility("Capturando imagen")
         takePhoto()
     }
     private fun takePhoto() {
@@ -450,7 +383,7 @@ class CameraActivity : AppCompatActivity() {
                     if (originalFile.exists()) {
                         Log.d(TAG, "Imagen capturada exitosamente: ${originalFile.absolutePath}")
                         lifecycleScope.launch(Dispatchers.IO) {
-                            processAndNavigate(originalFile, timestamp)
+                            processAndNavigate(originalFile)
                         }
                     } else {
                         Log.e(TAG, "Error: Archivo de imagen no encontrado después de captura")
@@ -463,100 +396,18 @@ class CameraActivity : AppCompatActivity() {
                     Log.e(TAG, "Error capturando foto", exception)
                     runOnUiThread {
                         UIUtils.showErrorToast(this@CameraActivity, getString(R.string.ui_error))
-                        hapticManager.provideErrorFeedback()
-                        accessibilityManager.announceForAccessibility("Error al capturar imagen")
                     }
                 }
             }
         )
     }
-    private suspend fun processAndNavigate(originalFile: File, timestamp: Long) {
-        var finalImagePath = originalFile.absolutePath
-        var preprocessingApplied = false
-        var processingMetadata = ""
-        try {
-            Log.d(TAG, "Iniciando preprocesado de imagen")
-            val originalBitmap = android.graphics.BitmapFactory.decodeFile(originalFile.absolutePath)
-            if (originalBitmap == null) {
-                Log.e(TAG, "Error decodificando imagen original")
-                withContext(Dispatchers.Main) {
-                    navigateToPreviewWithFallback(originalFile.absolutePath)
-                }
-                return
-            }
-            val preprocessingConfig = determinePreprocessingConfig()
-            val preprocessingResult = preprocessor.preprocessImage(originalBitmap, preprocessingConfig)
-            if (preprocessingResult.isSuccessful()) {
-                val processedFile = File(
-                    externalMediaDirs.firstOrNull(),
-                    "processed-${timestamp}.jpg"
-                )
-                val outputStream = processedFile.outputStream()
-                preprocessingResult.processedBitmap.compress(
-                    android.graphics.Bitmap.CompressFormat.JPEG,
-                    95,
-                    outputStream
-                )
-                outputStream.close()
-                finalImagePath = processedFile.absolutePath
-                preprocessingApplied = true
-                processingMetadata = preprocessingResult.getProcessingSummary()
-                Log.d(TAG, "Preprocesado exitoso: $processingMetadata")
-                preprocessingResult.processedBitmap.recycle()
-            } else {
-                Log.w(TAG, "Preprocesado falló, usando imagen original")
-            }
-            originalBitmap.recycle()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error durante preprocesado, usando imagen original", e)
-        }
+    private suspend fun processAndNavigate(originalFile: File) {
         withContext(Dispatchers.Main) {
             val isFrontCamera = currentCameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA
-            navigateToPreview(finalImagePath, isFrontCamera, preprocessingApplied, processingMetadata)
+            navigateToPreview(originalFile.absolutePath, isFrontCamera, false, "")
         }
     }
-    private fun determinePreprocessingConfig(): ImagePreprocessor.PreprocessingConfig {
-        val currentValidation = currentValidationResult
-        return when {
-            currentValidation?.guideState == CaptureValidationManager.GuideState.POOR_LIGHTING -> {
-                Log.d(TAG, "Aplicando configuración para poca luz")
-                ImagePreprocessor.PreprocessingConfig(
-                    enableIlluminationNormalization = true,
-                    enableContrastEnhancement = true,
-                    enableNoiseReduction = true,
-                    enableSharpening = false,
-                    claheClipLimit = 4.0,
-                    claheTileSize = OpenCVSize(4.0, 4.0)
-                )
-            }
-            currentValidation?.guideState == CaptureValidationManager.GuideState.BLURRY -> {
-                Log.d(TAG, "Aplicando configuración para imagen borrosa")
-                ImagePreprocessor.PreprocessingConfig(
-                    enableIlluminationNormalization = true,
-                    enableContrastEnhancement = true,
-                    enableNoiseReduction = true,
-                    enableSharpening = true,
-                    sharpeningStrength = 0.7
-                )
-            }
-            else -> {
-                Log.d(TAG, "Aplicando configuración estándar para dermatología")
-                ImagePreprocessor.PreprocessingConfig(
-                    enableIlluminationNormalization = true,
-                    enableContrastEnhancement = true,
-                    enableNoiseReduction = true,
-                    enableSharpening = true,
-                    claheClipLimit = 3.0,
-                    claheTileSize = OpenCVSize(6.0, 6.0),
-                    sharpeningStrength = 0.3
-                )
-            }
-        }
-    }
-    private fun navigateToPreviewWithFallback(imagePath: String) {
-        val isFrontCamera = currentCameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA
-        navigateToPreview(imagePath, isFrontCamera, false, "Error en preprocesado - usando imagen original")
-    }
+
     fun navigateToPreview(
         photoPath: String,
         isFrontCamera: Boolean,
@@ -590,17 +441,6 @@ class CameraActivity : AppCompatActivity() {
         isAnalysisEnabled = false
         releaseCamera()
         cameraExecutor.shutdown()
-        hapticManager.cancelVibration()
-        accessibilityManager.cleanup()
-        if (::performanceManager.isInitialized) {
-            performanceManager.cleanup()
-        }
-        if (::roiOptimizer.isInitialized) {
-            roiOptimizer.clearHistory()
-        }
-        if (::thermalDetector.isInitialized) {
-            thermalDetector.cleanup()
-        }
         if (::digitalZoomController.isInitialized) {
             digitalZoomController.cleanup()
         }

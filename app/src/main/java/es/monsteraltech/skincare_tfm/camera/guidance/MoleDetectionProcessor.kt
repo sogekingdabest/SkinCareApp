@@ -1,298 +1,273 @@
 ﻿package es.monsteraltech.skincare_tfm.camera.guidance
+
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.opencv.core.Core
-import org.opencv.core.CvType
 import org.opencv.core.Mat
-import org.opencv.core.MatOfInt
 import org.opencv.core.MatOfPoint
-import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Point
-import org.opencv.core.Rect
-import org.opencv.core.Scalar
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
-class MoleDetectionProcessor(
-    private val context: android.content.Context,
-    private val performanceManager: PerformanceManager,
-    private val roiOptimizer: ROIOptimizer,
-    private val thermalDetector: ThermalStateDetector
-) {
+
+
+class MoleDetectionProcessor {
     companion object {
         private const val TAG = "MoleDetectionProcessor"
         private const val MIN_MOLE_SIZE = 30
-        private const val MAX_MOLE_SIZE = 800
-        private const val CONFIDENCE_THRESHOLD = 0.4f
-        private const val BLUR_SIZE = 5
-        private const val MORPH_SIZE = 3
-        private const val CANNY_LOW = 50.0
-        private const val CANNY_HIGH = 150.0
+        private const val MAX_MOLE_SIZE = 1200
+        private const val CENTER_TOLERANCE = 150f
+        private const val THRESHOLD_VALUE = 120.0
     }
-    data class DetectionConfig(
-        val minMoleSize: Int = MIN_MOLE_SIZE,
-        val maxMoleSize: Int = MAX_MOLE_SIZE,
-        val confidenceThreshold: Float = CONFIDENCE_THRESHOLD,
-        val colorThreshold: Scalar = Scalar(20.0, 50.0, 50.0),
-        val enableMultiMethod: Boolean = true,
-        val enableColorFiltering: Boolean = true
-    )
+
     data class MoleDetection(
-        val boundingBox: Rect,
         val centerPoint: Point,
         val confidence: Float,
         val area: Double,
-        val contour: MatOfPoint,
-        val method: String
+        val isInCenter: Boolean
     )
-    private val config = DetectionConfig()
-    suspend fun detectMole(frame: Mat): MoleDetection? = withContext(Dispatchers.Default) {
-        val startTime = System.currentTimeMillis()
+
+    suspend fun detectMoleInCenter(frame: Mat): MoleDetection? = withContext(Dispatchers.Default) {
         try {
-            Log.d(TAG, "Iniciando detección de lunar en frame ${frame.cols()}x${frame.rows()}")
+            Log.d(TAG, "Buscando lunar en el centro del frame ${frame.cols()}x${frame.rows()}")
+            
             if (frame.empty() || frame.cols() < 100 || frame.rows() < 100) {
                 Log.w(TAG, "Frame inválido o muy pequeño")
                 return@withContext null
             }
-            val thermalAdjustments = thermalDetector.getCurrentAdjustments()
-            val workingFrame = if (thermalAdjustments.enableROI) {
-                val imageSize = Size(frame.cols().toDouble(), frame.rows().toDouble())
-                val roiResult = roiOptimizer.calculateROI(imageSize, thermalAdjustments.roiScale)
-                roiOptimizer.extractROI(frame, roiResult)
+
+            val centerX = frame.cols() / 2.0
+            val centerY = frame.rows() / 2.0
+            val centerPoint = Point(centerX, centerY)
+
+            val grayFrame = Mat()
+            if (frame.channels() == 3) {
+                Imgproc.cvtColor(frame, grayFrame, Imgproc.COLOR_BGR2GRAY)
             } else {
-                frame
+                frame.copyTo(grayFrame)
             }
-            val processedFrame = preprocessFrameOptimized(workingFrame)
-            var detection = detectMolePrimary(processedFrame)
-            if (detection == null && config.enableMultiMethod && thermalAdjustments.enableAdvancedFilters) {
-                Log.d(TAG, "Método principal falló, intentando método alternativo")
-                detection = detectMoleAlternative(processedFrame)
+
+            var detection = findDarkSpotInCenter(grayFrame, centerPoint)
+
+            if (detection == null) {
+                Log.d(TAG, "Primera detección falló, intentando con umbral más permisivo")
+                detection = findDarkSpotWithLowerThreshold(grayFrame, centerPoint)
             }
-            if (thermalAdjustments.enableROI && detection != null && workingFrame != frame) {
-                val imageSize = Size(frame.cols().toDouble(), frame.rows().toDouble())
-                val roiResult = roiOptimizer.calculateROI(imageSize, thermalAdjustments.roiScale)
-                detection = adjustDetectionForROI(detection, roiResult)
+
+            if (detection == null) {
+                Log.d(TAG, "Segunda detección falló, intentando detectar variaciones de intensidad")
+                detection = findAnyIntensityVariation(grayFrame, centerPoint)
             }
-            if (workingFrame != frame) {
-                workingFrame.release()
-            }
-            processedFrame.release()
+            
+            grayFrame.release()
+            
             detection?.let {
-                Log.d(TAG, "Lunar detectado: confianza=${it.confidence}, área=${it.area}, método=${it.method}")
-                roiOptimizer.updateDetectionHistory(it.centerPoint)
-            } ?: Log.d(TAG, "No se detectó lunar en el frame")
-            detection
+                Log.d(TAG, "Lunar detectado en centro: confianza=${it.confidence}, área=${it.area}")
+            } ?: Log.d(TAG, "No se detectó lunar en el centro")
+            
+            return@withContext detection
+            
         } catch (e: Exception) {
             Log.e(TAG, "Error durante detección de lunar", e)
-            null
-        } finally {
-            val processingTime = System.currentTimeMillis() - startTime
-            performanceManager.recordFrameProcessingTime(processingTime)
+            return@withContext null
         }
     }
-    private fun preprocessFrameOptimized(frame: Mat): Mat {
-        val processed = performanceManager.borrowMat()
-        frame.copyTo(processed)
-        Log.d(TAG, "Preprocesado desactivado: frame original usado")
-        return processed
-    }
-    private fun detectMolePrimary(frame: Mat): MoleDetection? {
-        var mask: Mat? = null
-        var contours: List<MatOfPoint>?
+
+    private fun findDarkSpotInCenter(grayFrame: Mat, imageCenter: Point): MoleDetection? {
         try {
-            val hsv = Mat()
-            if (frame.channels() == 3) {
-                Imgproc.cvtColor(frame, hsv, Imgproc.COLOR_BGR2HSV)
-            } else if (frame.channels() == 1) {
-                Imgproc.cvtColor(frame, hsv, Imgproc.COLOR_GRAY2BGR)
-                Imgproc.cvtColor(hsv, hsv, Imgproc.COLOR_BGR2HSV)
-            } else {
-                frame.copyTo(hsv)
+            val darkMask = Mat()
+            Imgproc.threshold(grayFrame, darkMask, THRESHOLD_VALUE, 255.0, Imgproc.THRESH_BINARY_INV)
+
+            val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(3.0, 3.0)) // Kernel más pequeño
+            Imgproc.morphologyEx(darkMask, darkMask, Imgproc.MORPH_CLOSE, kernel)
+
+            val contours = mutableListOf<MatOfPoint>()
+            val hierarchy = Mat()
+            Imgproc.findContours(darkMask, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+
+            var bestDetection: MoleDetection? = null
+            var minDistanceToCenter = Double.MAX_VALUE
+            
+            for (contour in contours) {
+                val area = Imgproc.contourArea(contour)
+
+                if (area < MIN_MOLE_SIZE || area > MAX_MOLE_SIZE) continue
+
+                val moments = Imgproc.moments(contour)
+                if (moments.m00 == 0.0) continue
+                
+                val centerX = moments.m10 / moments.m00
+                val centerY = moments.m01 / moments.m00
+                val contourCenter = Point(centerX, centerY)
+
+                val distanceToCenter = Math.sqrt(
+                    Math.pow(contourCenter.x - imageCenter.x, 2.0) + 
+                    Math.pow(contourCenter.y - imageCenter.y, 2.0)
+                )
+
+                if (distanceToCenter < CENTER_TOLERANCE && distanceToCenter < minDistanceToCenter) {
+                    val confidence = calculateSimpleConfidence(area, distanceToCenter)
+                    val isInCenter = distanceToCenter < CENTER_TOLERANCE
+                    
+                    bestDetection = MoleDetection(
+                        centerPoint = contourCenter,
+                        confidence = confidence,
+                        area = area,
+                        isInCenter = isInCenter
+                    )
+                    minDistanceToCenter = distanceToCenter
+                }
             }
-            mask = Mat()
-            if (frame.channels() == 1) {
-                Core.inRange(frame, Scalar(0.0), Scalar(90.0), mask)
-            } else {
-                val lowerBound = Scalar(0.0, 10.0, 0.0)
-                val upperBound = Scalar(180.0, 255.0, 200.0)
-                Core.inRange(hsv, lowerBound, upperBound, mask)
-            }
-            val kernel = Imgproc.getStructuringElement(
-                Imgproc.MORPH_ELLIPSE,
-                Size(MORPH_SIZE.toDouble(), MORPH_SIZE.toDouble())
-            )
-            Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_CLOSE, kernel)
-            Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_OPEN, kernel)
-            contours = findMoleContours(mask)
-            val bestContour = contours.firstOrNull { validateMoleCandidate(it) }
-            hsv.release()
+
+            darkMask.release()
             kernel.release()
-            return bestContour?.let { createDetectionResult(it, "primary_color") }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error en detección primaria", e)
-            return null
-        } finally {
-            mask?.release()
-        }
-    }
-    private fun detectMoleAlternative(frame: Mat): MoleDetection? {
-        var gray: Mat? = null
-        var binary: Mat? = null
-        var markers: Mat? = null
-        try {
-            gray = Mat()
-            if (frame.channels() == 3) {
-                Imgproc.cvtColor(frame, gray, Imgproc.COLOR_BGR2GRAY)
-            } else if (frame.channels() == 1) {
-                frame.copyTo(gray)
-            } else {
-                frame.copyTo(gray)
-            }
-            binary = Mat()
-            Imgproc.adaptiveThreshold(
-                gray, binary, 255.0,
-                Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
-                Imgproc.THRESH_BINARY_INV,
-                15, 3.0
-            )
-            val kernel = Mat.ones(3, 3, CvType.CV_8U)
-            Imgproc.morphologyEx(binary, binary, Imgproc.MORPH_OPEN, kernel)
-            val distTransform = Mat()
-            Imgproc.distanceTransform(binary, distTransform, Imgproc.DIST_L2, 5)
-            val localMaxima = Mat()
-            val maxVal = Core.minMaxLoc(distTransform).maxVal
-            Imgproc.threshold(distTransform, localMaxima, 0.4 * maxVal, 255.0, Imgproc.THRESH_BINARY)
-            localMaxima.convertTo(localMaxima, CvType.CV_8U)
-            markers = Mat()
-            Imgproc.connectedComponents(localMaxima, markers)
-            Imgproc.watershed(frame, markers)
-            val watershedMask = Mat()
-            Core.compare(markers, Scalar(1.0), watershedMask, Core.CMP_GT)
-            watershedMask.convertTo(watershedMask, CvType.CV_8U)
-            val contours = findMoleContours(watershedMask)
-            val bestContour = contours.firstOrNull { validateMoleCandidate(it) }
-            kernel.release()
-            distTransform.release()
-            localMaxima.release()
-            watershedMask.release()
-            return bestContour?.let { createDetectionResult(it, "alternative_watershed") }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error en detección alternativa", e)
-            return null
-        } finally {
-            gray?.release()
-            binary?.release()
-            markers?.release()
-        }
-    }
-    private fun findMoleContours(mask: Mat): List<MatOfPoint> {
-        val contours = mutableListOf<MatOfPoint>()
-        val hierarchy = Mat()
-        try {
-            Imgproc.findContours(
-                mask, contours, hierarchy,
-                Imgproc.RETR_EXTERNAL,
-                Imgproc.CHAIN_APPROX_SIMPLE
-            )
-            contours.sortByDescending { Imgproc.contourArea(it) }
-            Log.d(TAG, "Encontrados ${contours.size} contornos candidatos")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error encontrando contornos", e)
-        } finally {
             hierarchy.release()
-        }
-        return contours
-    }
-    private fun validateMoleCandidate(contour: MatOfPoint): Boolean {
-        try {
-            val area = Imgproc.contourArea(contour)
-            if (area < 10 || area > 2000) {
-                return false
-            }
-            val perimeter = Imgproc.arcLength(MatOfPoint2f(*contour.toArray()), true)
-            if (perimeter <= 0) return false
-            val compactness = 4 * Math.PI * area / (perimeter * perimeter)
-            if (compactness < 0.1) {
-                return false
-            }
-            val hull = MatOfInt()
-            Imgproc.convexHull(contour, hull)
-            val hullPoints = hull.toArray().map { contour.toList()[it] }.toTypedArray()
-            val hullArea = Imgproc.contourArea(MatOfPoint(*hullPoints))
-            val solidity = if (hullArea > 0) area / hullArea else 0.0
-            hull.release()
-            if (solidity < 0.3) {
-                return false
-            }
-            val boundingRect = Imgproc.boundingRect(contour)
-            val aspectRatio = boundingRect.width.toDouble() / boundingRect.height
-            if (aspectRatio > 3.0 || aspectRatio < 0.15) {
-                return false
-            }
-            Log.d(TAG, "Contorno validado: área=$area, compacidad=$compactness, solidez=$solidity, aspecto=$aspectRatio (PERMISIVO)")
-            return true
+            contours.forEach { it.release() }
+            
+            return bestDetection
+            
         } catch (e: Exception) {
-            Log.e(TAG, "Error validando contorno", e)
-            return false
+            Log.e(TAG, "Error buscando mancha oscura en centro", e)
+            return null
         }
     }
-    private fun createDetectionResult(contour: MatOfPoint, method: String): MoleDetection {
-        val boundingBox = Imgproc.boundingRect(contour)
-        val moments = Imgproc.moments(contour)
-        val centerX = moments.m10 / moments.m00
-        val centerY = moments.m01 / moments.m00
-        val centerPoint = Point(centerX, centerY)
-        val area = Imgproc.contourArea(contour)
-        val confidence = calculateConfidence(contour, area)
-        return MoleDetection(
-            boundingBox = boundingBox,
-            centerPoint = centerPoint,
-            confidence = confidence,
-            area = area,
-            contour = contour,
-            method = method
-        )
+    
+
+    private fun calculateSimpleConfidence(area: Double, distanceToCenter: Double): Float {
+
+        var confidence = 0.6f
+
+        val areaFactor = when {
+            area in 50.0..500.0 -> 0.3f
+            area in 20.0..1000.0 -> 0.2f
+            else -> 0.1f
+        }
+        confidence += areaFactor
+
+        val centerFactor = (1.0f - (distanceToCenter / CENTER_TOLERANCE).toFloat()) * 0.2f
+        confidence += centerFactor.coerceAtLeast(0f)
+
+        return confidence.coerceIn(0.5f, 1f)  // Mínimo 0.5f en lugar de 0f
     }
-    private fun calculateConfidence(contour: MatOfPoint, area: Double): Float {
+    
+    /**
+     * Método de detección con umbral aún más bajo para casos difíciles
+     */
+    private fun findDarkSpotWithLowerThreshold(grayFrame: Mat, imageCenter: Point): MoleDetection? {
         try {
-            var confidence = 0.5f
-            val areaFactor = when {
-                area in 100.0..300.0 -> 0.3f
-                area in 80.0..400.0 -> 0.2f
-                else -> 0.1f
+            Log.d(TAG, "Intentando detección con umbral muy bajo")
+            
+            val darkMask = Mat()
+
+            Imgproc.threshold(grayFrame, darkMask, 140.0, 255.0, Imgproc.THRESH_BINARY_INV)
+
+            val contours = mutableListOf<MatOfPoint>()
+            val hierarchy = Mat()
+            Imgproc.findContours(darkMask, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+            
+            var bestDetection: MoleDetection? = null
+            var minDistanceToCenter = Double.MAX_VALUE
+            
+            for (contour in contours) {
+                val area = Imgproc.contourArea(contour)
+
+                if (area < 10 || area > 5000) continue
+                
+                val moments = Imgproc.moments(contour)
+                if (moments.m00 == 0.0) continue
+                
+                val centerX = moments.m10 / moments.m00
+                val centerY = moments.m01 / moments.m00
+                val contourCenter = Point(centerX, centerY)
+                
+                val distanceToCenter = Math.sqrt(
+                    Math.pow(contourCenter.x - imageCenter.x, 2.0) + 
+                    Math.pow(contourCenter.y - imageCenter.y, 2.0)
+                )
+
+                if (distanceToCenter < CENTER_TOLERANCE * 1.5 && distanceToCenter < minDistanceToCenter) {
+                    val confidence = 0.7f
+                    val isInCenter = distanceToCenter < CENTER_TOLERANCE * 1.2
+                    
+                    bestDetection = MoleDetection(
+                        centerPoint = contourCenter,
+                        confidence = confidence,
+                        area = area,
+                        isInCenter = isInCenter
+                    )
+                    minDistanceToCenter = distanceToCenter
+                }
             }
-            confidence += areaFactor
-            val perimeter = Imgproc.arcLength(MatOfPoint2f(*contour.toArray()), true)
-            if (perimeter > 0) {
-                val compactness = (4 * Math.PI * area / (perimeter * perimeter)).toFloat()
-                confidence += (compactness * 0.2f).coerceAtMost(0.2f)
-            }
-            val hull = MatOfInt()
-            Imgproc.convexHull(contour, hull)
-            val hullPoints = hull.toArray().map { contour.toList()[it] }.toTypedArray()
-            val hullArea = Imgproc.contourArea(MatOfPoint(*hullPoints))
-            if (hullArea > 0) {
-                val solidity = (area / hullArea).toFloat()
-                confidence += (solidity * 0.1f).coerceAtMost(0.1f)
-            }
-            hull.release()
-            return confidence.coerceIn(0f, 1f)
+            
+            darkMask.release()
+            hierarchy.release()
+            contours.forEach { it.release() }
+            
+            return bestDetection
+            
         } catch (e: Exception) {
-            Log.e(TAG, "Error calculando confianza", e)
-            return 0.5f
+            Log.e(TAG, "Error en detección con umbral bajo", e)
+            return null
         }
     }
-    private fun adjustDetectionForROI(detection: MoleDetection, roiResult: ROIOptimizer.ROIResult): MoleDetection {
-        val adjustedCenter = roiOptimizer.roiToImageCoordinates(detection.centerPoint, roiResult)
-        val adjustedBoundingBox = Rect(
-            detection.boundingBox.x + roiResult.offsetX,
-            detection.boundingBox.y + roiResult.offsetY,
-            detection.boundingBox.width,
-            detection.boundingBox.height
-        )
-        return detection.copy(
-            boundingBox = adjustedBoundingBox,
-            centerPoint = adjustedCenter
-        )
+    
+
+    private fun findAnyIntensityVariation(grayFrame: Mat, imageCenter: Point): MoleDetection? {
+        try {
+            Log.d(TAG, "Intentando detectar cualquier variación de intensidad")
+
+            val edges = Mat()
+            Imgproc.Canny(grayFrame, edges, 30.0, 80.0)
+
+            val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(7.0, 7.0))
+            Imgproc.dilate(edges, edges, kernel)
+            
+            val contours = mutableListOf<MatOfPoint>()
+            val hierarchy = Mat()
+            Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+
+            for (contour in contours) {
+                val area = Imgproc.contourArea(contour)
+                if (area < 5) continue
+                
+                val moments = Imgproc.moments(contour)
+                if (moments.m00 == 0.0) continue
+                
+                val centerX = moments.m10 / moments.m00
+                val centerY = moments.m01 / moments.m00
+                val contourCenter = Point(centerX, centerY)
+                
+                val distanceToCenter = Math.sqrt(
+                    Math.pow(contourCenter.x - imageCenter.x, 2.0) + 
+                    Math.pow(contourCenter.y - imageCenter.y, 2.0)
+                )
+
+                if (distanceToCenter < CENTER_TOLERANCE * 2.0) {
+                    Log.d(TAG, "Detectada variación de intensidad como posible lunar")
+                    
+                    edges.release()
+                    kernel.release()
+                    hierarchy.release()
+                    contours.forEach { it.release() }
+                    
+                    return MoleDetection(
+                        centerPoint = contourCenter,
+                        confidence = 0.6f,  // Confianza moderada-alta
+                        area = area,
+                        isInCenter = distanceToCenter < CENTER_TOLERANCE * 1.5
+                    )
+                }
+            }
+            
+            edges.release()
+            kernel.release()
+            hierarchy.release()
+            contours.forEach { it.release() }
+            
+            return null
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error en detección de variaciones", e)
+            return null
+        }
     }
 }

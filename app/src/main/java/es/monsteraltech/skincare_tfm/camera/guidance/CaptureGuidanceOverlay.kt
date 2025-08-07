@@ -23,7 +23,7 @@ class CaptureGuidanceOverlay @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
     private var config: CaptureGuidanceConfig = CaptureGuidanceConfig()
-    private var currentState: CaptureValidationManager.GuideState = CaptureValidationManager.GuideState.SEARCHING
+    private var currentState: GuideState = GuideState.SEARCHING
     private var guidanceMessage: String = ""
     private var molePosition: PointF? = null
     private var moleConfidence: Float = 0f
@@ -120,54 +120,40 @@ class CaptureGuidanceOverlay @JvmOverloads constructor(
     }
     private fun drawStateIndicators(canvas: Canvas) {
         when (currentState) {
-            CaptureValidationManager.GuideState.TOO_FAR -> drawDistanceIndicator(canvas, false)
-            CaptureValidationManager.GuideState.TOO_CLOSE -> drawDistanceIndicator(canvas, true)
-            CaptureValidationManager.GuideState.BLURRY -> drawBlurIndicator(canvas)
-            CaptureValidationManager.GuideState.POOR_LIGHTING -> drawLightingIndicator(canvas)
+            GuideState.POOR_LIGHTING -> drawLightingIndicator(canvas)
+            GuideState.CENTERING -> drawCenteringIndicator(canvas)
             else -> {  }
         }
     }
-    private fun drawDistanceIndicator(canvas: Canvas, tooClose: Boolean) {
-        val arrowPaint = Paint().apply {
-            color = ContextCompat.getColor(context, R.color.risk_high)
-            strokeWidth = 6f
+    private fun drawCenteringIndicator(canvas: Canvas) {
+        val indicatorPaint = Paint().apply {
+            color = ContextCompat.getColor(context, R.color.risk_moderate)
+            strokeWidth = 4f
             strokeCap = Paint.Cap.ROUND
         }
-        val arrowSize = 30f
-        val arrowY = centerPoint.y - config.guideCircleRadius - 60f
-        if (tooClose) {
-            drawArrow(canvas, centerPoint.x - 40f, arrowY, -arrowSize, 0f, arrowPaint)
-            drawArrow(canvas, centerPoint.x + 40f, arrowY, arrowSize, 0f, arrowPaint)
-        } else {
-            drawArrow(canvas, centerPoint.x - 40f, arrowY, arrowSize, 0f, arrowPaint)
-            drawArrow(canvas, centerPoint.x + 40f, arrowY, -arrowSize, 0f, arrowPaint)
-        }
+
+        val arrowSize = 25f
+        val distance = config.guideCircleRadius + 50f
+        
+
+        drawArrow(canvas, centerPoint.x, centerPoint.y - distance, 0f, arrowSize, indicatorPaint)
+
+        drawArrow(canvas, centerPoint.x, centerPoint.y + distance, 0f, -arrowSize, indicatorPaint)
+
+        drawArrow(canvas, centerPoint.x - distance, centerPoint.y, arrowSize, 0f, indicatorPaint)
+
+        drawArrow(canvas, centerPoint.x + distance, centerPoint.y, -arrowSize, 0f, indicatorPaint)
     }
+    
     private fun drawArrow(canvas: Canvas, x: Float, y: Float, dx: Float, dy: Float, paint: Paint) {
         val path = Path().apply {
             moveTo(x, y)
             lineTo(x + dx, y + dy)
-            lineTo(x + dx * 0.7f, y + dy - 10f)
+            lineTo(x + dx * 0.7f - dy * 0.3f, y + dy * 0.7f + dx * 0.3f)
             moveTo(x + dx, y + dy)
-            lineTo(x + dx * 0.7f, y + dy + 10f)
+            lineTo(x + dx * 0.7f + dy * 0.3f, y + dy * 0.7f - dx * 0.3f)
         }
         canvas.drawPath(path, paint)
-    }
-    private fun drawBlurIndicator(canvas: Canvas) {
-        val indicatorPaint = Paint().apply {
-            color = ContextCompat.getColor(context, R.color.risk_high)
-            strokeWidth = 3f
-            style = Paint.Style.STROKE
-        }
-        val waveY = centerPoint.y + config.guideCircleRadius + 40f
-        val path = Path()
-        path.moveTo(centerPoint.x - 60f, waveY)
-        for (i in 0..6) {
-            val x = centerPoint.x - 60f + i * 20f
-            val y = waveY + if (i % 2 == 0) -10f else 10f
-            path.lineTo(x, y)
-        }
-        canvas.drawPath(path, indicatorPaint)
     }
     private fun drawLightingIndicator(canvas: Canvas) {
         val indicatorPaint = Paint().apply {
@@ -191,7 +177,7 @@ class CaptureGuidanceOverlay @JvmOverloads constructor(
         this.moleConfidence = confidence
         invalidate()
     }
-    fun updateGuideState(state: CaptureValidationManager.GuideState) {
+    fun updateGuideState(state: GuideState) {
         if (currentState != state) {
             currentState = state
             updateColorsForState(state)
@@ -209,15 +195,12 @@ class CaptureGuidanceOverlay @JvmOverloads constructor(
         updateGeometry()
         invalidate()
     }
-    private fun updateColorsForState(state: CaptureValidationManager.GuideState) {
+    private fun updateColorsForState(state: GuideState) {
         val targetColor = when (state) {
-            CaptureValidationManager.GuideState.SEARCHING -> Color.WHITE
-            CaptureValidationManager.GuideState.CENTERING -> ContextCompat.getColor(context, R.color.risk_moderate)
-            CaptureValidationManager.GuideState.TOO_FAR -> ContextCompat.getColor(context, R.color.risk_high)
-            CaptureValidationManager.GuideState.TOO_CLOSE -> ContextCompat.getColor(context, R.color.risk_high)
-            CaptureValidationManager.GuideState.POOR_LIGHTING -> ContextCompat.getColor(context, R.color.risk_moderate)
-            CaptureValidationManager.GuideState.BLURRY -> ContextCompat.getColor(context, R.color.risk_high)
-            CaptureValidationManager.GuideState.READY -> ContextCompat.getColor(context, R.color.risk_very_low)
+            GuideState.SEARCHING -> Color.WHITE
+            GuideState.CENTERING -> ContextCompat.getColor(context, R.color.risk_moderate)
+            GuideState.POOR_LIGHTING -> ContextCompat.getColor(context, R.color.risk_moderate)
+            GuideState.READY -> ContextCompat.getColor(context, R.color.risk_very_low)
         }
         animateColorTransition(targetColor)
     }
@@ -235,11 +218,11 @@ class CaptureGuidanceOverlay @JvmOverloads constructor(
             start()
         }
     }
-    private fun updateAnimationForState(state: CaptureValidationManager.GuideState) {
+    private fun updateAnimationForState(state: GuideState) {
         pulseAnimator?.cancel()
         when (state) {
-            CaptureValidationManager.GuideState.SEARCHING -> startPulseAnimation()
-            CaptureValidationManager.GuideState.READY -> startReadyAnimation()
+            GuideState.SEARCHING -> startPulseAnimation()
+            GuideState.READY -> startReadyAnimation()
             else -> stopPulseAnimation()
         }
     }
@@ -272,15 +255,12 @@ class CaptureGuidanceOverlay @JvmOverloads constructor(
         pulseScale = 1f
         invalidate()
     }
-    private fun updateGuidanceMessageForState(state: CaptureValidationManager.GuideState) {
+    private fun updateGuidanceMessageForState(state: GuideState) {
         guidanceMessage = when (state) {
-            CaptureValidationManager.GuideState.SEARCHING -> "Busca un lunar en el área circular"
-            CaptureValidationManager.GuideState.CENTERING -> "Centra el lunar en el círculo"
-            CaptureValidationManager.GuideState.TOO_FAR -> "Acércate más al lunar"
-            CaptureValidationManager.GuideState.TOO_CLOSE -> "Aléjate un poco del lunar"
-            CaptureValidationManager.GuideState.POOR_LIGHTING -> "Mejora la iluminación"
-            CaptureValidationManager.GuideState.BLURRY -> "Mantén firme la cámara"
-            CaptureValidationManager.GuideState.READY -> "¡Listo para capturar!"
+            GuideState.SEARCHING -> "Busca un lunar en el área circular"
+            GuideState.CENTERING -> "Centra el lunar en el círculo"
+            GuideState.POOR_LIGHTING -> "Mejora la iluminación"
+            GuideState.READY -> "¡Listo para capturar!"
         }
     }
     override fun onDetachedFromWindow() {
