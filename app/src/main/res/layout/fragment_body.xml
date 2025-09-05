@@ -75,6 +75,52 @@
 
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Disclaimer médico compacto -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_medical_disclaimer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                style="@style/Widget.SkinCare_TFM.Card"
+                app:cardBackgroundColor="?attr/colorSecondaryContainer"
+                app:strokeColor="?attr/colorSecondary"
+                app:strokeWidth="1dp"
+                app:layout_constraintTop_toBottomOf="@id/card_info"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="12dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/medical_disclaimer_short"
+                        android:textSize="12sp"
+                        android:textColor="?attr/colorOnSecondaryContainer"
+                        android:layout_marginEnd="8dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/disclaimerInfoButtonBody"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:text="Info"
+                        android:textSize="10sp"
+                        android:minWidth="48dp"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        app:strokeColor="?attr/colorOnSecondaryContainer"
+                        app:strokeWidth="1dp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Contenedor del cuerpo -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_body_container"
@@ -83,11 +129,11 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="16dp"
                 style="@style/Widget.SkinCare_TFM.Card"
-                app:layout_constraintTop_toBottomOf="@id/card_info"
+                app:layout_constraintTop_toBottomOf="@id/card_medical_disclaimer"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintHeight_percent="0.77">
+                app:layout_constraintHeight_percent="0.70">
 
                 <FrameLayout
                     android:layout_width="match_parent"

@@ -19,6 +19,7 @@ class FirebaseDataManager {
     private val USERS_COLLECTION = "users"
     private val MOLES_SUBCOLLECTION = "moles"
     private val USER_SETTINGS_SUBCOLLECTION = "settings"
+
     suspend fun saveImageLocally(context: Context, imagePath: String): String = suspendCoroutine { continuation ->
         try {
             val userId = auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado")
@@ -35,13 +36,15 @@ class FirebaseDataManager {
             val relativePath = "mole_images/$userId/$imageName"
             continuation.resume(relativePath)
         } catch (e: Exception) {
-            Log.e(TAG, "Error al guardar imagen localmente: ${e.message}")
+            Log.e(TAG, "Error al guardar la imagen localmente: ${e.message}")
             continuation.resumeWithException(e)
         }
     }
+
     fun getFullImagePath(context: Context, relativePath: String): String {
         return File(context.filesDir, relativePath).absolutePath
     }
+
     suspend fun getMolesForBodyPart(bodyPartColorCode: String): List<MoleData> = suspendCoroutine { continuation ->
         val userId = auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado")
         firestore.collection(USERS_COLLECTION)

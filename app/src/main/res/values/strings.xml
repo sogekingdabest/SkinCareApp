@@ -350,4 +350,16 @@
     <string name="password_reset_email_sent">Email para reestablecer la contraseña enviado.</string>
     <string name="error_password_reset_failed">No se ha podido enviar el email para reestablecer la contraseña.</string>
 
+    <!-- Disclaimer médico -->
+    <string name="medical_disclaimer_title">⚠️ Aviso Importante</string>
+    <string name="medical_disclaimer_content">Los resultados obtenidos en los análisis son únicamente informativos y NO sustituyen el criterio clínico de un profesional médico. Esta aplicación utiliza inteligencia artificial como herramienta de apoyo, pero no constituye un diagnóstico médico.\n\nSiempre consulte con un dermatólogo o médico especialista para una evaluación profesional, especialmente si observa cambios en sus lunares o tiene preocupaciones sobre su piel.</string>
+    <string name="medical_disclaimer_short">⚠️ Los resultados obtenidos en los análisis son únicamente informativos y NO sustituyen el criterio clínico de un profesional médico.</string>
+    <string name="medical_disclaimer_button_understood">Entendido</string>
+    <string name="medical_disclaimer_button_more_info">Más información</string>
+    <string name="medical_disclaimer_first_time_title">Bienvenido a SkinCare AI</string>
+    <string name="medical_disclaimer_first_time_message">Antes de comenzar, es importante que entiendas que esta aplicación es una herramienta de apoyo y no reemplaza la consulta médica profesional.</string>
+    <string name="medical_disclaimer_button_exit">Salir</string>
+    <string name="medical_disclaimer_button_accept">Acepto y Continúo</string>
+    <string name="medical_disclaimer_exit_confirmation">¿Estás seguro de que quieres salir? Debes aceptar el aviso médico para usar la aplicación.</string>
+
 </resources>
