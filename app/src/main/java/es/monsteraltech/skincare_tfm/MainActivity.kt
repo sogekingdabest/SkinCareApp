@@ -16,6 +16,7 @@ import es.monsteraltech.skincare_tfm.databinding.ActivityMainBinding
 import es.monsteraltech.skincare_tfm.fragments.AccountFragment
 import es.monsteraltech.skincare_tfm.fragments.MyBodyFragment
 import es.monsteraltech.skincare_tfm.login.LoginActivity
+import es.monsteraltech.skincare_tfm.utils.MedicalDisclaimerHelper
 import es.monsteraltech.skincare_tfm.utils.ThemeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var themeManager: ThemeManager
     private lateinit var sessionManager: SessionManager
     private lateinit var firebaseDataManager: FirebaseDataManager
+    private lateinit var disclaimerHelper: MedicalDisclaimerHelper
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val startTime = System.currentTimeMillis()
@@ -70,7 +72,10 @@ class MainActivity : AppCompatActivity() {
         }
         val elapsedTime = System.currentTimeMillis() - startTime
         Log.d("MainActivity", "MainActivity inicializada en ${elapsedTime}ms")
-        checkPreloadedData()
+
+        disclaimerHelper.showInitialDisclaimerIfNeeded(this) {
+            checkPreloadedData()
+        }
     }
     private fun openFragment(fragment: Fragment) {
         val transaction = supportFragmentManager.beginTransaction()
@@ -85,6 +90,7 @@ class MainActivity : AppCompatActivity() {
             themeManager.initialize(userProfileManager)
             sessionManager = SessionManager.getInstance(this)
             firebaseDataManager = FirebaseDataManager()
+            disclaimerHelper = MedicalDisclaimerHelper(this)
             Log.d("MainActivity", "Managers inicializados correctamente")
         } catch (e: Exception) {
             Log.e("MainActivity", "Error al inicializar managers: ${e.message}", e)

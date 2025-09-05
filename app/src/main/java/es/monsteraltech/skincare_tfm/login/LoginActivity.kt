@@ -59,10 +59,12 @@ class LoginActivity : AppCompatActivity() {
         googleSignInButton = findViewById(R.id.googleSignInButton)
         emailEditText.editText?.setText(email)
         passwordEditText.editText?.setText(password)
+
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
+
         googleSignInClient = GoogleSignIn.getClient(this, gso)
         loginButton.setOnClickListener {
             val email = emailEditText.editText?.text.toString()

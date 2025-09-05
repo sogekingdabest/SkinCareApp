@@ -78,6 +78,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
         HIGH,
         VERY_HIGH
     }
+
     fun analyzeMole(
             bitmap: Bitmap,
             previousBitmap: Bitmap? = null,

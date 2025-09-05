@@ -93,6 +93,7 @@ class MoleRepository {
                     Result.failure(e)
                 }
             }
+
     private suspend fun compressImage(context: Context, imageFile: File): File {
         return Compressor.compress(context, imageFile) {
             resolution(1024, 1024)
@@ -101,6 +102,7 @@ class MoleRepository {
             size(512_000)
         }
     }
+
     suspend fun getMoleById(userId: String, moleId: String): Result<MoleData> =
             withContext(Dispatchers.IO) {
                 try {

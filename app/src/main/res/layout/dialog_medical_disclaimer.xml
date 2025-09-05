@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:maxHeight="550dp">
+
+    <!-- Título del diálogo -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/medical_disclaimer_title"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="?attr/colorError"
+        android:textAlignment="center"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Contenido scrolleable con altura limitada -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:maxHeight="400dp"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Contenido principal -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/medical_disclaimer_content"
+                android:textSize="14sp"
+                android:lineSpacingExtra="3dp"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Información adicional detallada -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Información adicional importante:"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorPrimary"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="• Esta aplicación utiliza algoritmos de inteligencia artificial y criterios ABCDE como herramientas de apoyo.\n\n• Los resultados pueden tener falsos positivos o negativos.\n\n• Ninguna tecnología puede reemplazar la experiencia y conocimiento de un profesional médico.\n\n• Ante cualquier duda o cambio en sus lunares, consulte inmediatamente con un dermatólogo.\n\n• El autoexamen regular es importante, pero debe complementarse con revisiones médicas periódicas."
+                android:textSize="13sp"
+                android:lineSpacingExtra="2dp"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Cuándo consultar urgentemente -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="?attr/colorErrorContainer"
+                app:strokeColor="?attr/colorError"
+                app:strokeWidth="1dp"
+                app:cardCornerRadius="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🚨 Consulte URGENTEMENTE si observa:"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnErrorContainer"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="• Cambios rápidos en tamaño, color o forma\n• Sangrado, picor o dolor en un lunar\n• Aparición de nuevos lunares asimétricos\n• Lunares con múltiples colores\n• Cualquier lunar que le genere preocupación"
+                        android:textSize="12sp"
+                        android:textColor="?attr/colorOnErrorContainer"
+                        android:lineSpacingExtra="2dp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Recordatorio final -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="?attr/colorSecondaryContainer"
+                app:strokeColor="?attr/colorSecondary"
+                app:strokeWidth="1dp"
+                app:cardCornerRadius="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="💡 Recuerde:"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSecondaryContainer"
+                        android:layout_marginBottom="6dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Esta app es una herramienta de apoyo para el autoexamen, pero la evaluación profesional es siempre necesaria para un diagnóstico definitivo."
+                        android:textSize="12sp"
+                        android:textColor="?attr/colorOnSecondaryContainer"
+                        android:lineSpacingExtra="2dp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+    <!-- Separador visual -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutline"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Contenedor de botones fijo en la parte inferior -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:paddingTop="8dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/disclaimerCancelButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginEnd="12dp"
+            android:text="@string/medical_disclaimer_button_exit"
+            android:textSize="14sp"
+            android:minWidth="90dp"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            app:cornerRadius="24dp"
+            app:strokeColor="?attr/colorError"
+            app:strokeWidth="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/disclaimerUnderstoodButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="@string/medical_disclaimer_button_accept"
+            android:textSize="14sp"
+            android:minWidth="140dp"
+            app:cornerRadius="24dp"
+            app:backgroundTint="?attr/colorPrimary" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -22,6 +22,7 @@ import es.monsteraltech.skincare_tfm.body.mole.model.MoleData
 import es.monsteraltech.skincare_tfm.body.mole.repository.MoleRepository
 import es.monsteraltech.skincare_tfm.body.mole.util.RiskLevelTranslator
 import es.monsteraltech.skincare_tfm.databinding.ActivityAnalysisResultEnhancedBinding
+import es.monsteraltech.skincare_tfm.utils.MedicalDisclaimerHelper
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -40,6 +41,7 @@ class AnalysisResultActivity : AppCompatActivity() {
     private var analysisResult: MelanomaAIDetector.CombinedAnalysisResult? = null
     private val moleRepository = MoleRepository()
     private val auth = FirebaseAuth.getInstance()
+    private lateinit var disclaimerHelper: MedicalDisclaimerHelper
     private val bodyPartToColorMap = mapOf(
         "Cabeza" to "#FF000000",
         "Brazo derecho" to "#FFED1C24",
@@ -76,6 +78,8 @@ class AnalysisResultActivity : AppCompatActivity() {
         }
     }
     private fun setupUI() {
+        disclaimerHelper = MedicalDisclaimerHelper(this)
+        
         explanationAdapter = ExplanationAdapter()
         binding.explanationsRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@AnalysisResultActivity)
@@ -94,6 +98,11 @@ class AnalysisResultActivity : AppCompatActivity() {
         binding.infoButton.setOnClickListener {
             showABCDEInfo()
         }
+
+        binding.disclaimerInfoButton.setOnClickListener {
+            disclaimerHelper.showInformationalDisclaimer(this)
+        }
+        
         setupBodyPartSpinner()
         setupUserInputSection()
     }
