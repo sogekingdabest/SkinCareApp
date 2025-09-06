@@ -34,6 +34,7 @@ class MedicalDisclaimerHelper(private val context: Context) {
     fun hasDisclaimerBeenShown(): Boolean {
         return sharedPrefs.getBoolean(KEY_DISCLAIMER_SHOWN, false)
     }
+
     fun showDisclaimerDialog(
             activity: FragmentActivity,
             isInformational: Boolean = false,
