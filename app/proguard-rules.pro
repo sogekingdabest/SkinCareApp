@@ -20,7 +20,7 @@
 -keep class com.google.gson.reflect.TypeToken { *; }
 -keep class * extends com.google.gson.reflect.TypeToken
 
-# --- Modelos serializados (Gson y Firestore toObject) ---
+# --- Modelos serializados (Gson y lectores de formatos legados) ---
 # Estas clases se (de)serializan por reflexión: conservar nombres de campos.
 -keep class com.monsteraltech.skincare.body.mole.model.** { *; }
 -keep class com.monsteraltech.skincare.data.SessionData { *; }

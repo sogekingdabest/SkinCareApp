@@ -26,7 +26,7 @@ data class UserAbcdeInput(
         return total
     }
 
-    /** Claves de metadatos con las que se persiste en Firestore. */
+    /** Claves de metadatos con las que se persiste en el historial local. */
     fun toMetadataMap(): Map<String, Any> = mapOf(
         "userAsymmetry" to asymmetry,
         "userBorder" to border,

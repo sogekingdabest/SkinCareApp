@@ -7,7 +7,7 @@ import com.monsteraltech.skincare.body.mole.repository.MoleRepository
 import javax.inject.Inject
 
 /**
- * Adaptador de lectura para el esquema actual de Firestore.
+ * Adaptador de lectura para el resumen actual almacenado en Room.
  *
  * Permite introducir el dominio de observaciones sin migrar todavía los datos.
  * La imagen vigente de [MoleData] se interpreta como la última observación.

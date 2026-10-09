@@ -52,8 +52,8 @@ captures/
 
 # Keystore files
 # Uncomment the following lines if you do not want to check your keystore files in.
-#*.jks
-#*.keystore
+*.jks
+*.keystore
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
@@ -347,6 +347,4 @@ $RECYCLE.BIN/
 /graphify-out/
 
 # Artefactos locales de entrenamiento y ejecuciones históricas.
-/NoteBook-Model-AI/*.keras
-/NoteBook-Model-AI/*.tflite
-/NoteBook-Model-AI/local-runs/
+/NoteBook-Model-AI/

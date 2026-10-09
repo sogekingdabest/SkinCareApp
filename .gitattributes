@@ -1,2 +1,16 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+*.kt text eol=lf
+*.gradle text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+gradlew text eol=lf
+*.bat text eol=crlf
+
+# Recursos externos de asistencia, separados del código de la aplicación.
+.agents/** linguist-vendored
+.claude/** linguist-vendored
+docs/archive/**/*.ipynb linguist-vendored
