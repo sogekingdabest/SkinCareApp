@@ -345,3 +345,8 @@ $RECYCLE.BIN/
 /.android-user-home/
 /app/.idea/
 /graphify-out/
+
+# Artefactos locales de entrenamiento y ejecuciones históricas.
+/NoteBook-Model-AI/*.keras
+/NoteBook-Model-AI/*.tflite
+/NoteBook-Model-AI/local-runs/
