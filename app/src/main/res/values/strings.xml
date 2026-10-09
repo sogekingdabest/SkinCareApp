@@ -100,6 +100,26 @@
     <string name="guidance_blurry">Imagen borrosa - mantén firme la cámara</string>
     <string name="guidance_ready">¡Listo para capturar!</string>
     <string name="guidance_capturing">Capturando imagen...</string>
+    <string name="guidance_analysis_error">Error en el análisis</string>
+    <string name="guidance_capture_model_unavailable">Validador experimental no disponible</string>
+
+    <!-- Login con Google (Credential Manager) -->
+    <string name="login_google_button">Continuar con Google</string>
+    <string name="login_local_profile_button">Usar SkinCare sin cuenta</string>
+    <string name="login_choose_access_mode">Elige cómo quieres utilizar la aplicación</string>
+    <string name="login_local_profile_description">Opción recomendada: tus fotografías y datos permanecen en este dispositivo.</string>
+    <string name="login_account_options">O inicia sesión con una cuenta</string>
+    <string name="login_loading">Accediendo de forma segura…</string>
+    <string name="local_profile_name">Perfil local</string>
+    <string name="local_profile_description">Tus datos permanecen únicamente en este dispositivo</string>
+    <string name="login_no_google_accounts">No hay cuentas de Google disponibles en este dispositivo</string>
+
+    <!-- Indicadores compactos de calidad en la pantalla de cámara -->
+    <string name="quality_light_ok">Luz ✓</string>
+    <string name="quality_light_bad">Luz ✗</string>
+    <string name="quality_mole_ok">Lunar ✓</string>
+    <string name="quality_mole_partial">Lunar ~</string>
+    <string name="quality_mole_bad">Lunar ✗</string>
 
     <!-- Descripciones de accesibilidad para guías -->
     <string name="guidance_settings_description">Configuración de guías de captura</string>
@@ -186,8 +206,10 @@
     <string name="notification_permission_title">Permisos de Notificaciones</string>
     <string name="notification_permission_message">Para recibir recordatorios de revisión de lunares, necesitas activar los permisos de notificaciones.</string>
     <string name="notification_permission_denied">Sin permisos de notificaciones no se pueden activar los recordatorios</string>
-    <string name="settings_dark_mode">Modo Oscuro</string>
-    <string name="settings_dark_mode_description">Usar tema oscuro en la aplicación</string>
+    <string name="settings_dark_mode">Forzar modo oscuro</string>
+    <string name="settings_dark_mode_description">Desactivado, la aplicación sigue el tema del sistema</string>
+    <string name="settings_capture_validity">Validador inteligente de captura (experimental)</string>
+    <string name="settings_capture_validity_description">Comprueba en el dispositivo si la cámara apunta a una lesión cutánea. Desactívalo para usar solo el guiado clásico.</string>
     <string name="settings_language">Idioma</string>
     <string name="settings_language_description">Idioma de la aplicación</string>
     <string name="settings_saved">Configuraciones guardadas</string>
@@ -237,6 +259,7 @@
 
     <!-- Strings para menú principal -->
     <string name="menu_logout">Cerrar Sesión</string>
+    <string name="logout_loading">Cerrando sesión…</string>
 
     <!-- Strings para selector de lunares -->
     <string name="mole_selector_title">Seleccionar Lunar Existente</string>
@@ -312,6 +335,19 @@
     <string name="user_abcde_description">Introduce tus propios valores observados:</string>
     <string name="user_abcde_add_button">Añadir</string>
     <string name="user_abcde_hide_button">Ocultar</string>
+    <string name="user_abcde_save">Guardar</string>
+    <string name="user_abcde_saving">Guardando…</string>
+
+    <!-- Pantalla de resultado de análisis -->
+    <string name="analysis_image_load_error">No se pudo cargar la imagen</string>
+    <string name="analysis_cancelled">Análisis cancelado</string>
+    <string name="save_validation_login">Por favor, inicia sesión para guardar</string>
+    <string name="save_validation_title">Por favor, añade un título</string>
+    <string name="save_validation_body_part">Por favor, selecciona una parte del cuerpo</string>
+    <string name="save_success">Análisis guardado correctamente</string>
+    <string name="save_associated_success">Análisis asociado al lunar \'%1$s\' correctamente</string>
+    <string name="save_error">Error al guardar: %1$s</string>
+    <string name="save_as_new_mole">Guardar como nuevo lunar</string>
     <string name="user_abcde_comparison_title">Comparación de Resultados</string>
     <string name="user_abcde_ai_label">ABCDE (App)</string>
     <string name="user_abcde_user_label">Tus Valores</string>
@@ -331,7 +367,7 @@
 
     <!-- Información detallada de criterios ABCDE -->
     <string name="abcde_asymmetry_info_title">A - Asimetría (0-2 puntos)</string>
-    <string name="abcde_asymmetry_info_content">Evalúa si el lunar es simétrico al dividirlo por la mitad:\n\n• 0 puntos: Lunar completamente simétrico\n• 1 punto: Asimetría leve (diferencia &lt; 20%)\n• 2 puntos: Asimetría marcada (diferencia ≥ 20%)\n\nUn lunar benigno típico es simétrico, mientras que los malignos tienden a ser asimétricos.</string>
+    <string name="abcde_asymmetry_info_content" formatted="false">Evalúa si el lunar es simétrico al dividirlo por la mitad:\n\n• 0 puntos: Lunar completamente simétrico\n• 1 punto: Asimetría leve (diferencia &lt; 20%)\n• 2 puntos: Asimetría marcada (diferencia ≥ 20%)\n\nUn lunar benigno típico es simétrico, mientras que los malignos tienden a ser asimétricos.</string>
 
     <string name="abcde_border_info_title">B - Bordes (0-8 puntos)</string>
     <string name="abcde_border_info_content">Evalúa la regularidad de los bordes del lunar:\n\n• 0-2 puntos: Bordes lisos y bien definidos\n• 3-5 puntos: Bordes ligeramente irregulares\n• 6-8 puntos: Bordes muy irregulares, dentados o borrosos\n\nLos lunares benignos tienen bordes regulares, mientras que los malignos presentan bordes irregulares y mal definidos.</string>
@@ -343,10 +379,12 @@
     <string name="abcde_diameter_info_content">Evalúa el tamaño del lunar:\n\n• 0 puntos: &lt; 6mm (tamaño de borrador de lápiz)\n• 2 puntos: 6-10mm\n• 3 puntos: 10-15mm\n• 5 puntos: &gt; 15mm\n\nLunares mayores a 6mm requieren mayor atención, especialmente si han crecido recientemente.</string>
 
     <string name="abcde_evolution_info_title">E - Evolución (0-3 puntos)</string>
-    <string name="abcde_evolution_info_content">Evalúa cambios en el tiempo:\n\n• 0 puntos: Sin cambios significativos\n• 1 punto: Cambios leves (&lt; 50%)\n• 2 puntos: Cambios moderados (50-80%)\n• 3 puntos: Cambios significativos (&gt; 80%)\n\nSe consideran cambios en:\n• Tamaño • Color • Forma • Textura • Síntomas\n\nCualquier cambio en un lunar existente es motivo de consulta médica.</string>
+    <string name="abcde_evolution_info_content" formatted="false">Evalúa cambios en el tiempo:\n\n• 0 puntos: Sin cambios significativos\n• 1 punto: Cambios leves (&lt; 50%)\n• 2 puntos: Cambios moderados (50-80%)\n• 3 puntos: Cambios significativos (&gt; 80%)\n\nSe consideran cambios en:\n• Tamaño • Color • Forma • Textura • Síntomas\n\nCualquier cambio en un lunar existente es motivo de consulta médica.</string>
     <string name="error_empty_fields">Es necesario rellenar todos los campos.</string>
     <string name="error_password_mismatch">Las contraseñas no coinciden.</string>
     <string name="error_invalid_email">Correo no valido.</string>
+    <string name="error_email_mismatch">Los correos no coinciden.</string>
+    <string name="error_email_in_use">Ya existe una cuenta con ese correo.</string>
     <string name="password_reset_email_sent">Email para reestablecer la contraseña enviado.</string>
     <string name="error_password_reset_failed">No se ha podido enviar el email para reestablecer la contraseña.</string>
 
@@ -361,5 +399,29 @@
     <string name="medical_disclaimer_button_exit">Salir</string>
     <string name="medical_disclaimer_button_accept">Acepto y Continúo</string>
     <string name="medical_disclaimer_exit_confirmation">¿Estás seguro de que quieres salir? Debes aceptar el aviso médico para usar la aplicación.</string>
+
+    <string name="capture_follow_up">Añadir nueva observación</string>
+    <string name="save_follow_up">Guardar nueva observación</string>
+
+    <string name="backup_title">Copia de seguridad cifrada</string>
+    <string name="backup_account_description">Exporta o restaura tus imágenes y análisis de forma privada</string>
+    <string name="backup_description">La copia incluye los lunares, el historial, las fotografías y las preferencias de esta cuenta. Se cifra en el dispositivo antes de guardarse.</string>
+    <string name="backup_export_section_title">Crear una copia</string>
+    <string name="backup_import_section_title">Restaurar una copia</string>
+    <string name="backup_import_section_description">Primero elige el archivo. Después te pediremos la contraseña con la que se cifró esa copia.</string>
+    <string name="backup_password">Contraseña de la copia</string>
+    <string name="backup_password_confirmation">Repetir contraseña (solo al exportar)</string>
+    <string name="backup_password_warning">La contraseña no se guarda ni puede recuperarse. Necesitarás exactamente la misma para restaurar la copia.</string>
+    <string name="backup_password_required">Introduce la contraseña de la copia</string>
+    <string name="backup_password_too_short">Usa al menos %1$d caracteres</string>
+    <string name="backup_passwords_do_not_match">Las contraseñas no coinciden</string>
+    <string name="backup_export_action">Crear copia cifrada</string>
+    <string name="backup_import_action">Restaurar copia</string>
+    <string name="backup_import_confirm_title">Restaurar copia cifrada</string>
+    <string name="backup_import_confirm_message">Los registros de la copia se fusionarán con los datos locales de la cuenta activa. No se eliminarán los registros que ya tengas.</string>
+    <string name="backup_export_success">Copia creada: %1$d lunares, %2$d análisis y %3$d imágenes.</string>
+    <string name="backup_import_success">Copia restaurada: %1$d lunares, %2$d análisis y %3$d imágenes.</string>
+    <string name="backup_export_error">No se pudo crear la copia cifrada.</string>
+    <string name="backup_import_error">No se pudo restaurar. Comprueba la contraseña y que el archivo no esté dañado.</string>
 
 </resources>

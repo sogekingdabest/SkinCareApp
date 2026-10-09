@@ -116,6 +116,17 @@
 
             </com.google.android.material.card.MaterialCardView>
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/captureFollowUpButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:text="@string/capture_follow_up"
+                android:visibility="gone"
+                app:icon="@drawable/ic_camera"
+                app:iconGravity="textStart" />
+
             <!-- Estado de carga -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/loadingCard"
@@ -153,7 +164,7 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Estado vacío -->
-            <es.monsteraltech.skincare_tfm.body.mole.view.EmptyStateView
+            <com.monsteraltech.skincare.body.mole.view.EmptyStateView
                 android:id="@+id/emptyStateView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

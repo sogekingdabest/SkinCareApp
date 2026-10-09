@@ -268,6 +268,8 @@ cmake-build-*/
 
 # Package Files #
 *.jar
+# El wrapper de Gradle sí debe versionarse (la excepción debe ir DESPUÉS de *.jar para tener efecto)
+!/gradle/wrapper/gradle-wrapper.jar
 *.nar
 *.zip
 *.tar.gz
@@ -339,3 +341,7 @@ $RECYCLE.BIN/
 # End of https://www.gitignore.io/api/java,linux,macos,windows,android,intellij,androidstudio
 /opencv
 /.idea
+/.gradle-user-home/
+/.android-user-home/
+/app/.idea/
+/graphify-out/

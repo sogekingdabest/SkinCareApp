@@ -87,7 +87,7 @@
         app:elevation="@dimen/guidance_fab_elevation" />
 
     <!-- Controles de zoom digital -->
-    <es.monsteraltech.skincare_tfm.camera.ZoomControlsView
+    <com.monsteraltech.skincare.camera.ZoomControlsView
         android:id="@+id/zoom_controls_view"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

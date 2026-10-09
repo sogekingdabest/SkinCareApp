@@ -4,26 +4,21 @@
 
     <uses-feature android:name="android.hardware.camera.any" />
 
+    <!-- La app solo escribe en almacenamiento propio (filesDir / externalMediaDirs),
+         que no requiere permisos de almacenamiento desde API 29.
+         Los recordatorios usan WorkManager, que no necesita alarmas exactas. -->
     <uses-permission
         android:name="android.permission.INTERNET"
         android:required="true" />
     <uses-permission
         android:name="android.permission.CAMERA"
         android:required="true" />
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:required="true" />
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:required="true"
-        tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
-        android:allowBackup="true"
+        android:name=".SkinCareApplication"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -31,6 +26,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SkinCare_TFM"
         tools:targetApi="31">
+        <activity
+            android:name=".backup.BackupActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SkinCare_TFM" />
         <activity
             android:name=".login.ForgotPasswordActivity"
             android:exported="false"
@@ -103,10 +102,6 @@
             android:name=".login.RegisterActivity"
             android:exported="false"
             android:theme="@style/Theme.SkinCare_TFM" />
-
-        <receiver
-            android:name=".notifications.NotificationReceiver"
-            android:exported="false" />
 
         <meta-data
             android:name="com.google.android.gms.version"

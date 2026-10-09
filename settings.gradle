@@ -14,4 +14,3 @@ dependencyResolutionManagement {
 }
 rootProject.name = "SkinCare_TFM"
 include ':app'
-include ':opencv'
