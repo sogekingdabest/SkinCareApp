@@ -6,6 +6,7 @@ import androidx.room.withTransaction
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import com.google.gson.Gson
 import com.monsteraltech.skincare.body.mole.data.local.AnalysisEntity
+import com.monsteraltech.skincare.body.mole.data.local.LegacyObservation
 import com.monsteraltech.skincare.body.mole.data.local.MoleEntity
 import com.monsteraltech.skincare.body.mole.data.local.SkinCareDatabase
 import com.monsteraltech.skincare.data.image.PrivateImageStore
@@ -42,8 +43,9 @@ class LocalBackupService @Inject constructor(
             try {
                 runCatching {
                     val userId = requireCurrentUserId()
-                    val moles = dao.getAllMoles(userId)
-                    val analyses = dao.getAllAnalyses(userId)
+                    val (moles, analyses) = database.withTransaction {
+                        dao.getAllMoles(userId) to dao.getAllAnalyses(userId)
+                    }
                     val imageEntries = buildImageEntries(moles, analyses)
                     val payload = BackupPayload(
                         schemaVersion = PAYLOAD_VERSION,
@@ -80,16 +82,18 @@ class LocalBackupService @Inject constructor(
                     val userId = requireCurrentUserId()
                     val extracted = decryptAndExtract(uri, password, stagingDirectory)
                     validatePayload(extracted.payload)
+                    val payload = normalizeLegacyPayload(extracted.payload)
+                    validatePayload(payload)
 
                     val imagePathMap = copyImagesToPrivateStorage(
                         userId = userId,
-                        payload = extracted.payload,
+                        payload = payload,
                         stagedImages = extracted.stagedImages,
                         createdImages = createdImages
                     )
                     val restored = remapRecordsForCurrentUser(
                         userId,
-                        extracted.payload,
+                        payload,
                         imagePathMap
                     )
 
@@ -97,6 +101,7 @@ class LocalBackupService @Inject constructor(
                         database.withTransaction {
                             dao.upsertMoles(restored.moles)
                             dao.upsertAnalyses(restored.analyses)
+                            dao.materializeLegacyCurrentAnalyses()
                         }
                     } catch (error: Exception) {
                         createdImages.forEach { it.delete() }
@@ -211,7 +216,7 @@ class LocalBackupService @Inject constructor(
         data.flush()
     }
 
-    private suspend fun remapRecordsForCurrentUser(
+    internal suspend fun remapRecordsForCurrentUser(
         userId: String,
         payload: BackupPayload,
         imagePathMap: Map<String, String>
@@ -222,21 +227,24 @@ class LocalBackupService @Inject constructor(
             moleIdMap[mole.id] =
                 if (owner != null && owner != userId) UUID.randomUUID().toString() else mole.id
         }
+        val analysisIdMap = mutableMapOf<String, String>()
+        payload.analyses.forEach { analysis ->
+            val owner = dao.getAnalysisOwner(analysis.id)
+            val targetMoleId = moleIdMap.getValue(analysis.moleId)
+            val collision = owner != null && (owner != userId || dao.getAnalysis(userId, targetMoleId, analysis.id) == null)
+            analysisIdMap[analysis.id] = if (collision) UUID.randomUUID().toString() else analysis.id
+        }
         val moles = payload.moles.map { mole ->
             mole.copy(
                 id = moleIdMap.getValue(mole.id),
                 userId = userId,
-                imagePath = restoredImagePath(mole.imagePath, imagePathMap)
+                imagePath = restoredImagePath(mole.imagePath, imagePathMap),
+                currentAnalysisId = mole.currentAnalysisId?.let(analysisIdMap::getValue)
             )
         }
         val analyses = payload.analyses.map { analysis ->
-            val owner = dao.getAnalysisOwner(analysis.id)
             analysis.copy(
-                id = if (owner != null && owner != userId) {
-                    UUID.randomUUID().toString()
-                } else {
-                    analysis.id
-                },
+                id = analysisIdMap.getValue(analysis.id),
                 moleId = moleIdMap.getValue(analysis.moleId),
                 userId = userId,
                 imagePath = restoredImagePath(analysis.imagePath, imagePathMap)
@@ -245,8 +253,8 @@ class LocalBackupService @Inject constructor(
         return RestoredRecords(moles, analyses)
     }
 
-    private fun validatePayload(payload: BackupPayload) {
-        if (payload.schemaVersion != PAYLOAD_VERSION) {
+    internal fun validatePayload(payload: BackupPayload) {
+        if (payload.schemaVersion !in 1..PAYLOAD_VERSION) {
             throw InvalidBackupException(
                 "Versión de datos no compatible: ${payload.schemaVersion}"
             )
@@ -262,9 +270,31 @@ class LocalBackupService @Inject constructor(
         require(payload.analyses.all { it.id.isNotBlank() && it.moleId in moleIds }) {
             "El historial contiene referencias no válidas"
         }
+        require(payload.analyses.map { it.id }.toSet().size == payload.analyses.size) {
+            "La copia contiene observaciones duplicadas"
+        }
+        if (payload.schemaVersion >= 2) {
+            val analyses = payload.analyses.associateBy { it.id }
+            require(payload.moles.all { mole ->
+                val current = mole.currentAnalysisId
+                if (current == null) mole.analysisCount == 0 && mole.analysisResult.isBlank()
+                else analyses[current]?.moleId == mole.id
+            }) { "La copia contiene referencias a observaciones actuales no válidas" }
+        }
         require(payload.imageEntries.values.all(::isValidImageEntry)) {
             "La copia contiene rutas de imagen no válidas"
         }
+    }
+
+    internal fun normalizeLegacyPayload(payload: BackupPayload): BackupPayload {
+        if (payload.schemaVersion != 1) return payload
+        val current = payload.moles.filter { it.analysisCount > 0 || it.analysisResult.isNotBlank() }
+            .map(LegacyObservation::snapshot)
+        val existingIds = payload.analyses.mapTo(mutableSetOf()) { it.id }
+        val analyses = payload.analyses + current.filter { it.id !in existingIds }
+        val currentIds = current.associate { it.moleId to it.id }
+        return payload.copy(schemaVersion = 2,
+            moles = payload.moles.map { it.copy(currentAnalysisId = currentIds[it.id]) }, analyses = analyses)
     }
 
     private fun buildImageEntries(
@@ -336,7 +366,7 @@ class LocalBackupService @Inject constructor(
         val stagedImages: Map<String, File>
     )
 
-    private data class RestoredRecords(
+    internal data class RestoredRecords(
         val moles: List<MoleEntity>,
         val analyses: List<AnalysisEntity>
     )
@@ -345,7 +375,7 @@ class LocalBackupService @Inject constructor(
         const val MIME_TYPE = "application/octet-stream"
         const val FILE_EXTENSION = "skb"
         const val MIN_PASSWORD_LENGTH = EncryptedBackupCodec.MIN_PASSWORD_LENGTH
-        private const val PAYLOAD_VERSION = 1
+        private const val PAYLOAD_VERSION = 2
         private const val MAX_MOLES = 10_000
         private const val MAX_ANALYSES = 100_000
         private const val MAX_IMAGES = 100_000

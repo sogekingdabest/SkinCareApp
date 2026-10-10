@@ -50,6 +50,9 @@ android {
         // android.util.Log y similares devuelven valores por defecto en tests JVM
         unitTests.returnDefaultValues = true
     }
+    sourceSets {
+        androidTest.assets.srcDirs += files("$projectDir/schemas")
+    }
 }
 
 ksp {

@@ -8,10 +8,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import com.monsteraltech.skincare.body.mole.error.ErrorHandler
 import com.monsteraltech.skincare.body.mole.error.RetryManager
-import com.monsteraltech.skincare.body.mole.model.ABCDEScores
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import com.monsteraltech.skincare.body.mole.model.AnalysisDataConverter
-import com.monsteraltech.skincare.body.mole.model.MoleData
 import com.monsteraltech.skincare.body.mole.model.UserAbcdeInput
 import com.monsteraltech.skincare.body.mole.repository.MoleRepository
 import kotlinx.coroutines.channels.Channel
@@ -21,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -78,9 +77,9 @@ class MoleViewerViewModel @Inject constructor(
             args.historicalAnalysis != null ->
                 _uiState.value = UiState.Analysis(args.historicalAnalysis, args.analysisCount)
 
-            args.aiResult.isNotEmpty() -> displayFromAiResult(args)
-
             args.moleId.isNotEmpty() -> loadFromRepository(args.moleId)
+
+            args.aiResult.isNotEmpty() -> displayFromAiResult(args)
 
             else -> _uiState.value = UiState.NoAnalysis
         }
@@ -132,19 +131,18 @@ class MoleViewerViewModel @Inject constructor(
                     _events.trySend(Event.RetryAttempt(attempt, retryConfig.maxAttempts))
                 }
             ) {
-                moleRepository.getMoleById(userId, moleId)
+                moleRepository.getMoleWithCurrentAnalysis(userId, moleId)
             }
 
             isLoading = false
             retryResult.result
-                .onSuccess { moleData ->
+                .onSuccess { snapshot ->
                     if (retryResult.attemptsMade > 1) {
                         _events.trySend(Event.RetrySucceeded(retryResult.attemptsMade))
                     }
-                    _uiState.value = UiState.Analysis(
-                        data = analysisDataFrom(moleData),
-                        analysisCount = moleData.analysisCount
-                    )
+                    _uiState.value = snapshot.analysis?.let {
+                        UiState.Analysis(it, snapshot.mole.analysisCount)
+                    } ?: UiState.NoAnalysis
                 }
                 .onFailure { exception ->
                     if (retryResult.attemptsMade > 1) {
@@ -161,7 +159,8 @@ class MoleViewerViewModel @Inject constructor(
     fun saveUserValues(input: UserAbcdeInput) {
         val moleId = args?.moleId
         val userId = activeProfile.ownerId
-        if (userId == null || moleId.isNullOrEmpty()) {
+        val displayed = _uiState.value as? UiState.Analysis
+        if (userId == null || moleId.isNullOrEmpty() || displayed == null) {
             _events.trySend(Event.UserValuesSaveFailed)
             return
         }
@@ -171,15 +170,23 @@ class MoleViewerViewModel @Inject constructor(
             _isSavingUserValues.value = true
             try {
                 val result = moleRepository.updateMoleAnalysisMetadata(
-                    userId, moleId, input.toMetadataMap()
+                    userId, moleId, input.toMetadataMap(), displayed.data.id
                 )
                 if (result.isSuccess) {
                     _events.trySend(Event.UserValuesSaved)
                     // Recargar para mostrar la tarjeta de valores guardados.
-                    loadFromRepository(moleId)
+                    if (args?.historicalAnalysis != null) {
+                        _uiState.value = displayed.copy(data = displayed.data.copy(
+                            analysisMetadata = displayed.data.analysisMetadata + input.toMetadataMap()
+                        ))
+                    } else {
+                        loadFromRepository(moleId)
+                    }
                 } else {
                     _events.trySend(Event.UserValuesSaveFailed)
                 }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
             } catch (e: Exception) {
                 _events.trySend(Event.UserValuesSaveFailed)
             } finally {
@@ -188,27 +195,4 @@ class MoleViewerViewModel @Inject constructor(
         }
     }
 
-    private fun analysisDataFrom(moleData: MoleData): AnalysisData {
-        return AnalysisData(
-            id = "${moleData.id}_current",
-            moleId = moleData.id,
-            analysisResult = moleData.aiResult,
-            aiProbability = moleData.aiProbability?.toFloat() ?: 0f,
-            aiConfidence = moleData.aiConfidence?.toFloat() ?: 0f,
-            abcdeScores = ABCDEScores(
-                asymmetryScore = moleData.abcdeAsymmetry?.toFloat() ?: 0f,
-                borderScore = moleData.abcdeBorder?.toFloat() ?: 0f,
-                colorScore = moleData.abcdeColor?.toFloat() ?: 0f,
-                diameterScore = moleData.abcdeDiameter?.toFloat() ?: 0f,
-                evolutionScore = null,
-                totalScore = moleData.abcdeTotalScore?.toFloat() ?: 0f
-            ),
-            combinedScore = moleData.combinedScore?.toFloat() ?: 0f,
-            riskLevel = moleData.riskLevel,
-            recommendation = moleData.recommendation,
-            imageUrl = moleData.imageUrl,
-            createdAt = moleData.lastAnalysisDate ?: moleData.createdAt,
-            analysisMetadata = moleData.analysisMetadata
-        )
-    }
 }

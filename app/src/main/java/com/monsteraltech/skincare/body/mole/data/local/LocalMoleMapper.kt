@@ -38,7 +38,8 @@ internal class LocalMoleMapper(
         abcdeTotalScore = mole.abcdeTotalScore,
         recommendation = mole.recommendation,
         urgency = mole.urgency,
-        analysisMetadataJson = gson.toJson(mole.analysisMetadata)
+        analysisMetadataJson = gson.toJson(mole.analysisMetadata),
+        currentAnalysisId = mole.currentAnalysisId
     )
 
     fun toModel(entity: MoleEntity): MoleData = MoleData(
@@ -66,7 +67,8 @@ internal class LocalMoleMapper(
         abcdeTotalScore = entity.abcdeTotalScore,
         recommendation = entity.recommendation,
         urgency = entity.urgency,
-        analysisMetadata = metadataFromJson(entity.analysisMetadataJson)
+        analysisMetadata = metadataFromJson(entity.analysisMetadataJson),
+        currentAnalysisId = entity.currentAnalysisId
     )
 
     fun toEntity(analysis: AnalysisData, userId: String): AnalysisEntity = AnalysisEntity(
@@ -112,28 +114,6 @@ internal class LocalMoleMapper(
         imageUrl = entity.imagePath,
         createdAt = timestamp(entity.createdAtEpochMillis),
         analysisMetadata = metadataFromJson(entity.analysisMetadataJson)
-    )
-
-    fun currentAnalysis(mole: MoleEntity): AnalysisData = AnalysisData(
-        id = "${mole.id}_current",
-        moleId = mole.id,
-        description = mole.description,
-        analysisResult = mole.analysisResult,
-        aiProbability = mole.aiProbability?.toFloat() ?: 0f,
-        aiConfidence = mole.aiConfidence?.toFloat() ?: 0f,
-        abcdeScores = ABCDEScores(
-            asymmetryScore = mole.abcdeAsymmetry?.toFloat() ?: 0f,
-            borderScore = mole.abcdeBorder?.toFloat() ?: 0f,
-            colorScore = mole.abcdeColor?.toFloat() ?: 0f,
-            diameterScore = mole.abcdeDiameter?.toFloat() ?: 0f,
-            totalScore = mole.abcdeTotalScore?.toFloat() ?: 0f
-        ),
-        combinedScore = mole.combinedScore?.toFloat() ?: 0f,
-        riskLevel = mole.riskLevel,
-        recommendation = mole.recommendation,
-        imageUrl = mole.imagePath,
-        createdAt = timestamp(mole.lastAnalysisAtEpochMillis ?: mole.updatedAtEpochMillis),
-        analysisMetadata = metadataFromJson(mole.analysisMetadataJson)
     )
 
     private fun timestamp(epochMillis: Long): Timestamp = Timestamp(Date(epochMillis))

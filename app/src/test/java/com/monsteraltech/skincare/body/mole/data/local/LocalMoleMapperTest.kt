@@ -17,6 +17,7 @@ class LocalMoleMapperTest {
         val timestamp = Timestamp(Date(1_700_000_000_000L))
         val mole = MoleData(
             id = "mole-1",
+            currentAnalysisId = "observation-2",
             userId = "user-1",
             title = "Seguimiento",
             description = "Cambio reciente",
@@ -45,6 +46,7 @@ class LocalMoleMapperTest {
         val restored = mapper.toModel(mapper.toEntity(mole))
 
         assertEquals(mole.id, restored.id)
+        assertEquals(mole.currentAnalysisId, restored.currentAnalysisId)
         assertEquals(mole.imageUrl, restored.imageUrl)
         assertEquals(mole.aiProbability, restored.aiProbability)
         assertEquals(mole.abcdeTotalScore, restored.abcdeTotalScore)

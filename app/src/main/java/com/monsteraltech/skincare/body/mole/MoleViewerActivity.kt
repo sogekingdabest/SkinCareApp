@@ -254,9 +254,9 @@ class MoleViewerActivity : AppCompatActivity() {
     }
 
     private fun renderHistoryButton(analysisCount: Int) {
-        if (analysisCount > 1) {
+        if (analysisCount > 0 && args.moleId.isNotEmpty() && args.historicalAnalysis == null) {
             binding.viewHistoryButton.visibility = View.VISIBLE
-            binding.viewHistoryButton.text = "Ver Evolución (${analysisCount - 1} análisis)"
+            binding.viewHistoryButton.text = resources.getQuantityString(R.plurals.mole_observation_history, analysisCount, analysisCount)
         } else {
             binding.viewHistoryButton.visibility = View.GONE
         }

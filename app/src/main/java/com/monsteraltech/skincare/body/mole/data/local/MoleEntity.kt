@@ -36,5 +36,6 @@ data class MoleEntity(
     val abcdeTotalScore: Double?,
     val recommendation: String,
     val urgency: String,
-    val analysisMetadataJson: String
+    val analysisMetadataJson: String,
+    val currentAnalysisId: String? = null
 )

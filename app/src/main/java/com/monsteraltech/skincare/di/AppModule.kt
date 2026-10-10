@@ -14,10 +14,10 @@ import com.monsteraltech.skincare.analysis.comparison.LocalObservationComparison
 import com.monsteraltech.skincare.analysis.comparison.LesionPairRegistrationEngine
 import com.monsteraltech.skincare.analysis.comparison.ObservationComparisonPreparer
 import com.monsteraltech.skincare.analysis.comparison.OpenCvLesionPairRegistrationEngine
-import com.monsteraltech.skincare.body.mole.data.repository.LegacyMoleObservationRepository
+import com.monsteraltech.skincare.body.mole.data.repository.LocalMoleObservationRepository
+import com.monsteraltech.skincare.body.mole.data.local.ObservationMigration
 import com.monsteraltech.skincare.body.mole.data.local.SkinCareDatabase
 import com.monsteraltech.skincare.body.mole.domain.repository.MoleObservationRepository
-import com.monsteraltech.skincare.body.mole.repository.MoleRepository
 import com.monsteraltech.skincare.data.FirebaseDataManager
 import com.monsteraltech.skincare.data.SessionManager
 import com.monsteraltech.skincare.data.identity.ActiveProfile
@@ -53,12 +53,12 @@ object AppModule {
         context,
         SkinCareDatabase::class.java,
         "skincare_private.db"
-    ).build()
+    ).addMigrations(ObservationMigration.FROM_1_TO_2).build()
 
     @Provides
     @Singleton
     fun provideMoleObservationRepository(
-        repository: LegacyMoleObservationRepository
+        repository: LocalMoleObservationRepository
     ): MoleObservationRepository = repository
 
     @Provides

@@ -25,7 +25,8 @@ data class MoleData(
     val abcdeTotalScore: Double? = null,
     val recommendation: String = "",
     val urgency: String = "",
-    val analysisMetadata: Map<String, Any> = emptyMap()
+    val analysisMetadata: Map<String, Any> = emptyMap(),
+    val currentAnalysisId: String? = null
 ) {
     constructor() : this("", "", "", "", "", "", "", "", Timestamp.now(), Timestamp.now(), 0, null, null,
         null, null, "", null, null, null, null, null, null, "", "", emptyMap())
@@ -46,6 +47,7 @@ data class MoleData(
             "urgency" to urgency
         )
         lastAnalysisDate?.let { map["lastAnalysisDate"] = it }
+        currentAnalysisId?.let { map["currentAnalysisId"] = it }
         firstAnalysisDate?.let { map["firstAnalysisDate"] = it }
         aiProbability?.let { map["aiProbability"] = it }
         aiConfidence?.let { map["aiConfidence"] = it }
@@ -87,7 +89,8 @@ data class MoleData(
                 abcdeTotalScore = (data["abcdeTotalScore"] as? Number)?.toDouble(),
                 recommendation = data["recommendation"] as? String ?: "",
                 urgency = data["urgency"] as? String ?: "",
-                analysisMetadata = data["analysisMetadata"] as? Map<String, Any> ?: emptyMap()
+                analysisMetadata = data["analysisMetadata"] as? Map<String, Any> ?: emptyMap(),
+                currentAnalysisId = data["currentAnalysisId"] as? String
             )
         }
     }

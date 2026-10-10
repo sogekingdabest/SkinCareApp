@@ -1,0 +1,365 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "b6a987ddea1989cd4932ced7ef80cd15",
+    "entities": [
+      {
+        "tableName": "moles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userId` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `bodyPart` TEXT NOT NULL, `bodyPartColorCode` TEXT NOT NULL, `imagePath` TEXT NOT NULL, `analysisResult` TEXT NOT NULL, `createdAtEpochMillis` INTEGER NOT NULL, `updatedAtEpochMillis` INTEGER NOT NULL, `analysisCount` INTEGER NOT NULL, `lastAnalysisAtEpochMillis` INTEGER, `firstAnalysisAtEpochMillis` INTEGER, `aiProbability` REAL, `aiConfidence` REAL, `riskLevel` TEXT NOT NULL, `combinedScore` REAL, `abcdeAsymmetry` REAL, `abcdeBorder` REAL, `abcdeColor` REAL, `abcdeDiameter` REAL, `abcdeTotalScore` REAL, `recommendation` TEXT NOT NULL, `urgency` TEXT NOT NULL, `analysisMetadataJson` TEXT NOT NULL, `currentAnalysisId` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodyPart",
+            "columnName": "bodyPart",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodyPartColorCode",
+            "columnName": "bodyPartColorCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imagePath",
+            "columnName": "imagePath",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "analysisResult",
+            "columnName": "analysisResult",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "createdAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updatedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "analysisCount",
+            "columnName": "analysisCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAnalysisAtEpochMillis",
+            "columnName": "lastAnalysisAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "firstAnalysisAtEpochMillis",
+            "columnName": "firstAnalysisAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "aiProbability",
+            "columnName": "aiProbability",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "aiConfidence",
+            "columnName": "aiConfidence",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "riskLevel",
+            "columnName": "riskLevel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "combinedScore",
+            "columnName": "combinedScore",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "abcdeAsymmetry",
+            "columnName": "abcdeAsymmetry",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "abcdeBorder",
+            "columnName": "abcdeBorder",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "abcdeColor",
+            "columnName": "abcdeColor",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "abcdeDiameter",
+            "columnName": "abcdeDiameter",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "abcdeTotalScore",
+            "columnName": "abcdeTotalScore",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "recommendation",
+            "columnName": "recommendation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "urgency",
+            "columnName": "urgency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "analysisMetadataJson",
+            "columnName": "analysisMetadataJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentAnalysisId",
+            "columnName": "currentAnalysisId",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_moles_userId_updatedAtEpochMillis",
+            "unique": false,
+            "columnNames": [
+              "userId",
+              "updatedAtEpochMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_moles_userId_updatedAtEpochMillis` ON `${TABLE_NAME}` (`userId`, `updatedAtEpochMillis`)"
+          },
+          {
+            "name": "index_moles_userId_bodyPartColorCode",
+            "unique": false,
+            "columnNames": [
+              "userId",
+              "bodyPartColorCode"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_moles_userId_bodyPartColorCode` ON `${TABLE_NAME}` (`userId`, `bodyPartColorCode`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "mole_analyses",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `moleId` TEXT NOT NULL, `userId` TEXT NOT NULL, `description` TEXT NOT NULL, `analysisResult` TEXT NOT NULL, `aiProbability` REAL NOT NULL, `aiConfidence` REAL NOT NULL, `asymmetryScore` REAL NOT NULL, `borderScore` REAL NOT NULL, `colorScore` REAL NOT NULL, `diameterScore` REAL NOT NULL, `evolutionScore` REAL, `totalScore` REAL NOT NULL, `combinedScore` REAL NOT NULL, `riskLevel` TEXT NOT NULL, `recommendation` TEXT NOT NULL, `imagePath` TEXT NOT NULL, `createdAtEpochMillis` INTEGER NOT NULL, `analysisMetadataJson` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`moleId`) REFERENCES `moles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "moleId",
+            "columnName": "moleId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "analysisResult",
+            "columnName": "analysisResult",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "aiProbability",
+            "columnName": "aiProbability",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "aiConfidence",
+            "columnName": "aiConfidence",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "asymmetryScore",
+            "columnName": "asymmetryScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "borderScore",
+            "columnName": "borderScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "colorScore",
+            "columnName": "colorScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "diameterScore",
+            "columnName": "diameterScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evolutionScore",
+            "columnName": "evolutionScore",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "totalScore",
+            "columnName": "totalScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "combinedScore",
+            "columnName": "combinedScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "riskLevel",
+            "columnName": "riskLevel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recommendation",
+            "columnName": "recommendation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imagePath",
+            "columnName": "imagePath",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "createdAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "analysisMetadataJson",
+            "columnName": "analysisMetadataJson",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_mole_analyses_moleId_createdAtEpochMillis",
+            "unique": false,
+            "columnNames": [
+              "moleId",
+              "createdAtEpochMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mole_analyses_moleId_createdAtEpochMillis` ON `${TABLE_NAME}` (`moleId`, `createdAtEpochMillis`)"
+          },
+          {
+            "name": "index_mole_analyses_userId",
+            "unique": false,
+            "columnNames": [
+              "userId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mole_analyses_userId` ON `${TABLE_NAME}` (`userId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "moles",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "moleId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b6a987ddea1989cd4932ced7ef80cd15')"
+    ]
+  }
+}
