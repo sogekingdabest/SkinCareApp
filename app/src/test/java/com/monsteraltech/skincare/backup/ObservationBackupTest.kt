@@ -12,6 +12,7 @@ import io.mockk.every
 import io.mockk.mockk
 import java.util.Date
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -28,7 +29,9 @@ class ObservationBackupTest {
         every { database.moleDao() } returns dao
         coEvery { dao.getMoleOwner(any()) } returns null
         coEvery { dao.getAnalysisOwner(any()) } returns null
-        service = LocalBackupService(mockk(), database, mockk(), mockk(), mockk())
+        val images = mockk<com.monsteraltech.skincare.data.image.PrivateImageStore>()
+        service = LocalBackupService(mockk(), database, mockk(), mockk(), images,
+            BackupRestoreCoordinator(images, Dispatchers.IO), BackupRecordRestorer(database, images), Dispatchers.IO)
     }
 
     private fun payload(version: Int = 2) = BackupPayload(version, 1000,
@@ -79,6 +82,20 @@ class ObservationBackupTest {
         val restored = service.remapRecordsForCurrentUser("new-owner", payload(), emptyMap())
         assertNotEquals("capture", restored.analyses.single().id)
         assertEquals(restored.analyses.single().id, restored.moles.single().currentAnalysisId)
+    }
+
+    @Test fun `reimport retains scoped identities after original records disappear`() = runTest {
+        coEvery { dao.getMoleOwner("m") } returns "another-owner"
+        coEvery { dao.getAnalysisOwner("capture") } returns "another-owner"
+        val first = service.remapRecordsForCurrentUser("new-owner", payload(), emptyMap())
+        val importedMole = first.moles.single()
+        val importedAnalysis = first.analyses.single()
+        coEvery { dao.getMoleOwner("m") } returns null
+        coEvery { dao.getAnalysisOwner("capture") } returns null
+        coEvery { dao.getMoleOwner(importedMole.id) } returns "new-owner"
+        coEvery { dao.getAnalysisOwner(importedAnalysis.id) } returns "new-owner"
+        coEvery { dao.getAnalysis("new-owner", importedMole.id, importedAnalysis.id) } returns importedAnalysis
+        assertEquals(first, service.remapRecordsForCurrentUser("new-owner", payload(), emptyMap()))
     }
 
     @Test fun `same owner and parent keep existing observation identity`() = runTest {

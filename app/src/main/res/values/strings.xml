@@ -412,9 +412,9 @@
     <string name="backup_export_action">Crear copia cifrada</string>
     <string name="backup_import_action">Restaurar copia</string>
     <string name="backup_import_confirm_title">Restaurar copia cifrada</string>
-    <string name="backup_import_confirm_message">Los registros de la copia se fusionarán con los datos locales de la cuenta activa. No se eliminarán los registros que ya tengas.</string>
+    <string name="backup_import_confirm_message">Se añadirán los registros que falten al perfil activo. Se conservarán sus observaciones, valoraciones y selección actual. Si a una observación le falta su imagen, se intentará recuperarla de la copia.</string>
     <string name="backup_export_success">Copia creada: %1$d lunares, %2$d análisis y %3$d imágenes.</string>
-    <string name="backup_import_success">Copia restaurada: %1$d lunares, %2$d análisis y %3$d imágenes.</string>
+    <string name="backup_import_success">Restauración completada: %1$d lunares y %2$d análisis añadidos; %3$d imágenes recuperadas.</string>
     <string name="backup_export_error">No se pudo crear la copia cifrada.</string>
     <string name="backup_import_error">No se pudo restaurar. Comprueba la contraseña y que el archivo no esté dañado.</string>
 
@@ -428,4 +428,9 @@
         <item quantity="one">Ver historial (%d observación)</item>
         <item quantity="other">Ver historial (%d observaciones)</item>
     </plurals>
+    <string name="backup_settings_not_restored">Los datos están guardados, pero no se pudieron restaurar los ajustes del perfil.</string>
+    <string name="backup_missing_images">La copia no incluía algunas imágenes. Se han conservado las imágenes locales disponibles.</string>
+    <string name="backup_existing_data_preserved">Se han conservado los registros y la observación actual que ya tenías.</string>
+    <string name="backup_cleanup_warning">La restauración terminó, pero quedaron archivos temporales pendientes de limpieza.</string>
+    <string name="backup_profile_changed">El perfil activo ha cambiado. Vuelve a seleccionar la copia desde el perfil al que quieras añadir los datos.</string>
 </resources>

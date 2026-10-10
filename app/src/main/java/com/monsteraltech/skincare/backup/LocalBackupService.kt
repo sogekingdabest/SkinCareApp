@@ -10,7 +10,7 @@ import com.monsteraltech.skincare.body.mole.data.local.LegacyObservation
 import com.monsteraltech.skincare.body.mole.data.local.MoleEntity
 import com.monsteraltech.skincare.body.mole.data.local.SkinCareDatabase
 import com.monsteraltech.skincare.data.image.PrivateImageStore
-import com.monsteraltech.skincare.data.FirebaseDataManager
+import com.monsteraltech.skincare.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -23,7 +23,12 @@ import java.security.MessageDigest
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 @Singleton
@@ -31,106 +36,118 @@ class LocalBackupService @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: SkinCareDatabase,
     private val activeProfile: ActiveProfile,
-    private val localDataManager: FirebaseDataManager,
-    private val imageStore: PrivateImageStore
+    private val settings: BackupSettingsStore,
+    private val imageStore: PrivateImageStore,
+    private val coordinator: BackupRestoreCoordinator,
+    private val records: BackupRecordRestorer,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     private val dao = database.moleDao()
     private val gson = Gson()
     private val codec = EncryptedBackupCodec()
+    private val operations = Mutex()
 
-    suspend fun exportTo(uri: Uri, password: CharArray): Result<BackupSummary> =
-        withContext(Dispatchers.IO) {
+    suspend fun exportTo(uri: Uri, password: CharArray): Result<BackupSummary> {
+        try {
+            return withContext(ioDispatcher) {
+                operations.withLock { backupResult { export(uri, password) } }
+            }
+        } finally {
+            password.fill('\u0000')
+        }
+    }
+
+    suspend fun importFrom(uri: Uri, password: CharArray): Result<RestoreReport> {
+        try {
+            return withContext(ioDispatcher) {
+                operations.withLock { backupResult { restore(uri, password) } }
+            }
+        } finally {
+            password.fill('\u0000')
+        }
+    }
+
+    private suspend fun <T> backupResult(action: suspend () -> T): Result<T> = try {
+        Result.success(action())
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Result.failure(error)
+    }
+
+    private suspend fun export(uri: Uri, password: CharArray): BackupSummary {
+        val owner = requireCurrentUserId()
+        val caller = currentCoroutineContext()
+        val checkActive = { caller.ensureActive() }
+        val staging = Files.createTempDirectory(context.cacheDir.toPath(), "skincare_export_").toFile()
+        try {
+            val (moles, analyses) = database.withTransaction { dao.getAllMoles(owner) to dao.getAllAnalyses(owner) }
+            checkActive()
+            val entries = buildImageEntries(moles, analyses)
+            val payload = BackupPayload(PAYLOAD_VERSION, System.currentTimeMillis(), moles, analyses, entries, settings.read(owner))
+            validatePayload(payload)
+            val encrypted = File(staging, "backup.skb")
+            encrypted.outputStream().use { output ->
+                codec.encrypt(output, password) { writePayload(it, payload, entries, checkActive) }
+            }
+            checkActive()
+            requireSameProfile(owner)
+            // Source errors cannot truncate the destination: complete encryption locally first.
+            val output = context.contentResolver.openOutputStream(uri, "w") ?: throw IOException("No se pudo abrir el destino")
+            output.use { destination -> encrypted.inputStream().use { it.copyExactly(destination, encrypted.length(), checkActive) } }
+            checkActive()
+            return BackupSummary(moles.size, analyses.size, entries.size)
+        } finally {
+            runCatching { staging.deleteRecursively() }
+        }
+    }
+
+    private suspend fun restore(uri: Uri, password: CharArray): RestoreReport {
+        val owner = requireCurrentUserId()
+        val caller = currentCoroutineContext()
+        val checkActive = { caller.ensureActive() }
+        val staging = Files.createTempDirectory(context.cacheDir.toPath(), "skincare_restore_").toFile()
+        var failure: Throwable? = null
+        var cleanupFailed = false
+        val report: RestoreReport
+        try {
+            checkActive()
+            val extracted = decryptAndExtract(uri, password, staging, checkActive)
+            validatePayload(extracted.payload)
+            val payload = normalizeLegacyPayload(extracted.payload)
+            validatePayload(payload)
+            require(payload.imageEntries.values.toSet() == extracted.stagedImages.keys) {
+                "La copia no contiene todas las imágenes declaradas"
+            }
+            val sources = payload.imageEntries.mapValues { (_, entry) -> extracted.stagedImages.getValue(entry) }
+            report = coordinator.restore(owner, sources, commit = { references ->
+                requireSameProfile(owner)
+                records.merge(owner, payload, references)
+            }, writeSettings = {
+                settings.write(payload.accountSettings.copy(userId = owner, autoBackup = false), owner)
+            })
+        } catch (error: Throwable) {
+            failure = error
+            throw error
+        } finally {
             try {
-                runCatching {
-                    val userId = requireCurrentUserId()
-                    val (moles, analyses) = database.withTransaction {
-                        dao.getAllMoles(userId) to dao.getAllAnalyses(userId)
-                    }
-                    val imageEntries = buildImageEntries(moles, analyses)
-                    val payload = BackupPayload(
-                        schemaVersion = PAYLOAD_VERSION,
-                        createdAtEpochMillis = System.currentTimeMillis(),
-                        moles = moles,
-                        analyses = analyses,
-                        imageEntries = imageEntries,
-                        accountSettings = localDataManager.getUserSettings(userId)
-                    )
-
-                    val output = context.contentResolver.openOutputStream(uri, "w")
-                        ?: throw IOException("No se pudo abrir el archivo de destino")
-                    output.use { rawOutput ->
-                        codec.encrypt(rawOutput, password) { encryptedOutput ->
-                            writePayload(encryptedOutput, payload, imageEntries)
-                        }
-                    }
-                    BackupSummary(moles.size, analyses.size, imageEntries.size)
+                if (!staging.deleteRecursively()) {
+                    cleanupFailed = true
+                    failure?.addSuppressed(IOException("No se pudo eliminar el staging"))
                 }
-            } finally {
-                password.fill('\u0000')
+            } catch (error: Exception) {
+                cleanupFailed = true
+                failure?.addSuppressed(error)
             }
         }
-
-    suspend fun importFrom(uri: Uri, password: CharArray): Result<BackupSummary> =
-        withContext(Dispatchers.IO) {
-            val stagingDirectory = Files.createTempDirectory(
-                context.cacheDir.toPath(),
-                "skincare_restore_"
-            ).toFile()
-            val createdImages = mutableListOf<File>()
-            try {
-                runCatching {
-                    val userId = requireCurrentUserId()
-                    val extracted = decryptAndExtract(uri, password, stagingDirectory)
-                    validatePayload(extracted.payload)
-                    val payload = normalizeLegacyPayload(extracted.payload)
-                    validatePayload(payload)
-
-                    val imagePathMap = copyImagesToPrivateStorage(
-                        userId = userId,
-                        payload = payload,
-                        stagedImages = extracted.stagedImages,
-                        createdImages = createdImages
-                    )
-                    val restored = remapRecordsForCurrentUser(
-                        userId,
-                        payload,
-                        imagePathMap
-                    )
-
-                    try {
-                        database.withTransaction {
-                            dao.upsertMoles(restored.moles)
-                            dao.upsertAnalyses(restored.analyses)
-                            dao.materializeLegacyCurrentAnalyses()
-                        }
-                    } catch (error: Exception) {
-                        createdImages.forEach { it.delete() }
-                        throw error
-                    }
-
-                    localDataManager.updateUserSettings(
-                        extracted.payload.accountSettings.copy(
-                            userId = userId,
-                            autoBackup = false
-                        ),
-                        userId
-                    )
-                    BackupSummary(
-                        moleCount = restored.moles.size,
-                        analysisCount = restored.analyses.size,
-                        imageCount = createdImages.size
-                    )
-                }
-            } finally {
-                password.fill('\u0000')
-                stagingDirectory.deleteRecursively()
-            }
-        }
+        return if (cleanupFailed) report.copy(warnings = report.warnings + RestoreWarning.TEMPORARY_FILES_REMAIN) else report
+    }
 
     private fun decryptAndExtract(
         uri: Uri,
         password: CharArray,
-        stagingDirectory: File
+        stagingDirectory: File,
+        checkActive: () -> Unit
     ): ExtractedBackup {
         val input = context.contentResolver.openInputStream(uri)
             ?: throw IOException("No se pudo abrir la copia seleccionada")
@@ -160,12 +177,13 @@ class LocalBackupService @Inject constructor(
                 }
                 var totalImageBytes = 0L
                 repeat(imageCount) {
+                    checkActive()
                     val entryName = data.readUTF()
                     if (!isValidImageEntry(entryName) || entryName in stagedImages) {
                         throw InvalidBackupException("Entrada de imagen no válida")
                     }
                     val imageSize = data.readLong()
-                    if (imageSize !in 0..MAX_IMAGE_BYTES) {
+                    if (imageSize !in 1..MAX_IMAGE_BYTES) {
                         throw InvalidBackupException("Tamaño de imagen no válido")
                     }
                     totalImageBytes += imageSize
@@ -174,12 +192,13 @@ class LocalBackupService @Inject constructor(
                     }
                     val destination = File(stagingDirectory, "${UUID.randomUUID()}.image")
                     destination.outputStream().use { output ->
-                        data.copyExactly(output, imageSize)
+                        data.copyExactly(output, imageSize, checkActive)
                     }
                     stagedImages[entryName] = destination
                 }
 
                 // Fuerza a CipherInputStream a consumir y autenticar la etiqueta GCM.
+                checkActive()
                 if (data.read() != -1) {
                     throw InvalidBackupException("La copia contiene datos inesperados")
                 }
@@ -191,8 +210,10 @@ class LocalBackupService @Inject constructor(
     private fun writePayload(
         output: OutputStream,
         payload: BackupPayload,
-        imageEntries: Map<String, String>
+        imageEntries: Map<String, String>,
+        checkActive: () -> Unit
     ) {
+        checkActive()
         val data = DataOutputStream(output)
         val payloadBytes = gson.toJson(payload).toByteArray(Charsets.UTF_8)
         require(payloadBytes.size <= MAX_PAYLOAD_BYTES) {
@@ -202,56 +223,24 @@ class LocalBackupService @Inject constructor(
         data.write(payloadBytes)
         data.writeInt(imageEntries.size)
         imageEntries.forEach { (relativePath, archiveEntry) ->
+            checkActive()
             val image = resolvePrivateImage(relativePath) ?: throw IOException("Imagen no disponible")
             val length = image.length()
-            require(image.isFile && length <= MAX_IMAGE_BYTES) {
+            require(image.isFile && length in 1..MAX_IMAGE_BYTES) {
                 "Una imagen no está disponible o supera el tamaño máximo"
             }
             data.writeUTF(archiveEntry)
             data.writeLong(length)
             image.inputStream().use { input ->
-                input.copyExactly(data, length)
+                input.copyExactly(data, length, checkActive)
             }
         }
         data.flush()
     }
 
     internal suspend fun remapRecordsForCurrentUser(
-        userId: String,
-        payload: BackupPayload,
-        imagePathMap: Map<String, String>
-    ): RestoredRecords {
-        val moleIdMap = mutableMapOf<String, String>()
-        payload.moles.forEach { mole ->
-            val owner = dao.getMoleOwner(mole.id)
-            moleIdMap[mole.id] =
-                if (owner != null && owner != userId) UUID.randomUUID().toString() else mole.id
-        }
-        val analysisIdMap = mutableMapOf<String, String>()
-        payload.analyses.forEach { analysis ->
-            val owner = dao.getAnalysisOwner(analysis.id)
-            val targetMoleId = moleIdMap.getValue(analysis.moleId)
-            val collision = owner != null && (owner != userId || dao.getAnalysis(userId, targetMoleId, analysis.id) == null)
-            analysisIdMap[analysis.id] = if (collision) UUID.randomUUID().toString() else analysis.id
-        }
-        val moles = payload.moles.map { mole ->
-            mole.copy(
-                id = moleIdMap.getValue(mole.id),
-                userId = userId,
-                imagePath = restoredImagePath(mole.imagePath, imagePathMap),
-                currentAnalysisId = mole.currentAnalysisId?.let(analysisIdMap::getValue)
-            )
-        }
-        val analyses = payload.analyses.map { analysis ->
-            analysis.copy(
-                id = analysisIdMap.getValue(analysis.id),
-                moleId = moleIdMap.getValue(analysis.moleId),
-                userId = userId,
-                imagePath = restoredImagePath(analysis.imagePath, imagePathMap)
-            )
-        }
-        return RestoredRecords(moles, analyses)
-    }
+        userId: String, payload: BackupPayload, imagePathMap: Map<String, String>
+    ): BackupRecordRestorer.Records = records.remap(userId, payload, imagePathMap)
 
     internal fun validatePayload(payload: BackupPayload) {
         if (payload.schemaVersion !in 1..PAYLOAD_VERSION) {
@@ -281,7 +270,7 @@ class LocalBackupService @Inject constructor(
                 else analyses[current]?.moleId == mole.id
             }) { "La copia contiene referencias a observaciones actuales no válidas" }
         }
-        require(payload.imageEntries.values.all(::isValidImageEntry)) {
+        require(payload.imageEntries.keys.all(String::isNotBlank) && payload.imageEntries.values.all(::isValidImageEntry)) {
             "La copia contiene rutas de imagen no válidas"
         }
     }
@@ -305,36 +294,16 @@ class LocalBackupService @Inject constructor(
             moles.mapTo(this) { it.imagePath }
             analyses.mapTo(this) { it.imagePath }
         }.filter(String::isNotBlank)
-        return paths.mapNotNull { path ->
-            val image = resolvePrivateImage(path)
-            if (image?.isFile == true) {
-                path to "images/${sha256(path)}.bin"
-            } else {
-                null
-            }
-        }.toMap()
+        require(paths.size <= MAX_IMAGES) { "Demasiadas imágenes para la copia" }
+        var totalBytes = 0L
+        return paths.associateWith { path ->
+            val image = resolvePrivateImage(path) ?: throw IOException("Falta una imagen necesaria para la copia")
+            require(image.isFile && image.length() in 1..MAX_IMAGE_BYTES) { "Imagen no disponible o demasiado grande" }
+            totalBytes += image.length()
+            require(totalBytes <= MAX_TOTAL_IMAGE_BYTES) { "La copia supera el tamaño máximo" }
+            "images/${sha256(path)}.bin"
+        }
     }
-
-    private fun copyImagesToPrivateStorage(
-        userId: String,
-        payload: BackupPayload,
-        stagedImages: Map<String, File>,
-        createdImages: MutableList<File>
-    ): Map<String, String> {
-        return payload.imageEntries.mapNotNull { (originalPath, archiveEntry) ->
-            val source = stagedImages[archiveEntry] ?: return@mapNotNull null
-            val reference = imageStore.save(source, userId)
-            createdImages += requireNotNull(imageStore.resolve(reference))
-            originalPath to reference
-        }.toMap()
-    }
-
-    private fun restoredImagePath(
-        originalPath: String,
-        restoredPaths: Map<String, String>
-    ): String = originalPath.takeIf(String::isNotBlank)
-        ?.let(restoredPaths::get)
-        .orEmpty()
 
     private fun resolvePrivateImage(reference: String): File? = imageStore.migrateLegacy(reference)
 
@@ -349,10 +318,15 @@ class LocalBackupService @Inject constructor(
     private fun requireCurrentUserId(): String =
         activeProfile.requireOwnerId()
 
-    private fun InputStream.copyExactly(output: OutputStream, expectedBytes: Long) {
+    private fun requireSameProfile(owner: String) {
+        if (activeProfile.ownerId != owner) throw BackupProfileChangedException()
+    }
+
+    private fun InputStream.copyExactly(output: OutputStream, expectedBytes: Long, checkActive: () -> Unit) {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         var total = 0L
         while (total < expectedBytes) {
+            checkActive()
             val requested = minOf(buffer.size.toLong(), expectedBytes - total).toInt()
             val read = read(buffer, 0, requested)
             if (read < 0) throw InvalidBackupException("La copia está truncada")
@@ -364,11 +338,6 @@ class LocalBackupService @Inject constructor(
     private data class ExtractedBackup(
         val payload: BackupPayload,
         val stagedImages: Map<String, File>
-    )
-
-    internal data class RestoredRecords(
-        val moles: List<MoleEntity>,
-        val analyses: List<AnalysisEntity>
     )
 
     companion object {

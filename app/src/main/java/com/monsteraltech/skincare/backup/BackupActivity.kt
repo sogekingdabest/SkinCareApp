@@ -150,19 +150,25 @@ class BackupActivity : AppCompatActivity() {
                 setBusy(false)
             }
             result.fold(
-                onSuccess = { summary ->
-                    showStatus(
-                        getString(
+                onSuccess = { report ->
+                    val summary = report.summary
+                    val message = getString(
                             R.string.backup_import_success,
                             summary.moleCount,
                             summary.analysisCount,
                             summary.imageCount
-                        ),
-                        isError = false
-                    )
+                        )
+                    val warnings = report.warnings.map { warning -> getString(when (warning) {
+                        RestoreWarning.SETTINGS_NOT_RESTORED -> R.string.backup_settings_not_restored
+                        RestoreWarning.MISSING_IMAGES -> R.string.backup_missing_images
+                        RestoreWarning.EXISTING_DATA_PRESERVED -> R.string.backup_existing_data_preserved
+                        RestoreWarning.TEMPORARY_FILES_REMAIN -> R.string.backup_cleanup_warning
+                    }) }
+                    showStatus((listOf(message) + warnings).joinToString("\n\n"), isError = false, isWarning = warnings.isNotEmpty())
                 },
-                onFailure = {
-                    showStatus(getString(R.string.backup_import_error), isError = true)
+                onFailure = { error ->
+                    showStatus(getString(if (error is BackupProfileChangedException) R.string.backup_profile_changed
+                        else R.string.backup_import_error), isError = true)
                 }
             )
         }
@@ -176,11 +182,11 @@ class BackupActivity : AppCompatActivity() {
         binding.passwordConfirmationInput.isEnabled = !busy
     }
 
-    private fun showStatus(message: String, isError: Boolean) {
+    private fun showStatus(message: String, isError: Boolean, isWarning: Boolean = false) {
         binding.statusText.apply {
             text = message
             setTextColor(
-                getColor(if (isError) R.color.risk_high else R.color.risk_low)
+                getColor(if (isError) R.color.risk_high else if (isWarning) R.color.risk_moderate else R.color.risk_low)
             )
             visibility = View.VISIBLE
         }

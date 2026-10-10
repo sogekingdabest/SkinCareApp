@@ -25,6 +25,9 @@ interface MoleDao {
     @Query("UPDATE mole_analyses SET analysisMetadataJson = :metadataJson WHERE id = :analysisId AND moleId = :moleId AND userId = :userId")
     suspend fun updateAnalysisMetadata(userId: String, moleId: String, analysisId: String, metadataJson: String)
 
+    @Query("UPDATE mole_analyses SET imagePath = :imagePath WHERE id = :analysisId AND moleId = :moleId AND userId = :userId")
+    suspend fun updateAnalysisImage(userId: String, moleId: String, analysisId: String, imagePath: String)
+
     @Query(ObservationMigration.NEEDS_CURRENT)
     suspend fun getLegacyCurrentSummaries(): List<MoleEntity>
 
@@ -74,12 +77,6 @@ interface MoleDao {
         userId: String,
         bodyPartColorCode: String
     ): List<MoleEntity>
-
-    @Upsert
-    suspend fun upsertMoles(moles: List<MoleEntity>)
-
-    @Upsert
-    suspend fun upsertAnalyses(analyses: List<AnalysisEntity>)
 
     @Query(
         """
