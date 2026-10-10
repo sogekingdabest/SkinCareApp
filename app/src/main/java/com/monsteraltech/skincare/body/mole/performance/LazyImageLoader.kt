@@ -6,16 +6,14 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
 import com.monsteraltech.skincare.R
-import com.monsteraltech.skincare.data.FirebaseDataManager
+import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 class LazyImageLoader(private val context: Context) {
-    private val firebaseDataManager = FirebaseDataManager()
     private val loadingJobs = ConcurrentHashMap<String, Job>()
     private val preloadedImages = ConcurrentHashMap<String, Boolean>()
     companion object {
@@ -70,7 +68,10 @@ class LazyImageLoader(private val context: Context) {
         config: LazyLoadConfig
     ) {
         try {
-            val imageSource = getImageSource(imageUrl)
+            val imageSource = getImageSource(imageUrl) ?: run {
+                imageView.setImageResource(config.errorRes)
+                return
+            }
             if (config.thumbnailFirst) {
                 loadThumbnail(imageView, imageSource, config)
                 delay(50)
@@ -138,13 +139,8 @@ class LazyImageLoader(private val context: Context) {
         }
         return position in firstVisible..lastVisible
     }
-    private fun getImageSource(imageUrl: String): Any {
-        return if (imageUrl.startsWith("http")) {
-            imageUrl
-        } else {
-            File(firebaseDataManager.getFullImagePath(context, imageUrl))
-        }
-    }
+    private fun getImageSource(imageUrl: String): Any? =
+        ImageLoadingUtil.getImageSource(context, imageUrl)
     fun cancelAllLoads() {
         loadingJobs.values.forEach { it.cancel() }
         loadingJobs.clear()

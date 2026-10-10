@@ -9,11 +9,10 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.monsteraltech.skincare.R
+import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import com.monsteraltech.skincare.body.mole.performance.LazyImageLoader
 import com.monsteraltech.skincare.body.mole.util.RiskLevelTranslator
-import com.monsteraltech.skincare.data.FirebaseDataManager
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 class AnalysisHistoryAdapter(
@@ -21,7 +20,6 @@ class AnalysisHistoryAdapter(
     private var analysisList: List<AnalysisData>,
     private val onItemClick: (AnalysisData) -> Unit
 ) : RecyclerView.Adapter<AnalysisHistoryAdapter.ViewHolder>() {
-    private val firebaseDataManager = FirebaseDataManager()
     private val lazyImageLoader = LazyImageLoader(context)
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val analysisImageView: ImageView = view.findViewById(R.id.analysisImageView)
@@ -76,9 +74,9 @@ class AnalysisHistoryAdapter(
                         .placeholder(R.drawable.ic_image_placeholder)
                         .into(holder.analysisImageView)
                 } else {
-                    val fullPath = firebaseDataManager.getFullImagePath(context, analysis.imageUrl)
+                    val imageSource = ImageLoadingUtil.getImageSource(context, analysis.imageUrl)
                     Glide.with(context)
-                        .load(File(fullPath))
+                        .load(imageSource)
                         .placeholder(R.drawable.ic_image_placeholder)
                         .into(holder.analysisImageView)
                 }

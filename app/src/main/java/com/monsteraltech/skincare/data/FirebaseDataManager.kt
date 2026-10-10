@@ -5,9 +5,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.monsteraltech.skincare.account.AccountSettings
 import com.monsteraltech.skincare.account.UserInfo
-import java.io.File
 import java.util.Date
-import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -22,43 +20,6 @@ class FirebaseDataManager {
         )
     }
 
-    suspend fun saveImageLocally(context: Context, imagePath: String, userId: String): String = suspendCoroutine { continuation ->
-        try {
-            require(userId.isNotBlank()) { "Perfil local no disponible" }
-            val timestamp = Date().time
-            val imageId = UUID.randomUUID().toString()
-            val imageName = "mole_${imageId}_$timestamp.jpg"
-            val directory = File(context.noBackupFilesDir, "mole_images/$userId")
-            if (!directory.exists()) {
-                directory.mkdirs()
-            }
-            val sourceFile = File(imagePath)
-            val destinationFile = File(directory, imageName)
-            sourceFile.copyTo(destinationFile, true)
-            val relativePath = "mole_images/$userId/$imageName"
-            continuation.resume(relativePath)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al guardar la imagen localmente: ${e.message}")
-            continuation.resumeWithException(e)
-        }
-    }
-
-    fun getFullImagePath(context: Context, relativePath: String): String {
-        val privateFile = File(context.noBackupFilesDir, relativePath)
-        if (privateFile.exists()) return privateFile.absolutePath
-
-        // Migra de forma local las imágenes creadas por versiones anteriores.
-        val legacyFile = File(context.filesDir, relativePath)
-        if (legacyFile.exists()) {
-            runCatching {
-                privateFile.parentFile?.mkdirs()
-                legacyFile.copyTo(privateFile, overwrite = true)
-                legacyFile.delete()
-            }
-            if (privateFile.exists()) return privateFile.absolutePath
-        }
-        return privateFile.absolutePath
-    }
     suspend fun getCurrentUserProfile(): UserInfo? = suspendCoroutine { continuation ->
         try {
             val currentUser = auth.currentUser

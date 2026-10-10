@@ -1,10 +1,6 @@
 package com.monsteraltech.skincare.analysis.comparison
 
-import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.net.Uri
-import dagger.hilt.android.qualifiers.ApplicationContext
 import com.monsteraltech.skincare.body.mole.domain.model.MoleObservation
 import com.monsteraltech.skincare.body.mole.domain.model.ObservationComparability
 import com.monsteraltech.skincare.body.mole.domain.model.ObservationImageMetrics
@@ -15,8 +11,6 @@ import kotlinx.coroutines.CancellationException
 import org.opencv.android.Utils
 import org.opencv.core.Mat
 import org.opencv.imgproc.Imgproc
-import java.io.File
-import java.io.InputStream
 import javax.inject.Inject
 
 /**
@@ -27,7 +21,7 @@ import javax.inject.Inject
  * rechazan explícitamente hasta disponer de un almacén de imágenes estable.
  */
 class LocalObservationComparisonPreparer @Inject constructor(
-    @ApplicationContext private val context: Context,
+    private val imageDecoder: LocalObservationImageDecoder,
     private val evaluator: EvaluateObservationComparabilityUseCase,
     private val registrationEngine: LesionPairRegistrationEngine,
     private val evaluateRegistration: EvaluateLesionRegistrationUseCase
@@ -38,7 +32,7 @@ class LocalObservationComparisonPreparer @Inject constructor(
         baseline: MoleObservation
     ): PreparedObservationComparison {
         val baselineBitmap = try {
-            decodeBaseline(baseline.imageReference)
+            imageDecoder.decode(baseline.imageReference)
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Exception) {
@@ -150,64 +144,6 @@ class LocalObservationComparisonPreparer @Inject constructor(
         }
     }
 
-    private fun decodeBaseline(reference: String): Bitmap? {
-        if (reference.isBlank()) return null
-        val uri = Uri.parse(reference)
-        return when (uri.scheme?.lowercase()) {
-            null, "" -> decodeFile(File(reference))
-            "file" -> uri.path?.let(::File)?.let(::decodeFile)
-            "content" -> decodeContent(uri)
-            else -> null
-        }
-    }
-
-    private fun decodeFile(file: File): Bitmap? {
-        if (!file.isFile || !file.canRead()) return null
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(file.absolutePath, bounds)
-        if (!bounds.hasValidBounds()) return null
-        return BitmapFactory.decodeFile(
-            file.absolutePath,
-            BitmapFactory.Options().apply {
-                inSampleSize = calculateSampleSize(bounds)
-            }
-        )
-    }
-
-    private fun decodeContent(uri: Uri): Bitmap? {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri).use {
-            BitmapFactory.decodeStream(it, null, bounds)
-        }
-        if (!bounds.hasValidBounds()) return null
-        return context.contentResolver.openInputStream(uri).use { stream ->
-            decodeStream(stream, calculateSampleSize(bounds))
-        }
-    }
-
-    private fun decodeStream(stream: InputStream?, sampleSize: Int): Bitmap? {
-        if (stream == null) return null
-        return BitmapFactory.decodeStream(
-            stream,
-            null,
-            BitmapFactory.Options().apply { inSampleSize = sampleSize }
-        )
-    }
-
-    private fun BitmapFactory.Options.hasValidBounds() =
-        outWidth > 0 && outHeight > 0
-
-    private fun calculateSampleSize(bounds: BitmapFactory.Options): Int {
-        var sampleSize = 1
-        while (
-            bounds.outWidth / sampleSize > MAX_DECODED_SIDE ||
-            bounds.outHeight / sampleSize > MAX_DECODED_SIDE
-        ) {
-            sampleSize *= 2
-        }
-        return sampleSize
-    }
-
     private fun unreadable(
         baseline: MoleObservation,
         detail: String?
@@ -230,7 +166,6 @@ class LocalObservationComparisonPreparer @Inject constructor(
     )
 
     private companion object {
-        const val MAX_DECODED_SIDE = 2048
         val qualityAnalyzer = ImageQualityAnalyzer()
     }
 }

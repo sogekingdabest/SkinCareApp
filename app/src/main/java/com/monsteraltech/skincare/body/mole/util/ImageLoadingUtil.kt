@@ -10,13 +10,13 @@ import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.body.mole.error.RetryManager
-import com.monsteraltech.skincare.data.FirebaseDataManager
+import android.net.Uri
+import com.monsteraltech.skincare.data.image.privateImageStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 object ImageLoadingUtil {
-    private val firebaseDataManager = FirebaseDataManager()
     data class ImageLoadConfig(
         val showPlaceholder: Boolean = true,
         val showErrorPlaceholder: Boolean = true,
@@ -136,13 +136,10 @@ object ImageLoadingUtil {
             Result.failure(e)
         }
     }
-    private fun getImageSource(context: Context, imageUrl: String): Any {
-        return if (imageUrl.startsWith("http")) {
-            imageUrl
-        } else {
-            val fullPath = firebaseDataManager.getFullImagePath(context, imageUrl)
-            File(fullPath)
-        }
+    fun getImageSource(context: Context, imageUrl: String): Any? = when {
+        imageUrl.startsWith("http") -> imageUrl
+        imageUrl.startsWith("content:", ignoreCase = true) -> Uri.parse(imageUrl)
+        else -> runCatching { privateImageStore(context).resolve(imageUrl) }.getOrNull()
     }
     private fun loadPlaceholder(imageView: ImageView, placeholderRes: Int) {
         Glide.with(imageView.context)

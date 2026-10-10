@@ -13,18 +13,15 @@ import com.bumptech.glide.load.resource.bitmap.CircleCrop
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.body.mole.model.MoleData
 import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
-import com.monsteraltech.skincare.data.FirebaseDataManager
 import com.monsteraltech.skincare.databinding.ItemMoleSelectorBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 class MoleSelectorAdapter(
     private val onMoleClick: (MoleData) -> Unit
 ) : ListAdapter<MoleData, MoleSelectorAdapter.MoleViewHolder>(MoleDiffCallback()) {
     private var searchQuery: String = ""
-    private val firebaseDataManager = FirebaseDataManager()
     fun updateSearchQuery(query: String) {
         searchQuery = query.lowercase()
     }
@@ -34,15 +31,14 @@ class MoleSelectorAdapter(
             parent,
             false
         )
-        return MoleViewHolder(binding, onMoleClick, firebaseDataManager)
+        return MoleViewHolder(binding, onMoleClick)
     }
     override fun onBindViewHolder(holder: MoleViewHolder, position: Int) {
         holder.bind(getItem(position), searchQuery)
     }
     class MoleViewHolder(
         private val binding: ItemMoleSelectorBinding,
-        private val onMoleClick: (MoleData) -> Unit,
-        private val firebaseDataManager: FirebaseDataManager
+        private val onMoleClick: (MoleData) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
         private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
         fun bind(mole: MoleData, searchQuery: String = "") {
@@ -116,7 +112,7 @@ class MoleSelectorAdapter(
                     .load(if (mole.imageUrl.startsWith("http")) {
                         mole.imageUrl
                     } else {
-                        File(firebaseDataManager.getFullImagePath(binding.root.context, mole.imageUrl))
+                        ImageLoadingUtil.getImageSource(binding.root.context, mole.imageUrl)
                     })
                     .transform(CircleCrop())
                     .placeholder(R.drawable.ic_image_placeholder)

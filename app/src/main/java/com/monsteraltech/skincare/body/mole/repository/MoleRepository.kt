@@ -11,7 +11,10 @@ import com.monsteraltech.skincare.body.mole.data.local.SkinCareDatabase
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import com.monsteraltech.skincare.body.mole.model.MoleData
 import com.monsteraltech.skincare.body.mole.validation.AnalysisDataValidator
-import com.monsteraltech.skincare.data.FirebaseDataManager
+import com.monsteraltech.skincare.data.image.PrivateImageStore
+import com.monsteraltech.skincare.data.image.PrivateImagePersistence
+import com.monsteraltech.skincare.body.mole.data.local.MoleEntity
+import kotlinx.coroutines.CancellationException
 import id.zelory.compressor.Compressor
 import id.zelory.compressor.constraint.format
 import id.zelory.compressor.constraint.quality
@@ -34,7 +37,8 @@ import javax.inject.Singleton
 class MoleRepository @Inject constructor(
     private val database: SkinCareDatabase,
     private val activeProfile: ActiveProfile,
-    private val imageManager: FirebaseDataManager
+    private val imageStore: PrivateImageStore,
+    private val imagePersistence: PrivateImagePersistence
 ) {
     private val dao = database.moleDao()
     private val mapper = LocalMoleMapper()
@@ -51,58 +55,59 @@ class MoleRepository @Inject constructor(
         runCatching {
             val userId = requireCurrentUserId()
             val compressedImage = compressImage(context, imageFile)
-            val localImagePath = try {
-                imageManager.saveImageLocally(context, compressedImage.absolutePath, userId)
+            try {
+                imagePersistence.save(compressedImage, userId) { localImagePath ->
+                    val now = Timestamp.now()
+                    val mole = MoleData(
+                        id = UUID.randomUUID().toString(),
+                        title = title,
+                        description = description,
+                        bodyPart = bodyPart,
+                        bodyPartColorCode = bodyPartColorCode,
+                        imageUrl = localImagePath,
+                        aiResult = analysisData.analysisResult,
+                        userId = userId,
+                        createdAt = now,
+                        updatedAt = now,
+                        analysisCount = 1,
+                        firstAnalysisDate = now,
+                        lastAnalysisDate = now,
+                        aiProbability = analysisData.aiProbability.toDouble(),
+                        aiConfidence = analysisData.aiConfidence.toDouble(),
+                        riskLevel = analysisData.riskLevel,
+                        combinedScore = analysisData.combinedScore.toDouble(),
+                        abcdeAsymmetry = analysisData.abcdeScores.asymmetryScore.toDouble(),
+                        abcdeBorder = analysisData.abcdeScores.borderScore.toDouble(),
+                        abcdeColor = analysisData.abcdeScores.colorScore.toDouble(),
+                        abcdeDiameter = analysisData.abcdeScores.diameterScore.toDouble(),
+                        abcdeTotalScore = analysisData.abcdeScores.totalScore.toDouble(),
+                        recommendation = analysisData.recommendation,
+                        analysisMetadata = analysisData.analysisMetadata
+                    )
+                    dao.upsertMole(mapper.toEntity(mole))
+                    mole
+                }
             } finally {
                 deleteTemporaryCompressedCopy(context, compressedImage, imageFile)
             }
-            val now = Timestamp.now()
-            val mole = MoleData(
-                id = UUID.randomUUID().toString(),
-                title = title,
-                description = description,
-                bodyPart = bodyPart,
-                bodyPartColorCode = bodyPartColorCode,
-                imageUrl = localImagePath,
-                aiResult = analysisData.analysisResult,
-                userId = userId,
-                createdAt = now,
-                updatedAt = now,
-                analysisCount = 1,
-                firstAnalysisDate = now,
-                lastAnalysisDate = now,
-                aiProbability = analysisData.aiProbability.toDouble(),
-                aiConfidence = analysisData.aiConfidence.toDouble(),
-                riskLevel = analysisData.riskLevel,
-                combinedScore = analysisData.combinedScore.toDouble(),
-                abcdeAsymmetry = analysisData.abcdeScores.asymmetryScore.toDouble(),
-                abcdeBorder = analysisData.abcdeScores.borderScore.toDouble(),
-                abcdeColor = analysisData.abcdeScores.colorScore.toDouble(),
-                abcdeDiameter = analysisData.abcdeScores.diameterScore.toDouble(),
-                abcdeTotalScore = analysisData.abcdeScores.totalScore.toDouble(),
-                recommendation = analysisData.recommendation,
-                analysisMetadata = analysisData.analysisMetadata
-            )
-            dao.upsertMole(mapper.toEntity(mole))
-            mole
-        }.onFailure { Log.e(TAG, "Error al guardar el lunar localmente", it) }
+        }.logFailure("Error al guardar el lunar localmente")
     }
 
     suspend fun getMoleById(userId: String, moleId: String): Result<MoleData> =
         withContext(Dispatchers.IO) {
             runCatching {
                 requireValidIds(userId, moleId)
-                dao.getMole(userId, moleId)?.let(mapper::toModel)
+                dao.getMole(userId, moleId)?.let(::moleWithImage)
                     ?: throw NoSuchElementException("No se encontró el lunar con ID: $moleId")
-            }.onFailure { Log.e(TAG, "Error al obtener el lunar local", it) }
+            }.logFailure("Error al obtener el lunar local")
         }
 
     suspend fun getAllMolesForUser(userId: String): Result<List<MoleData>> =
         withContext(Dispatchers.IO) {
             runCatching {
                 require(userId.isNotBlank()) { "ID de usuario no válido" }
-                dao.getMoles(userId).map(mapper::toModel)
-            }.onFailure { Log.e(TAG, "Error al obtener los lunares locales", it) }
+                dao.getMoles(userId).map(::moleWithImage)
+            }.logFailure("Error al obtener los lunares locales")
         }
 
     suspend fun getMolesForBodyPart(bodyPartColorCode: String): Result<List<MoleData>> =
@@ -110,8 +115,8 @@ class MoleRepository @Inject constructor(
             runCatching {
                 require(bodyPartColorCode.isNotBlank()) { "Código de zona corporal no válido" }
                 dao.getMolesForBodyPart(requireCurrentUserId(), bodyPartColorCode)
-                    .map(mapper::toModel)
-            }.onFailure { Log.e(TAG, "Error al obtener los lunares de la zona", it) }
+                    .map(::moleWithImage)
+            }.logFailure("Error al obtener los lunares de la zona")
         }
 
     suspend fun saveAnalysisToMole(
@@ -128,66 +133,70 @@ class MoleRepository @Inject constructor(
                 "Datos de análisis inválidos: ${validation.getErrorMessage()}"
             }
 
-            val processedImagePath = if (imageFile != null) {
+            val commitAnalysis: suspend (String) -> Unit = { processedImagePath ->
+                database.withTransaction {
+                    val current = dao.getMole(userId, moleId)
+                        ?: throw NoSuchElementException("Lunar no encontrado")
+                    val now = System.currentTimeMillis()
+
+                    if (current.analysisCount > 0) {
+                        val previousAnalysis = mapper.currentAnalysis(current).copy(
+                            id = "${moleId}_analysis_${current.analysisCount}"
+                        )
+                        dao.upsertAnalysis(mapper.toEntity(previousAnalysis, userId))
+                    }
+
+                    dao.upsertMole(
+                        current.copy(
+                            description = newAnalysis.description,
+                            imagePath = processedImagePath.ifBlank { current.imagePath },
+                            analysisResult = newAnalysis.analysisResult,
+                            updatedAtEpochMillis = now,
+                            analysisCount = current.analysisCount + 1,
+                            firstAnalysisAtEpochMillis =
+                                current.firstAnalysisAtEpochMillis ?: now,
+                            lastAnalysisAtEpochMillis = now,
+                            aiProbability = newAnalysis.aiProbability.toDouble(),
+                            aiConfidence = newAnalysis.aiConfidence.toDouble(),
+                            riskLevel = newAnalysis.riskLevel,
+                            combinedScore = newAnalysis.combinedScore.toDouble(),
+                            abcdeAsymmetry = newAnalysis.abcdeScores.asymmetryScore.toDouble(),
+                            abcdeBorder = newAnalysis.abcdeScores.borderScore.toDouble(),
+                            abcdeColor = newAnalysis.abcdeScores.colorScore.toDouble(),
+                            abcdeDiameter = newAnalysis.abcdeScores.diameterScore.toDouble(),
+                            abcdeTotalScore = newAnalysis.abcdeScores.totalScore.toDouble(),
+                            recommendation = newAnalysis.recommendation,
+                            analysisMetadataJson = mapper.toEntity(
+                                mapper.toModel(current).copy(
+                                    analysisMetadata = newAnalysis.analysisMetadata
+                                )
+                            ).analysisMetadataJson
+                        )
+                    )
+                }
+            }
+            if (imageFile != null) {
                 val compressedImage = compressImage(context, imageFile)
                 try {
-                    imageManager.saveImageLocally(context, compressedImage.absolutePath, userId)
+                    imagePersistence.save(compressedImage, userId, commitAnalysis)
                 } finally {
                     deleteTemporaryCompressedCopy(context, compressedImage, imageFile)
                 }
             } else {
-                newAnalysis.imageUrl
+                commitAnalysis(newAnalysis.imageUrl)
             }
-
-            database.withTransaction {
-                val current = dao.getMole(userId, moleId)
-                    ?: throw NoSuchElementException("Lunar no encontrado")
-                val now = System.currentTimeMillis()
-
-                if (current.analysisCount > 0) {
-                    val previousAnalysis = mapper.currentAnalysis(current).copy(
-                        id = "${moleId}_analysis_${current.analysisCount}"
-                    )
-                    dao.upsertAnalysis(mapper.toEntity(previousAnalysis, userId))
-                }
-
-                dao.upsertMole(
-                    current.copy(
-                        description = newAnalysis.description,
-                        imagePath = processedImagePath.ifBlank { current.imagePath },
-                        analysisResult = newAnalysis.analysisResult,
-                        updatedAtEpochMillis = now,
-                        analysisCount = current.analysisCount + 1,
-                        firstAnalysisAtEpochMillis =
-                            current.firstAnalysisAtEpochMillis ?: now,
-                        lastAnalysisAtEpochMillis = now,
-                        aiProbability = newAnalysis.aiProbability.toDouble(),
-                        aiConfidence = newAnalysis.aiConfidence.toDouble(),
-                        riskLevel = newAnalysis.riskLevel,
-                        combinedScore = newAnalysis.combinedScore.toDouble(),
-                        abcdeAsymmetry = newAnalysis.abcdeScores.asymmetryScore.toDouble(),
-                        abcdeBorder = newAnalysis.abcdeScores.borderScore.toDouble(),
-                        abcdeColor = newAnalysis.abcdeScores.colorScore.toDouble(),
-                        abcdeDiameter = newAnalysis.abcdeScores.diameterScore.toDouble(),
-                        abcdeTotalScore = newAnalysis.abcdeScores.totalScore.toDouble(),
-                        recommendation = newAnalysis.recommendation,
-                        analysisMetadataJson = mapper.toEntity(
-                            mapper.toModel(current).copy(
-                                analysisMetadata = newAnalysis.analysisMetadata
-                            )
-                        ).analysisMetadataJson
-                    )
-                )
-            }
-        }.onFailure { Log.e(TAG, "Error al guardar el análisis local", it) }
+        }.logFailure("Error al guardar el análisis local")
     }
 
     suspend fun getAnalysisHistory(moleId: String): Result<List<AnalysisData>> =
         withContext(Dispatchers.IO) {
             runCatching {
                 require(moleId.isNotBlank()) { "ID de lunar no válido" }
-                dao.getAnalysisHistory(requireCurrentUserId(), moleId).map(mapper::toModel)
-            }.onFailure { Log.e(TAG, "Error al obtener el historial local", it) }
+                dao.getAnalysisHistory(requireCurrentUserId(), moleId).map {
+                    imageStore.migrateLegacy(it.imagePath)
+                    mapper.toModel(it)
+                }
+            }.logFailure("Error al obtener el historial local")
         }
 
     suspend fun getCurrentAnalysis(moleId: String): Result<AnalysisData?> =
@@ -197,11 +206,12 @@ class MoleRepository @Inject constructor(
                 val mole = dao.getMole(requireCurrentUserId(), moleId)
                     ?: throw NoSuchElementException("Lunar no encontrado")
                 if (mole.analysisCount > 0 || mole.analysisResult.isNotBlank()) {
+                    imageStore.migrateLegacy(mole.imagePath)
                     mapper.currentAnalysis(mole)
                 } else {
                     null
                 }
-            }.onFailure { Log.e(TAG, "Error al obtener el análisis actual", it) }
+            }.logFailure("Error al obtener el análisis actual")
         }
 
     suspend fun updateMoleAnalysisMetadata(
@@ -226,7 +236,17 @@ class MoleRepository @Inject constructor(
                     )
                 )
             )
-        }.onFailure { Log.e(TAG, "Error al actualizar metadatos locales", it) }
+        }.logFailure("Error al actualizar metadatos locales")
+    }
+
+    private fun <T> Result<T>.logFailure(message: String): Result<T> = onFailure {
+        if (it is CancellationException) throw it
+        Log.e(TAG, message, it)
+    }
+
+    private fun moleWithImage(entity: MoleEntity): MoleData {
+        imageStore.migrateLegacy(entity.imagePath)
+        return mapper.toModel(entity)
     }
 
     private suspend fun compressImage(context: Context, imageFile: File): File =
@@ -242,8 +262,8 @@ class MoleRepository @Inject constructor(
         compressedFile: File,
         sourceFile: File
     ) {
-        val isSeparateCopy = compressedFile.absolutePath != sourceFile.absolutePath
-        val isAppCache = compressedFile.absolutePath.startsWith(context.cacheDir.absolutePath)
+        val isSeparateCopy = compressedFile.canonicalFile != sourceFile.canonicalFile
+        val isAppCache = compressedFile.canonicalFile.toPath().startsWith(context.cacheDir.canonicalFile.toPath())
         if (isSeparateCopy && isAppCache) {
             runCatching { compressedFile.delete() }
         }

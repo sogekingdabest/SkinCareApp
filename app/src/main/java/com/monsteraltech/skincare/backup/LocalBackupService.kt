@@ -8,6 +8,7 @@ import com.google.gson.Gson
 import com.monsteraltech.skincare.body.mole.data.local.AnalysisEntity
 import com.monsteraltech.skincare.body.mole.data.local.MoleEntity
 import com.monsteraltech.skincare.body.mole.data.local.SkinCareDatabase
+import com.monsteraltech.skincare.data.image.PrivateImageStore
 import com.monsteraltech.skincare.data.FirebaseDataManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.DataInputStream
@@ -29,7 +30,8 @@ class LocalBackupService @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: SkinCareDatabase,
     private val activeProfile: ActiveProfile,
-    private val localDataManager: FirebaseDataManager
+    private val localDataManager: FirebaseDataManager,
+    private val imageStore: PrivateImageStore
 ) {
     private val dao = database.moleDao()
     private val gson = Gson()
@@ -195,7 +197,7 @@ class LocalBackupService @Inject constructor(
         data.write(payloadBytes)
         data.writeInt(imageEntries.size)
         imageEntries.forEach { (relativePath, archiveEntry) ->
-            val image = resolvePrivateImage(relativePath)
+            val image = resolvePrivateImage(relativePath) ?: throw IOException("Imagen no disponible")
             val length = image.length()
             require(image.isFile && length <= MAX_IMAGE_BYTES) {
                 "Una imagen no está disponible o supera el tamaño máximo"
@@ -275,7 +277,7 @@ class LocalBackupService @Inject constructor(
         }.filter(String::isNotBlank)
         return paths.mapNotNull { path ->
             val image = resolvePrivateImage(path)
-            if (image.isFile) {
+            if (image?.isFile == true) {
                 path to "images/${sha256(path)}.bin"
             } else {
                 null
@@ -289,18 +291,11 @@ class LocalBackupService @Inject constructor(
         stagedImages: Map<String, File>,
         createdImages: MutableList<File>
     ): Map<String, String> {
-        val destinationDirectory = File(
-            context.noBackupFilesDir,
-            "mole_images/$userId"
-        ).apply { mkdirs() }
         return payload.imageEntries.mapNotNull { (originalPath, archiveEntry) ->
             val source = stagedImages[archiveEntry] ?: return@mapNotNull null
-            val fileName = "backup_${UUID.randomUUID()}.jpg"
-            val relativePath = "mole_images/$userId/$fileName"
-            val destination = File(destinationDirectory, fileName)
-            source.copyTo(destination, overwrite = false)
-            createdImages += destination
-            originalPath to relativePath
+            val reference = imageStore.save(source, userId)
+            createdImages += requireNotNull(imageStore.resolve(reference))
+            originalPath to reference
         }.toMap()
     }
 
@@ -311,8 +306,7 @@ class LocalBackupService @Inject constructor(
         ?.let(restoredPaths::get)
         .orEmpty()
 
-    private fun resolvePrivateImage(relativePath: String): File =
-        File(localDataManager.getFullImagePath(context, relativePath))
+    private fun resolvePrivateImage(reference: String): File? = imageStore.migrateLegacy(reference)
 
     private fun isValidImageEntry(name: String): Boolean =
         IMAGE_ENTRY_REGEX.matches(name)

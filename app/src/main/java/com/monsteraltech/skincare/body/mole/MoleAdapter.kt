@@ -10,15 +10,13 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.monsteraltech.skincare.R
-import com.monsteraltech.skincare.data.FirebaseDataManager
-import java.io.File
+import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
 class MoleAdapter(
     private val moleList: List<Mole>,
     private val onClick: (Mole) -> Unit,
     private val onFilterChanged: ((Boolean) -> Unit)? = null
 ) : RecyclerView.Adapter<MoleAdapter.MoleViewHolder>(), Filterable {
     private var filteredMoleList: List<Mole> = moleList
-    private val firebaseDataManager = FirebaseDataManager()
     class MoleViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val titleTextView: TextView = itemView.findViewById(R.id.moleTitle)
         val descriptionTextView: TextView = itemView.findViewById(R.id.moleDescription)
@@ -56,12 +54,9 @@ class MoleAdapter(
                     .centerCrop()
                     .into(holder.imageView)
             } else {
-                val fullPath = firebaseDataManager.getFullImagePath(
-                    holder.imageView.context,
-                    mole.imageUrl
-                )
+                val imageSource = ImageLoadingUtil.getImageSource(holder.imageView.context, mole.imageUrl)
                 Glide.with(holder.imageView.context)
-                    .load(File(fullPath))
+                    .load(imageSource)
                     .placeholder(R.drawable.cat)
                     .error(R.drawable.cat)
                     .centerCrop()
