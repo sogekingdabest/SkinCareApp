@@ -29,15 +29,14 @@ def markdown_links(path: Path):
 
 def main() -> int:
     errors: list[str] = []
-    documents = [ROOT / "README.md", ROOT / "CONTRIBUTING.md", ROOT / "CHANGELOG.md", ROOT / "app/README.md"]
-    documents += sorted((ROOT / "docs").rglob("*.md"))
+    tracked = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines()
+    documents = [ROOT / path for path in tracked if path.endswith(".md") and (ROOT / path).is_file()]
     checked = 0
     for document in documents:
         for line, target in markdown_links(document):
             parsed = urlsplit(target)
             if parsed.scheme or target.startswith("#"):
                 continue
-            # Accept historical Codex-style line references while auditing old reports.
             relative = re.sub(r":\d+(?:-\d+)?$", "", unquote(parsed.path))
             resolved = (document.parent / relative).resolve()
             if not resolved.is_relative_to(ROOT) or not resolved.exists():
@@ -53,10 +52,11 @@ def main() -> int:
     if not any(item["client_type"] == 3 for item in client["oauth_client"]):
         errors.append("Firebase example needs the web client used by generated resources.")
 
-    tracked = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines()
     for path in tracked:
-        if path.startswith(".idea/") or Path(path).name in {"google-services.json", "local.properties"} or path.endswith((".jks", ".keystore")):
+        if path.startswith((".idea/", ".private/", ".agents/", ".claude/")) or Path(path).name in {"google-services.json", "local.properties", "skills-lock.json"} or path.endswith((".jks", ".keystore")):
             errors.append(f"Local configuration should not be tracked: {path}")
+        if path.endswith(".md") and path != "README.md":
+            errors.append(f"Technical documents must remain local: {path}")
 
     if errors:
         print("\n".join(errors), file=sys.stderr)

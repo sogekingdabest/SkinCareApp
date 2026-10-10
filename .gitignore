@@ -348,3 +348,9 @@ $RECYCLE.BIN/
 
 # Artefactos locales de entrenamiento y ejecuciones históricas.
 /NoteBook-Model-AI/
+
+# Notas técnicas y herramientas internas, conservadas solo en esta copia local.
+/.private/
+/.agents/
+/.claude/
+/skills-lock.json

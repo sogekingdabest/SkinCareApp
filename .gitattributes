@@ -9,8 +9,3 @@
 *.sh text eol=lf
 gradlew text eol=lf
 *.bat text eol=crlf
-
-# Recursos externos de asistencia, separados del código de la aplicación.
-.agents/** linguist-vendored
-.claude/** linguist-vendored
-docs/archive/**/*.ipynb linguist-vendored
