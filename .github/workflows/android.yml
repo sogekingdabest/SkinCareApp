@@ -29,8 +29,11 @@ jobs:
           java-version: '17'
       - name: Set up Gradle and validate wrapper
         uses: gradle/actions/setup-gradle@07d1f8453baaff67fb503883367f8b13e6158a54 # v6
-      - name: Install Android SDK components
-        run: sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+          log-accepted-android-sdk-licenses: false
       - name: Prepare build-only Firebase configuration
         run: cp app/google-services.json.example app/google-services.json
       - name: Check repository documentation
