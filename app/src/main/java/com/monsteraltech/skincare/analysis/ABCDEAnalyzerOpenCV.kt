@@ -86,98 +86,63 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
     ): ABCDEResult {
         Log.d(TAG, "Iniciando análisis ABCDE con OpenCV")
         val mat = Mat()
-        Utils.bitmapToMat(bitmap, mat)
-        val processedMat = preprocessImage(mat)
-        val (mask, contour) = segmentMole(processedMat)
-        if (!isValidSegmentation(mask, contour)) {
-            Log.w(TAG, "Segmentación inicial inválida, intentando método alternativo")
-            val (altMask, altContour) = segmentMoleAlternative(processedMat)
-            if (isValidSegmentation(altMask, altContour)) {
-                mask.release()
-                altMask.copyTo(mask)
-                contour.fromArray(*altContour.toArray())
-            } else {
-                Log.e(TAG, "Ambos métodos de segmentación fallaron")
-
-                val centerX = processedMat.cols() / 2
-                val centerY = processedMat.rows() / 2
-                val radius = minOf(centerX, centerY) / 3
-                val defaultContour = MatOfPoint()
-                val points = mutableListOf<Point>()
-                for (i in 0 until 20) {
-                    val angle = 2 * Math.PI * i / 20
-                    points.add(
-                            Point(
-                                    centerX + radius * kotlin.math.cos(angle),
-                                    centerY + radius * kotlin.math.sin(angle)
-                            )
-                    )
+        var processedMat: Mat? = null
+        var mask: Mat? = null
+        var contour: MatOfPoint? = null
+        try {
+            Utils.bitmapToMat(bitmap, mat)
+            val processed = preprocessImage(mat).also { processedMat = it }
+            val segmented = segmentMole(processed)
+            val lesionMask = segmented.first.also { mask = it }
+            val lesionContour = segmented.second.also { contour = it }
+            if (!isValidSegmentation(lesionMask, lesionContour)) {
+                val (alternativeMask, alternativeContour) = segmentMoleAlternative(processed)
+                try {
+                    if (!isValidSegmentation(alternativeMask, alternativeContour)) {
+                        throw AnalysisError.ABCDEAnalysisError("No se pudo segmentar la lesión")
+                    }
+                    alternativeMask.copyTo(lesionMask)
+                    lesionContour.fromArray(*alternativeContour.toArray())
+                } finally {
+                    alternativeMask.release()
+                    alternativeContour.release()
                 }
-                defaultContour.fromArray(*points.toTypedArray())
-                contour.fromArray(*defaultContour.toArray())
-
-                mask.setTo(Scalar(0.0))
-                Imgproc.circle(
-                        mask,
-                        Point(centerX.toDouble(), centerY.toDouble()),
-                        radius,
-                        Scalar(255.0),
-                        -1
-                )
             }
+            val asymmetry = analyzeAsymmetry(lesionMask, lesionContour)
+            val border = analyzeBorder(lesionContour)
+            val color = analyzeColor(mat, lesionMask)
+            val diameter = analyzeDiameter(lesionContour, pixelDensity)
+            val evolution = previousBitmap?.let {
+                val previous = Mat()
+                try {
+                    Utils.bitmapToMat(it, previous)
+                    analyzeEvolution(mat, previous)
+                } finally {
+                    previous.release()
+                }
+            }
+            val asymmetryScore = calculateAsymmetryScore(asymmetry)
+            val borderScore = calculateBorderScore(border)
+            val colorScore = calculateColorScore(color)
+            val diameterScore = calculateDiameterScore(diameter)
+            val evolutionScore = evolution?.let { calculateEvolutionScore(it) }
+            val totalScore = calculateTotalScore(asymmetryScore, borderScore, colorScore, diameterScore, evolutionScore)
+            if (listOfNotNull(asymmetryScore, borderScore, colorScore, diameterScore, evolutionScore, totalScore).any { !it.isFinite() }) {
+                throw AnalysisError.ABCDEAnalysisError("Métricas ABCDE no válidas")
+            }
+            val risk = when {
+                totalScore < 4.75f -> RiskLevel.LOW
+                totalScore < 6.8f -> RiskLevel.MEDIUM
+                else -> RiskLevel.HIGH
+            }
+            return ABCDEResult(asymmetryScore, borderScore, colorScore, diameterScore, evolutionScore, totalScore, risk,
+                ABCDEDetails(asymmetry, border, color, diameter, evolution))
+        } finally {
+            contour?.release()
+            mask?.release()
+            processedMat?.release()
+            mat.release()
         }
-        val asymmetryDetails = analyzeAsymmetry(mask, contour)
-        val borderDetails = analyzeBorder(contour)
-        val colorDetails = analyzeColor(mat, mask)
-        val diameterDetails = analyzeDiameter(contour, pixelDensity)
-        val evolutionDetails =
-                previousBitmap?.let {
-                    val prevMat = Mat()
-                    Utils.bitmapToMat(it, prevMat)
-                    analyzeEvolution(mat, prevMat)
-                }
-        val asymmetryScore = calculateAsymmetryScore(asymmetryDetails)
-        val borderScore = calculateBorderScore(borderDetails)
-        val colorScore = calculateColorScore(colorDetails)
-        val diameterScore = calculateDiameterScore(diameterDetails)
-        val evolutionScore = evolutionDetails?.let { calculateEvolutionScore(it) }
-        val totalScore =
-                calculateTotalScore(
-                        asymmetryScore,
-                        borderScore,
-                        colorScore,
-                        diameterScore,
-                        evolutionScore
-                )
-
-        val riskLevel =
-                when {
-                    totalScore < 4.75f -> RiskLevel.LOW
-                    totalScore < 6.8f -> RiskLevel.MEDIUM
-                    else -> RiskLevel.HIGH
-                }
-
-        mat.release()
-        processedMat.release()
-        mask.release()
-
-        return ABCDEResult(
-                asymmetryScore = asymmetryScore,
-                borderScore = borderScore,
-                colorScore = colorScore,
-                diameterScore = diameterScore,
-                evolutionScore = evolutionScore,
-                totalScore = totalScore,
-                riskLevel = riskLevel,
-                details =
-                        ABCDEDetails(
-                                asymmetryDetails = asymmetryDetails,
-                                borderDetails = borderDetails,
-                                colorDetails = colorDetails,
-                                diameterDetails = diameterDetails,
-                                evolutionDetails = evolutionDetails
-                        )
-        )
     }
     private fun preprocessImage(src: Mat): Mat {
         val processed = Mat()
@@ -335,7 +300,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
             val points = contour.toArray()
             if (points.isEmpty()) {
                 Log.w(TAG, "Contorno vacío en analyzeAsymmetry")
-                return AsymmetryDetails(0f, 0f, "Análisis no disponible.")
+                throw AnalysisError.ABCDEAnalysisError("Asimetría no disponible")
             }
 
             val moments =
@@ -343,12 +308,12 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
                         Imgproc.moments(contour)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error calculando momentos: ${e.message}")
-                        return AsymmetryDetails(0f, 0f, "Análisis no disponible.")
+                        throw AnalysisError.ABCDEAnalysisError("Asimetría no disponible")
                     }
 
             if (moments.m00 == 0.0) {
                 Log.w(TAG, "Momento m00 es cero")
-                return AsymmetryDetails(0f, 0f, "Análisis no disponible.")
+                throw AnalysisError.ABCDEAnalysisError("Asimetría no disponible")
             }
 
             val cx = moments.m10 / moments.m00
@@ -376,7 +341,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
             AsymmetryDetails(horizAsym, vertAsym, description)
         } catch (e: Exception) {
             Log.e(TAG, "Error en análisis de asimetría: ${e.message}")
-            AsymmetryDetails(0f, 0f, "Análisis no disponible.")
+            throw AnalysisError.ABCDEAnalysisError("Asimetría no disponible")
         }
     }
     private fun calculateAxialAsymmetry(mask: Mat, cx: Double, cy: Double): Pair<Float, Float> {
@@ -402,7 +367,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
             val points = contour.toArray()
             if (points.isEmpty() || points.size < 3) {
                 Log.w(TAG, "Contorno inválido en analyzeBorder")
-                return BorderDetails(0f, 0, "Análisis no disponible.")
+                throw AnalysisError.ABCDEAnalysisError("Bordes no disponibles")
             }
 
             val epsilon = 0.02 * Imgproc.arcLength(MatOfPoint2f(*points), true)
@@ -418,7 +383,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
                         Imgproc.contourArea(contour)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error calculando área del contorno: ${e.message}")
-                        0.0
+                        throw AnalysisError.ABCDEAnalysisError("Error calculando área del contorno")
                     }
 
             val hullPoints = hull.toArray().map { points[it] }.toTypedArray()
@@ -427,7 +392,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
                         Imgproc.contourArea(MatOfPoint(*hullPoints))
                     } catch (e: Exception) {
                         Log.e(TAG, "Error calculando área del hull: ${e.message}")
-                        contourArea
+                        throw AnalysisError.ABCDEAnalysisError("Error calculando área del hull")
                     }
             val solidity = contourArea / hullArea
             val perimeter = Imgproc.arcLength(MatOfPoint2f(*contour.toArray()), true)
@@ -460,7 +425,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error en análisis de bordes: ${e.message}")
-            BorderDetails(0f, 0, "Análisis no disponible.")
+            throw AnalysisError.ABCDEAnalysisError("Bordes no disponibles")
         }
     }
     private fun analyzeColor(src: Mat, mask: Mat): ColorDetails {
@@ -483,7 +448,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
                 Log.w(TAG, "No hay píxeles válidos para análisis de color")
                 cleanedMask.release()
                 lab.release()
-                return ColorDetails(emptyList(), 0, false, false, "Análisis no disponible.")
+                throw AnalysisError.ABCDEAnalysisError("Color no disponible")
             }
 
             val optimalK = determineOptimalClusters(molePixels)
@@ -568,7 +533,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error en análisis de color: ${e.message}")
-            ColorDetails(emptyList(), 0, false, false, "Análisis no disponible.")
+            throw AnalysisError.ABCDEAnalysisError("Color no disponible")
         }
     }
     private fun removeHairArtifacts(src: Mat, mask: Mat): Mat {
@@ -767,7 +732,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
             val points = contour.toArray()
             if (points.isEmpty()) {
                 Log.w(TAG, "Contorno vacío en analyzeDiameter")
-                return DiameterDetails(0f, 0, "Análisis no disponible.")
+                throw AnalysisError.ABCDEAnalysisError("Diámetro no disponible")
             }
 
             val area =
@@ -775,7 +740,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
                         Imgproc.contourArea(contour)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error calculando área: ${e.message}")
-                        0.0
+                        throw AnalysisError.ABCDEAnalysisError("Error calculando área")
                     }
 
             var maxDistance = 0.0
@@ -808,7 +773,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error en análisis de diámetro: ${e.message}")
-            DiameterDetails(0f, 0, "Análisis no disponible.")
+            throw AnalysisError.ABCDEAnalysisError("Diámetro no disponible")
         }
     }
     private fun analyzeEvolution(currentMat: Mat, previousMat: Mat): EvolutionDetails {
@@ -843,7 +808,7 @@ class ABCDEAnalyzerOpenCV(private val context: Context) {
             EvolutionDetails(sizeChange, colorChange, shapeChange, description)
         } catch (e: Exception) {
             Log.e(TAG, "Error en análisis de evolución: ${e.message}")
-            EvolutionDetails(0f, 0f, 0f, "Análisis no disponible.")
+            throw AnalysisError.ABCDEAnalysisError("Evolución no disponible")
         }
     }
     private fun alignImages(img1: Mat, img2: Mat): Pair<Mat, Mat> {

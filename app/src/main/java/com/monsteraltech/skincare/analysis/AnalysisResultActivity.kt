@@ -23,6 +23,7 @@ import com.monsteraltech.skincare.camera.MoleCaptureContract
 import com.monsteraltech.skincare.databinding.ActivityAnalysisResultEnhancedBinding
 import com.monsteraltech.skincare.utils.MedicalDisclaimerHelper
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /**
  * Pantalla de resultado del análisis de una captura. La orquestación del
@@ -147,6 +148,7 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun renderAnalysisState(state: AnalysisResultViewModel.AnalysisState) {
+        renderSaving(viewModel.isSaving.value)
         when (state) {
             is AnalysisResultViewModel.AnalysisState.Idle -> Unit
             is AnalysisResultViewModel.AnalysisState.Processing -> {
@@ -169,6 +171,14 @@ class AnalysisResultActivity : AppCompatActivity() {
                 }
                 displayResults(state.result)
                 binding.processingOverlay.postDelayed({ hideProcessingOverlay() }, 1500)
+            }
+            is AnalysisResultViewModel.AnalysisState.Partial -> {
+                hideProcessingOverlay()
+                displayPartialResult(state.result)
+            }
+            is AnalysisResultViewModel.AnalysisState.Cancelled -> {
+                hideProcessingOverlay()
+                displayUnavailable(getString(R.string.analysis_cancelled))
             }
             is AnalysisResultViewModel.AnalysisState.Failed -> {
                 progressManager.showErrorWithAccessibility(state.message)
@@ -204,10 +214,11 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun renderSaving(isSaving: Boolean) {
-        binding.saveButton.isEnabled = !isSaving
-        binding.assignToExistingMoleButton.isEnabled = !isSaving
+        val canSave = viewModel.analysisState.value is AnalysisResultViewModel.AnalysisState.Ready && !isSaving
+        binding.saveButton.isEnabled = canSave
+        binding.assignToExistingMoleButton.isEnabled = canSave
         binding.saveButton.text = getString(
-            if (isSaving) R.string.user_abcde_saving else R.string.save_as_new_mole
+            if (isSaving) R.string.user_abcde_saving else if (targetMoleId != null) R.string.save_follow_up else R.string.save_as_new_mole
         )
     }
 
@@ -315,9 +326,15 @@ class AnalysisResultActivity : AppCompatActivity() {
         val userTotal = currentUserInput().total()
         binding.userTotalScore.text = String.format("%.1f", userTotal)
 
-        val result = (viewModel.analysisState.value as? AnalysisResultViewModel.AnalysisState.Ready)?.result
-            ?: return
-        val aiTotal = result.abcdeResult.totalScore
+        val aiTotal = when (val state = viewModel.analysisState.value) {
+            is AnalysisResultViewModel.AnalysisState.Ready -> state.result.abcdeResult.totalScore
+            is AnalysisResultViewModel.AnalysisState.Partial -> (state.result.abcde as? AnalysisSignal.Available)?.value?.totalScore
+            else -> null
+        }
+        if (aiTotal == null) {
+            binding.comparisonText.setText(R.string.analysis_abcde_unavailable)
+            return
+        }
         val difference = UserAbcdeInput.difference(aiTotal, userTotal)
         val messageRes = when (UserAbcdeInput.comparisonBucket(aiTotal, userTotal)) {
             UserAbcdeInput.Companion.ComparisonBucket.SIMILAR -> R.string.user_abcde_comparison_similar
@@ -373,6 +390,8 @@ class AnalysisResultActivity : AppCompatActivity() {
     // --- Presentación de resultados ---
 
     private fun displayResults(result: MelanomaAIDetector.CombinedAnalysisResult) {
+        binding.abcdeCard.isVisible = true
+        binding.riskIndicator.isVisible = true
         val scorePercentage = (result.combinedScore * 100).toInt()
         binding.combinedScoreText.text = "$scorePercentage%"
         updateRiskIndicator(result.combinedRiskLevel)
@@ -386,6 +405,43 @@ class AnalysisResultActivity : AppCompatActivity() {
             if (result.abcdeResult.evolutionScore != null) View.VISIBLE else View.GONE
         binding.aiTotalScore.text = String.format("%.1f", result.abcdeResult.totalScore)
         updateUserTotalAndComparison()
+    }
+
+    private fun displayPartialResult(result: AnalysisOutcome.Partial) {
+        clearCombinedResult(getString(R.string.analysis_partial))
+        binding.recommendationText.setText(R.string.analysis_partial_guidance)
+        binding.aiProbabilityText.text = when (val ai = result.ai) {
+            is AnalysisSignal.Available -> getString(R.string.analysis_ai_values, (ai.value.probability * 100).toInt(), (ai.value.confidence * 100).toInt())
+            is AnalysisSignal.Unavailable -> ai.message
+        }
+        val abcde = (result.abcde as? AnalysisSignal.Available)?.value
+        binding.abcdeCard.isVisible = abcde != null
+        if (abcde != null) displayABCDEScores(abcde)
+        binding.aiTotalScore.text = abcde?.let { String.format(Locale.getDefault(), "%.1f", it.totalScore) } ?: getString(R.string.analysis_unavailable)
+        explanationAdapter.setExplanations(listOfNotNull(
+            (result.ai as? AnalysisSignal.Unavailable)?.message,
+            (result.abcde as? AnalysisSignal.Unavailable)?.message
+        ))
+        updateUserTotalAndComparison()
+    }
+
+    private fun clearCombinedResult(status: String) {
+        binding.combinedScoreText.setText(R.string.analysis_unavailable)
+        binding.riskLevelText.text = status
+        binding.riskLevelText.setTextColor(binding.recommendationText.currentTextColor)
+        binding.riskIndicator.isVisible = false
+        binding.analysisCard.setCardBackgroundColor(com.google.android.material.color.MaterialColors.getColor(binding.analysisCard, com.google.android.material.R.attr.colorSurface))
+        binding.historyButton.isVisible = false
+    }
+
+    private fun displayUnavailable(status: String) {
+        clearCombinedResult(status)
+        binding.abcdeCard.isVisible = false
+        binding.aiProbabilityText.setText(R.string.analysis_unavailable)
+        binding.aiTotalScore.setText(R.string.analysis_unavailable)
+        binding.comparisonText.setText(R.string.analysis_abcde_unavailable)
+        binding.recommendationText.text = status
+        explanationAdapter.setExplanations(emptyList())
     }
 
     private fun updateRiskIndicator(riskLevel: MelanomaAIDetector.RiskLevel) {
@@ -518,7 +574,7 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun showError(message: String) {
-        binding.resultImageView.setImageResource(R.drawable.cat)
+        displayUnavailable(message)
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 }

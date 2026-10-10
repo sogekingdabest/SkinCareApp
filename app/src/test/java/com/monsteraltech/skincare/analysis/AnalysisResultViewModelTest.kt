@@ -2,6 +2,8 @@ package com.monsteraltech.skincare.analysis
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.lifecycle.ViewModelStore
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.analysis.comparison.ObservationComparisonPreparer
@@ -18,6 +20,11 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import io.mockk.verify
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -42,6 +49,7 @@ class AnalysisResultViewModelTest {
     private lateinit var comparisonPreparer:
         ObservationComparisonPreparer
     private lateinit var viewModel: AnalysisResultViewModel
+    private lateinit var runner: ImageAnalysisRunner
 
     @Before
     fun setUp() {
@@ -52,6 +60,7 @@ class AnalysisResultViewModelTest {
         activeProfile = mockk()
         getBaselineObservation = mockk()
         comparisonPreparer = mockk()
+        runner = mockk(relaxed = true)
         every { activeProfile.ownerId } returns "user-1"
         viewModel = AnalysisResultViewModel(
             context,
@@ -59,12 +68,14 @@ class AnalysisResultViewModelTest {
             activeProfile,
             getBaselineObservation,
             comparisonPreparer,
-            dispatcher
+            dispatcher,
+            runner
         )
     }
 
     @After
     fun tearDown() {
+        unmockkStatic(BitmapFactory::class)
         Dispatchers.resetMain()
     }
 
@@ -101,7 +112,7 @@ class AnalysisResultViewModelTest {
     /** Fija photoFile (el decode falla en JVM y no llega a crear el procesador) y siembra el resultado. */
     private fun seedReadyState() {
         viewModel.startAnalysis("foto-inexistente.jpg", isFrontCamera = false, pixelDensity = 1f)
-        viewModel.handleAnalysisCompleted(combinedResult())
+        viewModel.handleAnalysisCompleted(AnalysisOutcome.Complete(combinedResult()))
     }
 
     @Test
@@ -147,7 +158,114 @@ class AnalysisResultViewModelTest {
         // Sin seedReadyState: el estado no es Ready.
         viewModel.saveAsNewMole("Título", "", "Torso", "#FFFFC90E", null)
 
-        assertTrue(viewModel.events.first() is AnalysisResultViewModel.Event.SaveFailed)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
+    }
+
+    @Test
+    fun `un parcial conserva el componente real y bloquea ambos tipos de guardado`() = runTest {
+        seedReadyState()
+        val partial = AnalysisOutcome.Partial(
+            AnalysisSignal.Unavailable(AnalysisSignal.Reason.ERROR, "IA no disponible"),
+            AnalysisSignal.Available(abcdeResult())
+        )
+        viewModel.handleAnalysisCompleted(partial)
+        assertEquals(AnalysisResultViewModel.AnalysisState.Partial(partial), viewModel.analysisState.value)
+
+        viewModel.saveAsNewMole("Título", "", "Torso", null, null)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
+        viewModel.saveToExistingMole("m-1", null, "", "", "Torso", null, null)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
+        coVerify(exactly = 0) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { moleRepository.saveAnalysisToMole(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `un fallo total sustituye el resultado y no permite guardar`() = runTest {
+        seedReadyState()
+        viewModel.handleAnalysisCompleted(AnalysisOutcome.Failed(AnalysisError.Timeout))
+        assertTrue(viewModel.analysisState.value is AnalysisResultViewModel.AnalysisState.Failed)
+        viewModel.saveAsNewMole("Título", "", "Torso", null, null)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
+        coVerify(exactly = 0) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `el resultado del runner inyectado llega a Ready una sola vez`() = runTest {
+        val bitmap = mockk<Bitmap>()
+        mockkStatic(BitmapFactory::class)
+        every { BitmapFactory.decodeFile("foto.jpg") } returns bitmap
+        val outcome = AnalysisOutcome.Complete(combinedResult())
+        coEvery { runner.processImage(any(), any(), any(), any(), any()) } returns outcome
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        assertEquals(AnalysisResultViewModel.AnalysisState.Ready(outcome.result), viewModel.analysisState.value)
+        coVerify(exactly = 1) { runner.processImage(bitmap, null, 1f, any(), any()) }
+    }
+
+    @Test
+    fun `cancelar detiene el trabajo y descarta progreso y resultados tardios`() = runTest {
+        val bitmap = mockk<Bitmap>()
+        mockkStatic(BitmapFactory::class)
+        every { BitmapFactory.decodeFile("foto.jpg") } returns bitmap
+        var stopped = false
+        lateinit var progress: (AnalysisProgress) -> Unit
+        coEvery { runner.processImage(any(), any(), any(), any(), any()) } coAnswers {
+            progress = arg(4)
+            try { awaitCancellation() } finally { stopped = true }
+        }
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        assertTrue(viewModel.isProcessing)
+        viewModel.cancelAnalysis()
+        assertTrue(stopped)
+        assertEquals(AnalysisResultViewModel.Event.AnalysisCancelled, viewModel.events.first())
+        progress(AnalysisProgress(ProcessingStage.FINALIZING, 100, "finalizado"))
+        viewModel.handleAnalysisCompleted(AnalysisOutcome.Complete(combinedResult()))
+        assertEquals(AnalysisResultViewModel.AnalysisState.Cancelled, viewModel.analysisState.value)
+        viewModel.saveAsNewMole("Título", "", "Torso", null, null)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
+    }
+
+    @Test
+    fun `cancelar durante la carga de observacion tambien cancela el trabajo`() = runTest {
+        var stopped = false
+        coEvery { getBaselineObservation("m-1") } coAnswers {
+            try { awaitCancellation() } finally { stopped = true }
+        }
+        viewModel.startAnalysis("foto.jpg", false, 1f, "m-1")
+        viewModel.cancelAnalysis()
+        assertTrue(stopped)
+        assertEquals(AnalysisResultViewModel.AnalysisState.Cancelled, viewModel.analysisState.value)
+        coVerify(exactly = 0) { runner.processImage(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `un motor que transforma cancelacion en error no cambia el estado cancelado`() = runTest {
+        val bitmap = mockk<Bitmap>()
+        mockkStatic(BitmapFactory::class)
+        every { BitmapFactory.decodeFile("foto.jpg") } returns bitmap
+        coEvery { runner.processImage(any(), any(), any(), any(), any()) } coAnswers {
+            try { awaitCancellation() } catch (_: CancellationException) { throw IllegalStateException("late failure") }
+        }
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        viewModel.cancelAnalysis()
+        assertEquals(AnalysisResultViewModel.AnalysisState.Cancelled, viewModel.analysisState.value)
+    }
+
+    @Test
+    fun `al destruir el ViewModel se cancela antes de cerrar el motor`() = runTest {
+        val bitmap = mockk<Bitmap>()
+        mockkStatic(BitmapFactory::class)
+        every { BitmapFactory.decodeFile("foto.jpg") } returns bitmap
+        var stopped = false
+        coEvery { runner.processImage(any(), any(), any(), any(), any()) } coAnswers {
+            try { awaitCancellation() } finally { stopped = true }
+        }
+        every { runner.close() } answers { assertTrue(stopped) }
+        val store = ViewModelStore()
+        store.put("analysis", viewModel)
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        store.clear()
+        verify(exactly = 1) { runner.close() }
     }
 
     @Test
@@ -182,6 +300,9 @@ class AnalysisResultViewModelTest {
                 match { analysisData ->
                     analysisData.analysisMetadata["userAsymmetry"] == 1.5f &&
                             analysisData.analysisMetadata.containsKey("userTotal") &&
+                            analysisData.analysisMetadata["analysisStatus"] == "COMPLETE" &&
+                            analysisData.analysisMetadata["aiAvailable"] == true &&
+                            analysisData.analysisMetadata["abcdeAvailable"] == true &&
                             analysisData.riskLevel == "LOW"
                 }
             )

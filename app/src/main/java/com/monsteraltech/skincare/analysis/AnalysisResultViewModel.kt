@@ -25,12 +25,16 @@ import com.monsteraltech.skincare.body.mole.repository.MoleRepository
 import com.monsteraltech.skincare.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -46,7 +50,8 @@ class AnalysisResultViewModel @Inject constructor(
     private val activeProfile: ActiveProfile,
     private val getBaselineObservation: GetBaselineObservationUseCase,
     private val comparisonPreparer: ObservationComparisonPreparer,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val imageAnalysisRunner: ImageAnalysisRunner
 ) : ViewModel() {
 
     sealed interface AnalysisState {
@@ -57,7 +62,9 @@ class AnalysisResultViewModel @Inject constructor(
             val stage: ProcessingStage?
         ) : AnalysisState
         data class Ready(val result: MelanomaAIDetector.CombinedAnalysisResult) : AnalysisState
+        data class Partial(val result: AnalysisOutcome.Partial) : AnalysisState
         data class Failed(val message: String) : AnalysisState
+        object Cancelled : AnalysisState
     }
 
     sealed interface Event {
@@ -122,7 +129,7 @@ class AnalysisResultViewModel @Inject constructor(
     private val _events = Channel<Event>(Channel.BUFFERED)
     val events: Flow<Event> = _events.receiveAsFlow()
 
-    private var asyncImageProcessor: AsyncImageProcessor? = null
+    private var analysisJob: Job? = null
     private var photoFile: File? = null
     private var comparisonBaselineBitmap: Bitmap? = null
     private var analysisStarted = false
@@ -130,45 +137,15 @@ class AnalysisResultViewModel @Inject constructor(
     val isProcessing: Boolean
         get() = _analysisState.value is AnalysisState.Processing
 
-    /**
-     * Puente entre los callbacks del procesador asíncrono y los StateFlows.
-     * El resultado sobrevive a rotaciones: el análisis no se relanza.
-     */
-    private val progressBridge = object : ProgressCallback {
-        override fun onProgressUpdate(progress: Int, message: String) {
-            val stage = (_analysisState.value as? AnalysisState.Processing)?.stage
-            _analysisState.value = AnalysisState.Processing(progress, message, stage)
-        }
-
-        override fun onProgressUpdateWithTimeEstimate(progress: Int, message: String, estimatedTotalTimeMs: Long) {
-            onProgressUpdate(progress, message)
-        }
-
-        override fun onStageChanged(stage: ProcessingStage) {
-            val current = _analysisState.value as? AnalysisState.Processing
-            _analysisState.value = AnalysisState.Processing(
-                progress = current?.progress ?: 0,
-                message = current?.message ?: stage.message,
-                stage = stage
-            )
-        }
-
-        override fun onError(error: String) {
-            _analysisState.value = AnalysisState.Failed(error)
-        }
-
-        override fun onCompleted(result: MelanomaAIDetector.CombinedAnalysisResult) {
-            handleAnalysisCompleted(result)
-        }
-
-        override fun onCancelled() {
-            _events.trySend(Event.AnalysisCancelled)
-        }
-    }
-
     @VisibleForTesting
-    internal fun handleAnalysisCompleted(result: MelanomaAIDetector.CombinedAnalysisResult) {
-        _analysisState.value = AnalysisState.Ready(result)
+    internal fun handleAnalysisCompleted(outcome: AnalysisOutcome) {
+        _analysisState.update { current ->
+            if (current is AnalysisState.Cancelled) current else when (outcome) {
+                is AnalysisOutcome.Complete -> AnalysisState.Ready(outcome.result)
+                is AnalysisOutcome.Partial -> AnalysisState.Partial(outcome)
+                is AnalysisOutcome.Failed -> AnalysisState.Failed(outcome.error.getUserFriendlyMessage())
+            }
+        }
     }
 
     /** Lanza el análisis una única vez (idempotente frente a recreaciones de la Activity). */
@@ -181,35 +158,46 @@ class AnalysisResultViewModel @Inject constructor(
         if (analysisStarted) return
         analysisStarted = true
         photoFile = File(photoPath)
+        _analysisState.value = AnalysisState.Processing(0, "Cargando imagen", null)
 
-        viewModelScope.launch(ioDispatcher) {
-            resolveBaselineObservation(targetMoleId)
-            val bitmap = decodeBitmap(photoPath, isFrontCamera)
-            if (bitmap == null) {
-                _analysisState.value = AnalysisState.Failed(
-                    appContext.getString(R.string.analysis_image_load_error)
-                )
-                return@launch
-            }
-            _capturedBitmap.value = bitmap
-            prepareComparison(bitmap, targetMoleId)
-            _analysisState.value = AnalysisState.Processing(0, "", null)
+        analysisJob = viewModelScope.launch(ioDispatcher) {
             try {
-                obtainProcessor().processImage(
+                resolveBaselineObservation(targetMoleId)
+                val bitmap = decodeBitmap(photoPath, isFrontCamera)
+                currentCoroutineContext().ensureActive()
+                if (bitmap == null) {
+                    failAnalysis(appContext.getString(R.string.analysis_image_load_error))
+                    return@launch
+                }
+                _capturedBitmap.value = bitmap
+                prepareComparison(bitmap, targetMoleId)
+                val outcome = imageAnalysisRunner.processImage(
                     bitmap = bitmap,
                     previousBitmap = null,
                     pixelDensity = pixelDensity,
-                    config = AnalysisConfiguration.default()
+                    config = AnalysisConfiguration.default(),
+                    onProgress = { progress ->
+                        _analysisState.update { current ->
+                            if (current is AnalysisState.Processing) {
+                                AnalysisState.Processing(progress.progress, progress.message, progress.stage)
+                            } else current
+                        }
+                    }
                 )
-                // El resultado (o el error) llega por el ProgressCallback.
+                currentCoroutineContext().ensureActive()
+                handleAnalysisCompleted(outcome)
             } catch (cancellation: CancellationException) {
+                _analysisState.value = AnalysisState.Cancelled
                 throw cancellation
             } catch (e: Exception) {
-                // Cancelaciones y fallos totales ya se notificaron vía onError/onCancelled.
-                if (_analysisState.value is AnalysisState.Processing) {
-                    _analysisState.value = AnalysisState.Failed(e.message ?: "")
-                }
+                failAnalysis(e.message ?: "")
             }
+        }
+    }
+
+    private fun failAnalysis(message: String) {
+        _analysisState.update { current ->
+            if (current is AnalysisState.Processing) AnalysisState.Failed(message) else current
         }
     }
 
@@ -363,7 +351,10 @@ class AnalysisResultViewModel @Inject constructor(
     }
 
     fun cancelAnalysis() {
-        asyncImageProcessor?.cancelProcessing()
+        if (!isProcessing) return
+        _analysisState.value = AnalysisState.Cancelled
+        analysisJob?.cancel()
+        _events.trySend(Event.AnalysisCancelled)
     }
 
     fun saveAsNewMole(
@@ -399,6 +390,8 @@ class AnalysisResultViewModel @Inject constructor(
                 } else {
                     _events.send(Event.SaveFailed(saveResult.exceptionOrNull()?.message))
                 }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
             } catch (e: Exception) {
                 _events.send(Event.SaveFailed(e.message))
             } finally {
@@ -454,6 +447,8 @@ class AnalysisResultViewModel @Inject constructor(
                 } else {
                     _events.send(Event.SaveFailed(saveResult.exceptionOrNull()?.message))
                 }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
             } catch (e: Exception) {
                 _events.send(Event.SaveFailed(e.message))
             } finally {
@@ -482,7 +477,7 @@ class AnalysisResultViewModel @Inject constructor(
         }
         val state = _analysisState.value
         if (state !is AnalysisState.Ready) {
-            _events.trySend(Event.SaveFailed(null))
+            _events.trySend(Event.ValidationFailed(R.string.analysis_complete_required))
             return null
         }
         return state.result
@@ -495,11 +490,6 @@ class AnalysisResultViewModel @Inject constructor(
         val flipped = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
         if (flipped !== decoded) decoded.recycle()
         return flipped
-    }
-
-    private fun obtainProcessor(): AsyncImageProcessor {
-        return asyncImageProcessor ?: AsyncImageProcessor(appContext, progressBridge)
-            .also { asyncImageProcessor = it }
     }
 
     private fun buildAnalysisData(
@@ -520,6 +510,9 @@ class AnalysisResultViewModel @Inject constructor(
             totalScore = result.abcdeResult.totalScore
         )
         val metadata = mapOf(
+            "analysisStatus" to "COMPLETE",
+            "aiAvailable" to true,
+            "abcdeAvailable" to true,
             "title" to title,
             "description" to description,
             "bodyPart" to bodyPart,
@@ -593,8 +586,12 @@ class AnalysisResultViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        comparisonBaselineBitmap?.recycle()
-        comparisonBaselineBitmap = null
-        asyncImageProcessor?.cleanup()
+        // Native operations finish before their interpreter and comparison image are released.
+        val release = {
+            comparisonBaselineBitmap?.recycle()
+            comparisonBaselineBitmap = null
+            imageAnalysisRunner.close()
+        }
+        analysisJob?.invokeOnCompletion { release() } ?: release()
     }
 }
