@@ -1,12 +1,15 @@
 package com.monsteraltech.skincare.analysis
 
 import android.content.Context
+import android.content.res.AssetManager
+import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.FileNotFoundException
 
 class MelanomaAIDetectorTest {
 
@@ -14,9 +17,13 @@ class MelanomaAIDetectorTest {
 
     @Before
     fun setUp() {
-        // Context mockeado: el modelo TFLite no carga (interpreter = null),
-        // exactamente el escenario de "IA no disponible".
-        detector = MelanomaAIDetector(mockk<Context>(relaxed = true))
+        // Modelo ausente explícitamente: no se intenta inicializar el runtime
+        // nativo de Android en estos tests JVM de combinación de resultados.
+        val context = mockk<Context>()
+        val assets = mockk<AssetManager>()
+        every { context.assets } returns assets
+        every { assets.openFd(any()) } throws FileNotFoundException("Test model unavailable")
+        detector = MelanomaAIDetector(context)
     }
 
     private fun abcdeResult(
