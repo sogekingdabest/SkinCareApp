@@ -7,14 +7,20 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
-class LazyImageLoader(private val context: Context) {
-    private val loadingJobs = ConcurrentHashMap<String, Job>()
+class LazyImageLoader(private val context: Context, private val scope: CoroutineScope) {
+    private val requests = Glide.with(context)
+    private val loadingJobs = ConcurrentHashMap<ImageView, Job>()
+    private val preloadJobs = ConcurrentHashMap<String, Job>()
+    private val activeViews = mutableSetOf<ImageView>()
     private val preloadedImages = ConcurrentHashMap<String, Boolean>()
     companion object {
         private const val PRELOAD_DELAY_MS = 100L
@@ -34,12 +40,11 @@ class LazyImageLoader(private val context: Context) {
     fun loadImageLazy(
         imageView: ImageView,
         imageUrl: String?,
-        position: Int,
         recyclerView: RecyclerView,
         config: LazyLoadConfig = LazyLoadConfig()
     ) {
-        val imageKey = "${imageUrl}_${position}"
-        loadingJobs[imageKey]?.cancel()
+        cancelLoad(imageView)
+        activeViews += imageView
         if (imageUrl.isNullOrEmpty()) {
             imageView.setImageResource(config.errorRes)
             return
@@ -51,7 +56,7 @@ class LazyImageLoader(private val context: Context) {
             }
             return
         }
-        val loadingJob = CoroutineScope(Dispatchers.Main).launch {
+        val loadingJob = scope.launch(start = CoroutineStart.LAZY) {
             if (config.loadDelay > 0) {
                 delay(config.loadDelay)
             }
@@ -60,7 +65,9 @@ class LazyImageLoader(private val context: Context) {
             }
             loadImageWithStrategy(imageView, imageUrl, config)
         }
-        loadingJobs[imageKey] = loadingJob
+        loadingJobs[imageView] = loadingJob
+        loadingJob.invokeOnCompletion { loadingJobs.remove(imageView, loadingJob) }
+        loadingJob.start()
     }
     private suspend fun loadImageWithStrategy(
         imageView: ImageView,
@@ -68,7 +75,7 @@ class LazyImageLoader(private val context: Context) {
         config: LazyLoadConfig
     ) {
         try {
-            val imageSource = getImageSource(imageUrl) ?: run {
+            val imageSource = withContext(Dispatchers.IO) { getImageSource(imageUrl) } ?: run {
                 imageView.setImageResource(config.errorRes)
                 return
             }
@@ -79,6 +86,8 @@ class LazyImageLoader(private val context: Context) {
             } else {
                 loadFullImage(imageView, imageSource, config)
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             imageView.setImageResource(config.errorRes)
         }
@@ -88,7 +97,7 @@ class LazyImageLoader(private val context: Context) {
             .override(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
             .diskCacheStrategy(config.diskCacheStrategy)
             .skipMemoryCache(!config.enableMemoryCache)
-        Glide.with(context)
+        requests
             .load(imageSource)
             .apply(requestOptions)
             .placeholder(config.placeholderRes)
@@ -100,7 +109,7 @@ class LazyImageLoader(private val context: Context) {
             .override(FULL_SIZE, FULL_SIZE)
             .diskCacheStrategy(config.diskCacheStrategy)
             .skipMemoryCache(!config.enableMemoryCache)
-        Glide.with(context)
+        requests
             .load(imageSource)
             .apply(requestOptions)
             .placeholder(config.placeholderRes)
@@ -108,21 +117,25 @@ class LazyImageLoader(private val context: Context) {
             .into(imageView)
     }
     private fun schedulePreload(imageUrl: String) {
-        if (preloadedImages.containsKey(imageUrl)) {
+        if (preloadedImages.containsKey(imageUrl) || preloadJobs.containsKey(imageUrl)) {
             return
         }
-        CoroutineScope(Dispatchers.IO).launch {
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             delay(PRELOAD_DELAY_MS)
             try {
-                val imageSource = getImageSource(imageUrl)
-                Glide.with(context)
+                val imageSource = withContext(Dispatchers.IO) { getImageSource(imageUrl) }
+                requests
                     .load(imageSource)
                     .apply(RequestOptions().override(THUMBNAIL_SIZE, THUMBNAIL_SIZE))
                     .preload()
                 preloadedImages[imageUrl] = true
-            } catch (e: Exception) {
-            }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) { }
         }
+        preloadJobs[imageUrl] = job
+        job.invokeOnCompletion { preloadJobs.remove(imageUrl, job) }
+        job.start()
     }
     private fun isImageViewVisible(imageView: ImageView, recyclerView: RecyclerView): Boolean {
         val layoutManager = recyclerView.layoutManager ?: return false
@@ -141,9 +154,16 @@ class LazyImageLoader(private val context: Context) {
     }
     private fun getImageSource(imageUrl: String): Any? =
         ImageLoadingUtil.getImageSource(context, imageUrl)
+    fun cancelLoad(imageView: ImageView) {
+        loadingJobs.remove(imageView)?.cancel()
+        activeViews.remove(imageView)
+        requests.clear(imageView)
+    }
     fun cancelAllLoads() {
-        loadingJobs.values.forEach { it.cancel() }
-        loadingJobs.clear()
+        activeViews.toList().forEach(::cancelLoad)
+        preloadJobs.values.toList().forEach { it.cancel() }
+        preloadJobs.clear()
+        preloadedImages.clear()
     }
     fun clearPreloadCache() {
         preloadedImages.clear()

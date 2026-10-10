@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import javax.inject.Inject
 
 @HiltViewModel
@@ -48,10 +51,15 @@ class LoginViewModel @Inject constructor(
         if (_isLoading.value) return
         viewModelScope.launch {
             _isLoading.value = true
-            runCatching { authRepository.continueWithoutAccount() }
-                .onSuccess { _events.send(Event.NavigateToMain) }
-                .onFailure { _events.send(Event.ShowMessage(R.string.error_authentication)) }
-            _isLoading.value = false
+            try {
+                authRepository.continueWithoutAccount()
+                currentCoroutineContext().ensureActive()
+                _events.send(Event.NavigateToMain)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _events.send(Event.ShowMessage(R.string.error_authentication))
+            } finally { _isLoading.value = false }
         }
     }
 
@@ -59,8 +67,9 @@ class LoginViewModel @Inject constructor(
         if (_isLoading.value) return
         viewModelScope.launch {
             _isLoading.value = true
-            val result = authCall()
-            _isLoading.value = false
+            val result = try { authCall() } finally { _isLoading.value = false }
+            currentCoroutineContext().ensureActive()
+            (result.exceptionOrNull() as? CancellationException)?.let { throw it }
             result
                 .onSuccess { _events.send(Event.NavigateToMain) }
                 .onFailure { _events.send(Event.ShowMessage(R.string.error_authentication)) }

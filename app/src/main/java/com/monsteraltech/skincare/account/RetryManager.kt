@@ -1,6 +1,7 @@
 package com.monsteraltech.skincare.account
 import android.util.Log
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlin.math.pow
 class RetryManager {
     companion object {
@@ -30,6 +31,7 @@ class RetryManager {
             try {
                 Log.d(TAG, "Executing operation, attempt ${attempt + 1}/${config.maxRetries + 1}")
                 lastResult = operation()
+                (lastResult.getErrorOrNull()?.exception as? CancellationException)?.let { throw it }
                 if (lastResult.isSuccess() || !shouldRetry(lastResult, config)) {
                     if (lastResult.isSuccess()) {
                         Log.d(TAG, "Operation succeeded on attempt ${attempt + 1}")
@@ -46,6 +48,8 @@ class RetryManager {
                 Log.d(TAG, "Operation failed on attempt ${attempt + 1}, retrying in ${delay}ms")
                 delay(delay)
                 attempt++
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected exception during retry operation: ${e.message}", e)
                 lastResult = AccountResult.error<T>(

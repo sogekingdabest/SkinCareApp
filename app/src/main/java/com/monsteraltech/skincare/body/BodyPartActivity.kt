@@ -1,4 +1,5 @@
 package com.monsteraltech.skincare.body
+import kotlinx.coroutines.CancellationException
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -183,6 +184,8 @@ class BodyPartActivity : AppCompatActivity() {
                         showEmptyState(false)
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 runOnUiThread {
                     showLoading(false)

@@ -3,6 +3,7 @@ import android.util.Log
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 class PasswordChangeManager(
@@ -28,6 +29,8 @@ class PasswordChangeManager(
                 user.reauthenticate(credential).await()
                 Log.d(TAG, "Contraseña actual validada exitosamente")
                 PasswordValidationResult(true)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Error al validar contraseña actual: ${e.message}")
                 val errorMessage = when {
@@ -100,6 +103,8 @@ class PasswordChangeManager(
                     user.updatePassword(newPassword).await()
                     Log.d(TAG, "Contraseña cambiada exitosamente")
                     AccountResult.success(Unit)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
                 } catch (e: Exception) {
                     Log.e(TAG, "Error al cambiar contraseña: ${e.message}", e)
                     val (message, errorType) = when {

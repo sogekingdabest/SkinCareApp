@@ -1,5 +1,6 @@
 package com.monsteraltech.skincare.login
 
+import kotlinx.coroutines.CancellationException
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -66,7 +67,7 @@ class SessionCheckViewModel @Inject constructor(
                 val startTime = System.currentTimeMillis()
                 val isSessionValid = sessionManager.isSessionValid(fastMode = true)
                 val elapsed = System.currentTimeMillis() - startTime
-                // Mantener el estado de carga un mínimo para evitar parpadeos.
+                // Mantener el estado de carga un mÃ­nimo para evitar parpadeos.
                 if (elapsed < MIN_LOADING_TIME_MS) {
                     delay(MIN_LOADING_TIME_MS - elapsed)
                 }
@@ -77,6 +78,8 @@ class SessionCheckViewModel @Inject constructor(
                 } else {
                     _events.send(Event.NavigateToLogin)
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 handleSessionCheckError(e)
             } finally {
@@ -86,7 +89,7 @@ class SessionCheckViewModel @Inject constructor(
     }
 
     /**
-     * Sin red no se puede verificar contra Firebase: si hay una sesión local
+     * Sin red no se puede verificar contra Firebase: si hay una sesiÃ³n local
      * no caducada se permite el acceso offline; si no, se vuelve al login.
      */
     private suspend fun handleSessionCheckError(exception: Exception) {
@@ -98,6 +101,8 @@ class SessionCheckViewModel @Inject constructor(
         delay(OFFLINE_FALLBACK_DELAY_MS)
         val storedSession = try {
             sessionManager.getStoredSession()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             null
         }

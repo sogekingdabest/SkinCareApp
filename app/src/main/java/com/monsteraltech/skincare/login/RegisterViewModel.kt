@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import javax.inject.Inject
 
 @HiltViewModel
@@ -79,8 +82,10 @@ class RegisterViewModel @Inject constructor(
         if (_isLoading.value) return
         viewModelScope.launch {
             _isLoading.value = true
-            val result = authRepository.registerWithEmail(trimmedEmail, password)
-            _isLoading.value = false
+            val result = try { authRepository.registerWithEmail(trimmedEmail, password) }
+                finally { _isLoading.value = false }
+            currentCoroutineContext().ensureActive()
+            (result.exceptionOrNull() as? CancellationException)?.let { throw it }
             result
                 .onSuccess { _events.send(Event.NavigateToMain) }
                 .onFailure { error ->

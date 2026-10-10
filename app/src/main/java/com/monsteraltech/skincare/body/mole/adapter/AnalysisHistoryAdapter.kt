@@ -18,9 +18,10 @@ import java.util.Locale
 class AnalysisHistoryAdapter(
     private val context: Context,
     private var analysisList: List<AnalysisData>,
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
     private val onItemClick: (AnalysisData) -> Unit
 ) : RecyclerView.Adapter<AnalysisHistoryAdapter.ViewHolder>() {
-    private val lazyImageLoader = LazyImageLoader(context)
+    private val lazyImageLoader = LazyImageLoader(context, coroutineScope)
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val analysisImageView: ImageView = view.findViewById(R.id.analysisImageView)
         val riskIndicator: View = view.findViewById(R.id.riskIndicator)
@@ -62,7 +63,6 @@ class AnalysisHistoryAdapter(
             lazyImageLoader.loadImageLazy(
                 imageView = holder.analysisImageView,
                 imageUrl = analysis.imageUrl,
-                position = position,
                 recyclerView = recyclerView,
                 config = LazyImageLoader.Configs.forAnalysisHistory()
             )
@@ -179,6 +179,14 @@ class AnalysisHistoryAdapter(
             holder.evolutionLayout.visibility = View.GONE
             holder.abcdeTotalScore.text = "Score ABCDE Total: --"
         }
+    }
+    override fun onViewRecycled(holder: ViewHolder) {
+        lazyImageLoader.cancelLoad(holder.analysisImageView)
+        super.onViewRecycled(holder)
+    }
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        lazyImageLoader.cancelAllLoads()
+        super.onDetachedFromRecyclerView(recyclerView)
     }
     override fun getItemCount() = analysisList.size
     fun updateData(newList: List<AnalysisData>) {

@@ -1,4 +1,5 @@
 package com.monsteraltech.skincare.notifications
+import kotlinx.coroutines.CancellationException
 import android.app.TimePickerDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -276,6 +277,8 @@ class NotificationSettingsActivity : AppCompatActivity() {
                         Log.d(TAG, "Guardando configuraciones...")
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Error inesperado al guardar configuraciones: ${e.message}", e)
                 UIUtils.showErrorToast(this@NotificationSettingsActivity, getString(R.string.settings_error))

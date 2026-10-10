@@ -27,6 +27,7 @@ class RetryManager() {
             try {
                 Log.d("RetryManager", "Ejecutando operación '$operation' - Intento $attempt/${config.maxAttempts}")
                 val result = block()
+                (result.exceptionOrNull() as? kotlinx.coroutines.CancellationException)?.let { throw it }
                 if (result.isSuccess) {
                     val totalTime = System.currentTimeMillis() - startTime
                     Log.d("RetryManager", "Operación '$operation' exitosa en intento $attempt (${totalTime}ms)")
@@ -49,6 +50,8 @@ class RetryManager() {
                         delay(delay)
                     }
                 }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (exception: Exception) {
                 lastException = exception
                 Log.w("RetryManager", "Excepción en operación '$operation' - Intento $attempt", exception)

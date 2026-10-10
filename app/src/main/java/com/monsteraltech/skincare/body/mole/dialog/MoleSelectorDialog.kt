@@ -100,7 +100,7 @@ class MoleSelectorDialog : DialogFragment() {
         }
         binding.progressBar.visibility = View.VISIBLE
         binding.molesRecyclerView.visibility = View.GONE
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val retryManager = RetryManager()
             val retryResult = retryManager.executeWithRetry(
                 operation = "Cargar lunares del usuario",
@@ -151,13 +151,14 @@ class MoleSelectorDialog : DialogFragment() {
     }
     private fun performDebouncedSearch(query: String) {
         searchJob?.cancel()
-        searchJob = lifecycleScope.launch {
+        searchJob = viewLifecycleOwner.lifecycleScope.launch {
             try {
                 delay(300)
                 if (isAdded && !isDetached) {
                     filterMoles(query)
                 }
-            } catch (e: Exception) {
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             }
         }
     }
@@ -290,6 +291,8 @@ class MoleSelectorDialog : DialogFragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         searchJob?.cancel()
+        searchJob = null
+        binding.molesRecyclerView.adapter = null
         _binding = null
     }
     override fun onStart() {

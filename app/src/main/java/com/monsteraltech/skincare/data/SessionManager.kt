@@ -3,6 +3,12 @@ import android.content.Context
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -50,6 +56,8 @@ class SessionManager private constructor(private val context: Context) {
     private var lastVerificationTimestamp: Long = 0L
     @Volatile
     private var isPreloadingUserData: Boolean = false
+    private val preloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var preloadJob: Job? = null
     suspend fun saveSession(user: FirebaseUser): Boolean = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "Guardando sesión para usuario: ${user.uid}")
@@ -82,6 +90,8 @@ class SessionManager private constructor(private val context: Context) {
                 Log.e(TAG, "Error al guardar sesión. Token: $tokenStored, Data: $dataStored")
             }
             success
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error al guardar sesión: ${e.message}", e)
             false
@@ -135,6 +145,8 @@ class SessionManager private constructor(private val context: Context) {
             Log.e(TAG, "Error de tamaño de bloque - datos corruptos", e)
             handleCorruptedSessionData("Error de tamaño de bloque")
             null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error inesperado al recuperar datos de sesión: ${e.message}", e)
             if (isLikelyDataCorruption(e)) {
@@ -169,14 +181,22 @@ class SessionManager private constructor(private val context: Context) {
                 return@withTimeout isValid
             }
         } catch (e: TimeoutCancellationException) {
+            currentCoroutineContext().ensureActive()
             Log.w(TAG, "Timeout al verificar validez de sesión después de ${SESSION_VERIFICATION_TIMEOUT_MS}ms")
             return@withContext handleSessionVerificationTimeout()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error al verificar validez de sesión: ${e.message}", e)
             false
         }
     }
     suspend fun clearSession(): Boolean = withContext(Dispatchers.IO) {
+        synchronized(this@SessionManager) {
+            preloadJob?.cancel()
+            preloadJob = null
+            isPreloadingUserData = false
+        }
         try {
             Log.d(TAG, "Limpiando datos de sesión")
             val tokenDeleted = secureStorage.deleteToken(SESSION_TOKEN_KEY)
@@ -189,6 +209,8 @@ class SessionManager private constructor(private val context: Context) {
                 Log.w(TAG, "Error parcial al limpiar sesión. Token: $tokenDeleted, Data: $dataDeleted")
             }
             success
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error al limpiar sesión: ${e.message}", e)
             false
@@ -228,6 +250,8 @@ class SessionManager private constructor(private val context: Context) {
                 Log.e(TAG, "Error al renovar sesión")
             }
             success
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error al renovar sesión: ${e.message}", e)
             if (isNetworkError(e)) {
@@ -249,6 +273,8 @@ class SessionManager private constructor(private val context: Context) {
                     user.getIdToken(true).await()
                 }
                 return tokenResult.token
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 lastException = e
                 val isNetworkError = isNetworkError(e)
@@ -278,6 +304,8 @@ class SessionManager private constructor(private val context: Context) {
             val isValid = tokenResult != null
             Log.d(TAG, "Verificación con Firebase: ${if (isValid) "exitosa" else "fallida"}")
             isValid
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w(TAG, "Error al verificar con Firebase: ${e.message}")
             handleVerificationError(e, sessionData)
@@ -292,6 +320,8 @@ class SessionManager private constructor(private val context: Context) {
                     user.getIdToken(false).await()
                 }
                 return tokenResult.token
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 lastException = e
                 val isNetworkError = isNetworkError(e)
@@ -356,6 +386,8 @@ class SessionManager private constructor(private val context: Context) {
                 return true
             }
             false
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w(TAG, "Error al verificar corrupción de datos: ${e.message}")
             true
@@ -394,6 +426,8 @@ class SessionManager private constructor(private val context: Context) {
                 "cleanup_success" to cleanupSuccess.toString(),
                 "timestamp" to System.currentTimeMillis().toString()
             ))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error al manejar datos corruptos: ${e.message}", e)
         }
@@ -426,6 +460,8 @@ class SessionManager private constructor(private val context: Context) {
                 Log.w(TAG, "Denegando acceso - no hay token local válido")
                 false
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error al manejar timeout de verificación: ${e.message}")
             false
@@ -443,6 +479,8 @@ class SessionManager private constructor(private val context: Context) {
                 }
             }
             Log.i(TAG, logMessage)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error al registrar evento de seguridad: ${e.message}")
         }
@@ -481,24 +519,31 @@ class SessionManager private constructor(private val context: Context) {
             Log.d(TAG, "Cache de verificación actualizado: $isValid")
         }
     }
-    private fun startUserDataPreloading() {
-        if (isPreloadingUserData) {
-            Log.d(TAG, "Preloading ya en progreso, omitiendo")
-            return
-        }
-        isPreloadingUserData = true
-        Log.d(TAG, "Iniciando preloading de datos de usuario")
-        CoroutineScope(Dispatchers.IO).launch {
+    private fun startUserDataPreloading() = synchronized(this) {
+        if (preloadJob?.isActive == true) return@synchronized
+        val job = preloadScope.launch(start = CoroutineStart.LAZY) {
             try {
-                withTimeout(PRELOAD_TIMEOUT_MS) {
-                    preloadUserData()
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Error durante preloading de datos: ${e.message}")
-            } finally {
-                isPreloadingUserData = false
+                withTimeout(PRELOAD_TIMEOUT_MS) { preloadUserData() }
+            } catch (timeout: TimeoutCancellationException) {
+                currentCoroutineContext().ensureActive()
+                Log.w(TAG, "Tiempo de precarga agotado")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w(TAG, "Error durante precarga", error)
             }
         }
+        preloadJob = job
+        isPreloadingUserData = true
+        job.invokeOnCompletion {
+            synchronized(this) {
+                if (preloadJob === job) {
+                    preloadJob = null
+                    isPreloadingUserData = false
+                }
+            }
+        }
+        job.start()
     }
     private suspend fun preloadUserData() {
         try {
@@ -513,6 +558,8 @@ class SessionManager private constructor(private val context: Context) {
                 if (tokenResult.token != null) {
                     Log.d(TAG, "Token precargado exitosamente")
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.w(TAG, "Error al precargar token: ${e.message}")
             }
@@ -524,16 +571,22 @@ class SessionManager private constructor(private val context: Context) {
                     "isEmailVerified" to currentUser.isEmailVerified.toString()
                 )
                 Log.d(TAG, "Información de usuario precargada: ${userInfo.size} campos")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.w(TAG, "Error al precargar información de usuario: ${e.message}")
             }
             Log.d(TAG, "Preloading completado exitosamente")
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error durante preloading: ${e.message}", e)
         }
     }
     fun clearCache() {
         synchronized(this) {
+            preloadJob?.cancel()
+            preloadJob = null
             cachedSessionData = null
             cacheTimestamp = 0L
             lastVerificationResult = false

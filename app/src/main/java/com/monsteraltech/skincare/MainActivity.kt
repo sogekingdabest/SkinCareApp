@@ -21,6 +21,7 @@ import com.monsteraltech.skincare.login.LoginActivity
 import com.monsteraltech.skincare.utils.MedicalDisclaimerHelper
 import com.monsteraltech.skincare.utils.ThemeManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.opencv.android.OpenCVLoader
@@ -43,9 +44,11 @@ class MainActivity : AppCompatActivity() {
         initializeManagers()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch {
             try {
-                themeManager.applyThemeFromUserSettings(this@MainActivity)
+                themeManager.applyThemeFromUserSettings()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.w("MainActivity", "Error al aplicar tema: ${e.message}")
             }
@@ -96,20 +99,23 @@ class MainActivity : AppCompatActivity() {
             sessionManager = SessionManager.getInstance(this)
             disclaimerHelper = MedicalDisclaimerHelper(this)
             Log.d("MainActivity", "Managers inicializados correctamente")
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e("MainActivity", "Error al inicializar managers: ${e.message}", e)
         }
     }
-    fun getThemeManager(): ThemeManager = themeManager
     private fun checkPreloadedData() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val cacheStats = sessionManager.getCacheStats()
                 Log.d("MainActivity", "Cache stats al iniciar: $cacheStats")
                 if (cacheStats["cached_data_exists"] == true) {
-                    Log.d("MainActivity", "Datos de sesión precargados disponibles")
+                    Log.d("MainActivity", "Datos de sesiÃ³n precargados disponibles")
                     preloadAdditionalUserData()
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.w("MainActivity", "Error al verificar datos precargados: ${e.message}")
             }
@@ -121,6 +127,8 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 Log.d("MainActivity", "Datos adicionales precargados exitosamente")
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w("MainActivity", "Error al precargar datos adicionales: ${e.message}")
         }
@@ -159,8 +167,8 @@ class MainActivity : AppCompatActivity() {
         binding.navigation.isEnabled = false
         invalidateOptionsMenu()
         lifecycleScope.launch {
-            // Cierre de sesión completo (sesión local + Firebase + Credential Manager).
-            // No lanza excepciones: cada paso se degrada internamente.
+            // Cierre de sesiÃ³n completo (sesiÃ³n local + Firebase + Credential Manager).
+            // La limpieza termina antes de propagar la cancelación de esta pantalla.
             authRepository.signOut()
             navigateToLogin()
         }

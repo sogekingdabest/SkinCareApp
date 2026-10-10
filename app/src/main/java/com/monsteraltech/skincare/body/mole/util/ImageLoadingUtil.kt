@@ -15,6 +15,9 @@ import com.monsteraltech.skincare.data.image.privateImageStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withContext
 import java.io.File
 object ImageLoadingUtil {
     data class ImageLoadConfig(
@@ -120,18 +123,22 @@ object ImageLoadingUtil {
             }
         }
     }
-    private fun loadImageSynchronously(context: Context, imageUrl: String): Result<Unit> {
-        return try {
+    private suspend fun loadImageSynchronously(context: Context, imageUrl: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
             val imageSource = getImageSource(context, imageUrl)
             if (imageSource is File && !imageSource.exists()) {
                 Result.failure(Exception("Archivo de imagen no encontrado: ${imageSource.absolutePath}"))
             } else {
-                Glide.with(context)
+                val manager = Glide.with(context.applicationContext)
+                val target = manager
                     .load(imageSource)
                     .submit()
-                    .get()
+                try { runInterruptible { target.get() } }
+                finally { manager.clear(target) }
                 Result.success(Unit)
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Result.failure(e)
         }

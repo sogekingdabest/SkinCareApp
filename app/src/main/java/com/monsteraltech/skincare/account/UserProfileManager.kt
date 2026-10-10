@@ -4,14 +4,15 @@ import com.google.firebase.auth.FirebaseAuth
 import com.monsteraltech.skincare.data.FirebaseDataManager
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 class UserProfileManager @Inject constructor(
     private val firebaseDataManager: FirebaseDataManager,
     private val auth: FirebaseAuth,
     private val activeProfile: ActiveProfile,
     private val retryManager: RetryManager = RetryManager()
-) {
+) : AccountProfileRepository {
     private val TAG = "UserProfileManager"
-    suspend fun getCurrentUserInfo(): AccountResult<UserInfo> {
+    override suspend fun getCurrentUserInfo(): AccountResult<UserInfo> {
         return retryManager.executeWithRetry(
             config = retryManager.createDataRetryConfig()
         ) {
@@ -44,6 +45,8 @@ class UserProfileManager @Inject constructor(
                         "No se pudo cargar tu información de perfil"
                     )
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Error al obtener información del usuario: ${e.message}", e)
                 AccountResult.error(
@@ -53,13 +56,15 @@ class UserProfileManager @Inject constructor(
             }
         }
     }
-    suspend fun updateUserSettings(settings: AccountSettings): AccountResult<Boolean> {
+    override suspend fun updateUserSettings(settings: AccountSettings): AccountResult<Boolean> {
+        val ownerId = activeProfile.ownerId
         return retryManager.executeWithRetry(
             config = retryManager.createDataRetryConfig()
         ) {
             try {
                 Log.d(TAG, "Iniciando actualización de configuraciones de usuario")
-                if (!isUserAuthenticated()) {
+                if (ownerId == null || activeProfile.ownerId != ownerId ||
+                    (settings.userId.isNotBlank() && settings.userId != ownerId)) {
                     Log.w(TAG, "Usuario no autenticado para actualizar configuraciones")
                     return@executeWithRetry AccountResult.error(
                         Exception("Usuario no autenticado"),
@@ -69,7 +74,7 @@ class UserProfileManager @Inject constructor(
                 }
                 val result = firebaseDataManager.updateUserSettings(
                     settings,
-                    activeProfile.requireOwnerId()
+                    ownerId
                 )
                 if (result) {
                     Log.d(TAG, "Configuraciones de usuario actualizadas exitosamente")
@@ -81,6 +86,8 @@ class UserProfileManager @Inject constructor(
                         "No se pudieron guardar las configuraciones"
                     )
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Error al actualizar configuraciones de usuario: ${e.message}", e)
                 AccountResult.error(
@@ -90,7 +97,7 @@ class UserProfileManager @Inject constructor(
             }
         }
     }
-    suspend fun getUserSettings(): AccountResult<AccountSettings> {
+    override suspend fun getUserSettings(): AccountResult<AccountSettings> {
         return retryManager.executeWithRetry(
             config = retryManager.createDataRetryConfig()
         ) {
@@ -103,6 +110,8 @@ class UserProfileManager @Inject constructor(
                 val settings = firebaseDataManager.getUserSettings(activeProfile.requireOwnerId())
                 Log.d(TAG, "Configuraciones de usuario obtenidas exitosamente")
                 AccountResult.success(settings)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Error al obtener configuraciones de usuario: ${e.message}", e)
                 if (e.message?.contains("PERMISSION_DENIED") == true) {
@@ -112,6 +121,8 @@ class UserProfileManager @Inject constructor(
                         try {
                             firebaseDataManager.initializeUserSettings(userId)
                             Log.d(TAG, "Configuraciones iniciales creadas, usando configuraciones por defecto")
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
                         } catch (initError: Exception) {
                             Log.e(TAG, "Error al crear configuraciones iniciales: ${initError.message}")
                         }
@@ -124,12 +135,12 @@ class UserProfileManager @Inject constructor(
     }
     // El cierre de sesión se centraliza en AuthRepository.signOut(), que además
     // limpia la sesión local y el estado de Credential Manager.
-    fun isUserAuthenticated(): Boolean {
+    override fun isUserAuthenticated(): Boolean {
         val isAuthenticated = activeProfile.ownerId != null
         Log.d(TAG, "Estado de autenticación: $isAuthenticated")
         return isAuthenticated
     }
-    fun getCurrentUserId(): String? {
+    override fun getCurrentUserId(): String? {
         val userId = activeProfile.ownerId
         Log.d(TAG, "UID del usuario actual: $userId")
         return userId

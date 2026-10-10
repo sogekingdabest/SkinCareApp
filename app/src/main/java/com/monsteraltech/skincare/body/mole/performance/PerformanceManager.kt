@@ -4,7 +4,6 @@ import android.util.Log
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import com.monsteraltech.skincare.body.mole.model.MoleData
 class PerformanceManager private constructor(private val context: Context) {
-    private val lazyImageLoader = LazyImageLoader(context)
     private val localCacheManager = LocalCacheManager.getInstance(context)
     companion object {
         @Volatile
@@ -70,8 +69,6 @@ class PerformanceManager private constructor(private val context: Context) {
     }
     suspend fun clearCaches() {
         try {
-            lazyImageLoader.clearPreloadCache()
-            lazyImageLoader.cancelAllLoads()
             localCacheManager.clearAllCache()
             Log.d("PerformanceManager", "Cachés limpiados exitosamente")
         } catch (e: Exception) {

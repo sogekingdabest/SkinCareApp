@@ -5,11 +5,14 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.monsteraltech.skincare.account.AccountSettings
 import com.monsteraltech.skincare.account.UserInfo
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Date
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
-class FirebaseDataManager {
+class FirebaseDataManager(private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) {
     private val TAG = "FirebaseDataManager"
     private val auth = FirebaseAuth.getInstance()
     private val gson = Gson()
@@ -48,19 +51,19 @@ class FirebaseDataManager {
             continuation.resumeWithException(e)
         }
     }
-    suspend fun updateUserSettings(settings: AccountSettings, userId: String): Boolean {
-        if (userId.isBlank()) return false
+    suspend fun updateUserSettings(settings: AccountSettings, userId: String): Boolean = withContext(ioDispatcher) {
+        if (userId.isBlank()) return@withContext false
         val localSettings = settings.copy(userId = userId, autoBackup = false)
-        return settingsPreferences.edit()
+        settingsPreferences.edit()
             .putString(settingsKey(userId), gson.toJson(localSettings))
             .commit()
     }
 
-    suspend fun getUserSettings(userId: String): AccountSettings {
-        if (userId.isBlank()) return AccountSettings(autoBackup = false)
+    suspend fun getUserSettings(userId: String): AccountSettings = withContext(ioDispatcher) {
+        if (userId.isBlank()) return@withContext AccountSettings(autoBackup = false)
         val json = settingsPreferences.getString(settingsKey(userId), null)
-            ?: return AccountSettings(userId = userId, autoBackup = false)
-        return runCatching {
+            ?: return@withContext AccountSettings(userId = userId, autoBackup = false)
+        runCatching {
             gson.fromJson(json, AccountSettings::class.java)
                 .copy(userId = userId, autoBackup = false)
         }.getOrElse {
@@ -69,10 +72,10 @@ class FirebaseDataManager {
         }
     }
 
-    suspend fun initializeUserSettings(userId: String): Boolean {
-        if (userId.isBlank()) return false
-        if (settingsPreferences.contains(settingsKey(userId))) return true
-        return settingsPreferences.edit()
+    suspend fun initializeUserSettings(userId: String): Boolean = withContext(ioDispatcher) {
+        if (userId.isBlank()) return@withContext false
+        if (settingsPreferences.contains(settingsKey(userId))) return@withContext true
+        settingsPreferences.edit()
             .putString(
                 settingsKey(userId),
                 gson.toJson(AccountSettings(userId = userId, autoBackup = false))

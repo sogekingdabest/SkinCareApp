@@ -11,8 +11,8 @@ import com.google.firebase.auth.FirebaseUser
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.utils.RealTimeValidator
 import com.monsteraltech.skincare.utils.UIUtils
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 class PasswordChangeActivity : AppCompatActivity() {
     private lateinit var currentPasswordLayout: TextInputLayout
@@ -135,7 +135,7 @@ class PasswordChangeActivity : AppCompatActivity() {
         val currentPassword = currentPasswordEditText.text.toString().trim()
         val newPassword = newPasswordEditText.text.toString().trim()
         showLoading(true)
-        CoroutineScope(Dispatchers.Main).launch {
+        lifecycleScope.launch {
             val result = passwordChangeManager.changePassword(currentPassword, newPassword)
             showLoading(false)
             when (result) {
@@ -145,9 +145,8 @@ class PasswordChangeActivity : AppCompatActivity() {
                         getString(R.string.password_change_success)
                     )
                     setResult(RESULT_OK)
-                    findViewById<View>(android.R.id.content).postDelayed({
-                        finishWithAnimation()
-                    }, 1500)
+                    delay(1500)
+                    finishWithAnimation()
                 }
                 is AccountResult.Error -> {
                     handlePasswordChangeError(result)
@@ -179,9 +178,10 @@ class PasswordChangeActivity : AppCompatActivity() {
                     this@PasswordChangeActivity,
                     getString(R.string.error_authentication)
                 )
-                findViewById<View>(android.R.id.content).postDelayed({
+                lifecycleScope.launch {
+                    delay(2000)
                     finishWithAnimation()
-                }, 2000)
+                }
             }
             AccountResult.ErrorType.FIREBASE_ERROR -> {
                 UIUtils.showErrorToast(

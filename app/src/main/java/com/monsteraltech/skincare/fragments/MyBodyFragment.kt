@@ -1,7 +1,6 @@
 package com.monsteraltech.skincare.fragments
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.util.Log
@@ -11,15 +10,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 import com.google.android.material.button.MaterialButton
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.body.BodyPartActivity
 import com.monsteraltech.skincare.utils.MedicalDisclaimerHelper
 class MyBodyFragment : Fragment() {
-    private lateinit var frontBodyImageAreas: ImageView
-    private lateinit var bitmap: Bitmap
-    private lateinit var disclaimerHelper: MedicalDisclaimerHelper
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -27,17 +22,18 @@ class MyBodyFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_body, container, false)
 
-        disclaimerHelper = MedicalDisclaimerHelper(requireContext())
+        val disclaimerHelper = MedicalDisclaimerHelper(requireContext())
 
         val disclaimerButton = view.findViewById<MaterialButton>(R.id.disclaimerInfoButtonBody)
         disclaimerButton?.setOnClickListener {
-            disclaimerHelper.showInformationalDisclaimer(requireActivity() as FragmentActivity)
+            disclaimerHelper.showInformationalDisclaimer(requireActivity())
         }
         
-        frontBodyImageAreas = view.findViewById(R.id.frontBodyImageAreas)
+        val frontBodyImageAreas = view.findViewById<ImageView>(R.id.frontBodyImageAreas)
         frontBodyImageAreas.post {
-            val drawable = frontBodyImageAreas.drawable as BitmapDrawable
-            bitmap = drawable.bitmap
+            if (this.view !== view) return@post
+            val drawable = frontBodyImageAreas.drawable as? BitmapDrawable ?: return@post
+            val bitmap = drawable.bitmap
             frontBodyImageAreas.setOnTouchListener { _, event ->
                 if (event.action == MotionEvent.ACTION_DOWN) {
                     val imageViewWidth = frontBodyImageAreas.width
@@ -76,7 +72,7 @@ class MyBodyFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        disclaimerHelper.showInitialDisclaimerIfNeeded(requireActivity() as FragmentActivity)
+        MedicalDisclaimerHelper(requireContext()).showInitialDisclaimerIfNeeded(requireActivity())
     }
     private fun handleColorClick(color: String) {
         Log.d("MyBodyFragment", "Color clicado: $color")

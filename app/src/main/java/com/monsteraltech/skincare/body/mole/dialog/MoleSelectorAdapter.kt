@@ -14,8 +14,6 @@ import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.body.mole.model.MoleData
 import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
 import com.monsteraltech.skincare.databinding.ItemMoleSelectorBinding
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import java.text.SimpleDateFormat
 import java.util.Locale
 class MoleSelectorAdapter(
@@ -95,20 +93,7 @@ class MoleSelectorAdapter(
         }
         private fun loadMoleImage(mole: MoleData) {
             if (mole.imageUrl.isNotEmpty()) {
-                ImageLoadingUtil.loadImageWithFallback(
-                    context = binding.root.context,
-                    imageView = binding.moleImage,
-                    imageUrl = mole.imageUrl,
-                    config = ImageLoadingUtil.Configs.thumbnail().copy(
-                        placeholderRes = R.drawable.ic_image_placeholder,
-                        errorPlaceholderRes = R.drawable.ic_image_error,
-                        onLoadError = { exception ->
-                            android.util.Log.w("MoleSelectorAdapter", "Error cargando imagen miniatura", exception)
-                        }
-                    ),
-                    coroutineScope = CoroutineScope(Dispatchers.Main)
-                )
-                Glide.with(binding.root.context)
+                Glide.with(binding.moleImage)
                     .load(if (mole.imageUrl.startsWith("http")) {
                         mole.imageUrl
                     } else {

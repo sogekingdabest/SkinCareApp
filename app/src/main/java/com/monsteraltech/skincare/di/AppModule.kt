@@ -10,6 +10,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import com.monsteraltech.skincare.account.PasswordChangeManager
 import com.monsteraltech.skincare.account.UserProfileManager
+import com.monsteraltech.skincare.account.AccountProfileRepository
+import com.monsteraltech.skincare.utils.ThemeManager
 import com.monsteraltech.skincare.analysis.comparison.LocalObservationComparisonPreparer
 import com.monsteraltech.skincare.analysis.comparison.LesionPairRegistrationEngine
 import com.monsteraltech.skincare.analysis.comparison.ObservationComparisonPreparer
@@ -22,6 +24,7 @@ import com.monsteraltech.skincare.data.FirebaseDataManager
 import com.monsteraltech.skincare.data.SessionManager
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
 
 /**
  * Providers raíz de la app. Las clases existentes conservan sus constructores
@@ -43,7 +46,14 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideFirebaseDataManager(): FirebaseDataManager = FirebaseDataManager()
+    fun provideFirebaseDataManager(@IoDispatcher dispatcher: CoroutineDispatcher): FirebaseDataManager = FirebaseDataManager(dispatcher)
+
+    @Provides
+    fun provideAccountProfileRepository(manager: UserProfileManager): AccountProfileRepository = manager
+
+    @Provides
+    @Singleton
+    fun provideThemeManager(): ThemeManager = ThemeManager.getInstance()
 
     @Provides
     @Singleton

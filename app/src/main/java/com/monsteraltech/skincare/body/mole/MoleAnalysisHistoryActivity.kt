@@ -61,6 +61,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
     }
     private fun setupRecyclerView() {
         adapter = AnalysisHistoryAdapter(
+            coroutineScope = lifecycleScope,
             context = this,
             analysisList = emptyList(),
             onItemClick = { analysis ->
