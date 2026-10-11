@@ -2,7 +2,7 @@ package com.monsteraltech.skincare.analysis
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import com.monsteraltech.skincare.camera.CapturedPhotoDecoder
 import androidx.lifecycle.ViewModelStore
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import com.monsteraltech.skincare.R
@@ -20,8 +20,6 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.CancellationException
@@ -49,6 +47,7 @@ class AnalysisResultViewModelTest {
     private lateinit var comparisonPreparer:
         ObservationComparisonPreparer
     private lateinit var viewModel: AnalysisResultViewModel
+    private lateinit var decoder: CapturedPhotoDecoder
     private lateinit var runner: ImageAnalysisRunner
 
     @Before
@@ -61,21 +60,23 @@ class AnalysisResultViewModelTest {
         getBaselineObservation = mockk()
         comparisonPreparer = mockk()
         runner = mockk(relaxed = true)
+        decoder = mockk()
+        coEvery { decoder.decode(any(), any()) } returns null
         every { activeProfile.ownerId } returns "user-1"
         viewModel = AnalysisResultViewModel(
             context,
-            moleRepository,
+            SaveAnalyzedCapture(context, moleRepository, AnalysisRecordFactory(AnalysisReportFormatter())),
             activeProfile,
             getBaselineObservation,
             comparisonPreparer,
             dispatcher,
-            runner
+            runner,
+            decoder
         )
     }
 
     @After
     fun tearDown() {
-        unmockkStatic(BitmapFactory::class)
         Dispatchers.resetMain()
     }
 
@@ -109,7 +110,7 @@ class AnalysisResultViewModelTest {
         explanations = listOf("explicación")
     )
 
-    /** Fija photoFile (el decode falla en JVM y no llega a crear el procesador) y siembra el resultado. */
+    /** Fija photoFile con una decodificación ausente y siembra un resultado completo. */
     private fun seedReadyState() {
         viewModel.startAnalysis("foto-inexistente.jpg", isFrontCamera = false, pixelDensity = 1f)
         viewModel.handleAnalysisCompleted(AnalysisOutcome.Complete(combinedResult()))
@@ -191,22 +192,49 @@ class AnalysisResultViewModelTest {
 
     @Test
     fun `el resultado del runner inyectado llega a Ready una sola vez`() = runTest {
-        val bitmap = mockk<Bitmap>()
-        mockkStatic(BitmapFactory::class)
-        every { BitmapFactory.decodeFile("foto.jpg") } returns bitmap
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", false) } returns bitmap
         val outcome = AnalysisOutcome.Complete(combinedResult())
         coEvery { runner.processImage(any(), any(), any(), any(), any()) } returns outcome
         viewModel.startAnalysis("foto.jpg", false, 1f)
         viewModel.startAnalysis("foto.jpg", false, 1f)
         assertEquals(AnalysisResultViewModel.AnalysisState.Ready(outcome.result), viewModel.analysisState.value)
         coVerify(exactly = 1) { runner.processImage(bitmap, null, 1f, any(), any()) }
+        coVerify(exactly = 1) { decoder.decode("foto.jpg", false) }
+    }
+
+    @Test
+    fun `una foto entregada despues de cancelar se libera sin ejecutar los motores`() = runTest {
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", true) } coAnswers {
+            viewModel.cancelAnalysis()
+            bitmap
+        }
+        viewModel.startAnalysis("foto.jpg", true, 1f)
+        assertEquals(AnalysisResultViewModel.AnalysisState.Cancelled, viewModel.analysisState.value)
+        assertEquals(null, viewModel.capturedBitmap.value)
+        verify(exactly = 1) { bitmap.recycle() }
+        coVerify(exactly = 0) { runner.processImage(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `la foto se conserva para la UI y se libera al destruir el ViewModel`() = runTest {
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", false) } returns bitmap
+        coEvery { runner.processImage(any(), any(), any(), any(), any()) } returns AnalysisOutcome.Complete(combinedResult())
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        assertEquals(bitmap, viewModel.capturedBitmap.value)
+        verify(exactly = 0) { bitmap.recycle() }
+        ViewModelStore().apply { put("analysis", viewModel); clear() }
+        assertEquals(null, viewModel.capturedBitmap.value)
+        verify(exactly = 1) { bitmap.recycle() }
+        verify(exactly = 1) { runner.close() }
     }
 
     @Test
     fun `cancelar detiene el trabajo y descarta progreso y resultados tardios`() = runTest {
-        val bitmap = mockk<Bitmap>()
-        mockkStatic(BitmapFactory::class)
-        every { BitmapFactory.decodeFile("foto.jpg") } returns bitmap
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", false) } returns bitmap
         var stopped = false
         lateinit var progress: (AnalysisProgress) -> Unit
         coEvery { runner.processImage(any(), any(), any(), any(), any()) } coAnswers {
@@ -240,9 +268,8 @@ class AnalysisResultViewModelTest {
 
     @Test
     fun `un motor que transforma cancelacion en error no cambia el estado cancelado`() = runTest {
-        val bitmap = mockk<Bitmap>()
-        mockkStatic(BitmapFactory::class)
-        every { BitmapFactory.decodeFile("foto.jpg") } returns bitmap
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", false) } returns bitmap
         coEvery { runner.processImage(any(), any(), any(), any(), any()) } coAnswers {
             try { awaitCancellation() } catch (_: CancellationException) { throw IllegalStateException("late failure") }
         }
@@ -253,9 +280,8 @@ class AnalysisResultViewModelTest {
 
     @Test
     fun `al destruir el ViewModel se cancela antes de cerrar el motor`() = runTest {
-        val bitmap = mockk<Bitmap>()
-        mockkStatic(BitmapFactory::class)
-        every { BitmapFactory.decodeFile("foto.jpg") } returns bitmap
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", false) } returns bitmap
         var stopped = false
         coEvery { runner.processImage(any(), any(), any(), any(), any()) } coAnswers {
             try { awaitCancellation() } finally { stopped = true }

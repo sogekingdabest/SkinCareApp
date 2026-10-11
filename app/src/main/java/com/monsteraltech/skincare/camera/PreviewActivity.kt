@@ -1,17 +1,25 @@
 package com.monsteraltech.skincare.camera
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.analysis.AnalysisResultActivity
 import com.monsteraltech.skincare.databinding.ActivityPreviewBinding
 import com.monsteraltech.skincare.utils.UIUtils
 import java.io.File
+@AndroidEntryPoint
 class PreviewActivity : AppCompatActivity() {
+    @Inject lateinit var photoDecoder: CapturedPhotoDecoder
+    private var displayedBitmap: Bitmap? = null
+    private var decodeJob: Job? = null
     companion object {
         private const val TAG = "PreviewActivity"
     }
@@ -28,6 +36,7 @@ class PreviewActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityPreviewBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.confirmButton.isEnabled = false
         val photoPath =
             intent.getStringExtra(MoleCaptureContract.EXTRA_PHOTO_PATH)
         isFrontCamera =
@@ -76,22 +85,22 @@ class PreviewActivity : AppCompatActivity() {
         setupButtons()
     }
     private fun displayImage(photoPath: String) {
-        try {
-            var bitmap = BitmapFactory.decodeFile(photoPath)
-            if (bitmap == null) {
-                handleImageError("Error decodificando imagen")
-                return
+        decodeJob = lifecycleScope.launch {
+            try {
+                val bitmap = photoDecoder.decode(photoPath, isFrontCamera)
+                if (bitmap == null) {
+                    handleImageError("Error decodificando imagen")
+                    return@launch
+                }
+                displayedBitmap = bitmap
+                binding.previewImage.setImageBitmap(bitmap)
+                binding.confirmButton.isEnabled = true
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                Log.e(TAG, "Error mostrando imagen", error)
+                handleImageError("Error procesando imagen: ${error.message}")
             }
-            if (isFrontCamera) {
-                val matrix = Matrix()
-                matrix.preScale(-1.0f, 1.0f)
-                bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-            }
-            binding.previewImage.setImageBitmap(bitmap)
-            Log.d(TAG, "Imagen mostrada exitosamente")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error mostrando imagen", e)
-            handleImageError("Error procesando imagen: ${e.message}")
         }
     }
     private fun setupProcessingInfo() {
@@ -184,5 +193,10 @@ class PreviewActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         binding.previewImage.setImageDrawable(null)
+        val release = {
+            displayedBitmap?.recycle()
+            displayedBitmap = null
+        }
+        decodeJob?.invokeOnCompletion { release() } ?: release()
     }
 }

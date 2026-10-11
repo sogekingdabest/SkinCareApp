@@ -578,6 +578,12 @@ class AnalysisResultActivity : AppCompatActivity() {
         displayUnavailable(message)
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
+
+    override fun onDestroy() {
+        // Detach the drawable before the ViewModel releases its bitmap on final destruction.
+        if (::binding.isInitialized) binding.resultImageView.setImageDrawable(null)
+        super.onDestroy()
+    }
 }
 
 class ExplanationAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<ExplanationAdapter.ViewHolder>() {

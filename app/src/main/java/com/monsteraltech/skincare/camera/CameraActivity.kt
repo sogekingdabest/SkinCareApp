@@ -3,8 +3,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
-import android.graphics.Bitmap
-import android.graphics.Matrix
 import android.graphics.PointF
 import android.os.Bundle
 import android.util.Log
@@ -19,7 +17,6 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -37,23 +34,20 @@ import com.monsteraltech.skincare.camera.guidance.ExperimentalCapturePreferences
 import com.monsteraltech.skincare.camera.guidance.GuideState
 import com.monsteraltech.skincare.camera.guidance.SimplifiedGuidanceManager
 import com.monsteraltech.skincare.utils.UIUtils
-import kotlinx.coroutines.Dispatchers
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.opencv.android.OpenCVLoader
-import org.opencv.core.Core
-import org.opencv.core.CvType
-import org.opencv.core.Mat
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 
+@AndroidEntryPoint
 class CameraActivity : AppCompatActivity() {
+    @Inject lateinit var frameProcessorFactory: CaptureFrameProcessorFactory
+    private lateinit var frameProcessor: CaptureFrameProcessor
     companion object {
         private const val TAG = "CameraActivity"
-        private const val ANALYSIS_THROTTLE_MS = 100L
         private const val HIGH_ZOOM_EXPOSURE_THRESHOLD = 2.0f
     }
 
@@ -65,17 +59,13 @@ class CameraActivity : AppCompatActivity() {
     private var isFlashEnabled: Boolean = false
 
     private lateinit var guidanceOverlay: CaptureGuidanceOverlay
-    private lateinit var simplifiedGuidanceManager: SimplifiedGuidanceManager
     private val guidanceConfig = CaptureGuidanceConfig()
     private var currentGuidanceResult: SimplifiedGuidanceManager.GuidanceResult? = null
     private var captureValidityModelEnabled = false
 
-    @Volatile private var isAnalysisEnabled = false
     private var isOpenCVInitialized = false
     private var isCameraBound = false
     private var boundCamera: Camera? = null
-    private val lastAnalysisTime = AtomicLong(0)
-    private val isProcessingFrame = AtomicBoolean(false)
 
     private lateinit var previewLauncher: ActivityResultLauncher<Intent>
     private lateinit var permissionLauncher: ActivityResultLauncher<String>
@@ -115,10 +105,12 @@ class CameraActivity : AppCompatActivity() {
                 modelAvailable = BuildConfig.CAPTURE_VALIDITY_MODEL_ENABLED,
                 userEnabled = experimentalCapturePreferences.captureValidityEnabled
             )
-        simplifiedGuidanceManager = SimplifiedGuidanceManager(
-            context = this,
+        frameProcessor = frameProcessorFactory.create(
+            scope = lifecycleScope,
             config = guidanceConfig,
-            semanticGateEnabled = captureValidityModelEnabled
+            semanticGateEnabled = captureValidityModelEnabled,
+            onResult = ::updateUI,
+            onError = { Log.e(TAG, "Error procesando frame", it) }
         )
 
         previewLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -235,10 +227,11 @@ class CameraActivity : AppCompatActivity() {
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also { analyzer ->
-                    analyzer.setAnalyzer(cameraExecutor) { imageProxy -> processImageFrame(imageProxy) }
+                    analyzer.setAnalyzer(cameraExecutor, frameProcessor::submit)
                 }
 
             try {
+                frameProcessor.stop()
                 provider.unbindAll()
                 val camera = provider.bindToLifecycle(
                     this,
@@ -250,126 +243,15 @@ class CameraActivity : AppCompatActivity() {
                 boundCamera = camera
                 digitalZoomController.initialize(camera)
                 isCameraBound = true
-                simplifiedGuidanceManager.reset()
-                isAnalysisEnabled = isOpenCVInitialized
+                currentGuidanceResult = null
+                captureButton.isEnabled = false
+                if (isOpenCVInitialized) frameProcessor.start()
                 Log.d(TAG, "Cámara iniciada con análisis en tiempo real")
             } catch (e: Exception) {
                 Log.e(TAG, "Error iniciando cámara", e)
                 UIUtils.showErrorToast(this, getString(R.string.ui_error))
             }
         }, ContextCompat.getMainExecutor(this))
-    }
-
-    private fun processImageFrame(imageProxy: ImageProxy) {
-        val now = System.currentTimeMillis()
-        if (!isAnalysisEnabled || !isOpenCVInitialized ||
-            now - lastAnalysisTime.get() < ANALYSIS_THROTTLE_MS ||
-            !isProcessingFrame.compareAndSet(false, true)
-        ) {
-            imageProxy.close()
-            return
-        }
-        lastAnalysisTime.set(now)
-        lifecycleScope.launch(Dispatchers.Default) {
-            var frame: Mat? = null
-            var colorFrame: Bitmap? = null
-            try {
-                if (captureValidityModelEnabled) {
-                    colorFrame = imageProxyToOrientedBitmap(imageProxy)
-                }
-                frame = imageProxyToGrayMat(imageProxy)
-                if (frame != null && !frame.empty()) {
-                    val frameWidth = frame.cols()
-                    val frameHeight = frame.rows()
-                    val result = simplifiedGuidanceManager.processFrame(
-                        frame,
-                        colorFrame
-                    )
-                    withContext(Dispatchers.Main) {
-                        updateUI(result, frameWidth, frameHeight)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error procesando frame", e)
-            } finally {
-                colorFrame?.recycle()
-                frame?.release()
-                imageProxy.close()
-                isProcessingFrame.set(false)
-            }
-        }
-    }
-
-    private fun imageProxyToOrientedBitmap(imageProxy: ImageProxy): Bitmap? {
-        return try {
-            val source = imageProxy.toBitmap()
-            val rotation = imageProxy.imageInfo.rotationDegrees.toFloat()
-            if (rotation == 0f) {
-                source
-            } else {
-                val oriented = Bitmap.createBitmap(
-                    source,
-                    0,
-                    0,
-                    source.width,
-                    source.height,
-                    Matrix().apply { postRotate(rotation) },
-                    true
-                )
-                source.recycle()
-                oriented
-            }
-        } catch (error: Exception) {
-            Log.e(TAG, "Error convirtiendo ImageProxy a RGB", error)
-            null
-        }
-    }
-
-    /**
-     * Extrae el plano de luminancia (Y) del frame YUV_420_888 respetando el
-     * rowStride del sensor (si se ignora, la imagen queda distorsionada en
-     * muchos dispositivos) y lo rota a la orientación de pantalla.
-     */
-    private fun imageProxyToGrayMat(imageProxy: ImageProxy): Mat? {
-        return try {
-            val plane = imageProxy.planes[0]
-            val buffer = plane.buffer
-            buffer.rewind()
-            val width = imageProxy.width
-            val height = imageProxy.height
-            val rowStride = plane.rowStride
-            val mat = Mat(height, width, CvType.CV_8UC1)
-
-            if (rowStride == width && buffer.remaining() >= width * height) {
-                val data = ByteArray(width * height)
-                buffer.get(data, 0, data.size)
-                mat.put(0, 0, data)
-            } else {
-                val row = ByteArray(width)
-                for (y in 0 until height) {
-                    buffer.position(y * rowStride)
-                    buffer.get(row, 0, width)
-                    mat.put(y, 0, row)
-                }
-            }
-            rotateToDisplayOrientation(mat, imageProxy.imageInfo.rotationDegrees)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error convirtiendo ImageProxy a Mat", e)
-            null
-        }
-    }
-
-    private fun rotateToDisplayOrientation(mat: Mat, rotationDegrees: Int): Mat {
-        val rotateCode = when (rotationDegrees) {
-            90 -> Core.ROTATE_90_CLOCKWISE
-            180 -> Core.ROTATE_180
-            270 -> Core.ROTATE_90_COUNTERCLOCKWISE
-            else -> return mat
-        }
-        val rotated = Mat()
-        Core.rotate(mat, rotated, rotateCode)
-        mat.release()
-        return rotated
     }
 
     private fun updateUI(
@@ -527,21 +409,19 @@ class CameraActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        isAnalysisEnabled = false
+        frameProcessor.stop()
         releaseCamera()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        isAnalysisEnabled = false
+        frameProcessor.stop()
         releaseCamera()
         cameraExecutor.shutdown()
         if (::digitalZoomController.isInitialized) {
             digitalZoomController.cleanup()
         }
-        if (::simplifiedGuidanceManager.isInitialized) {
-            simplifiedGuidanceManager.close()
-        }
+        if (::frameProcessor.isInitialized) frameProcessor.close()
     }
 
     private fun releaseCamera() {
