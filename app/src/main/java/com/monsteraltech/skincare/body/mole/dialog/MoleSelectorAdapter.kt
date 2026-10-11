@@ -11,14 +11,14 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CircleCrop
 import com.monsteraltech.skincare.R
-import com.monsteraltech.skincare.body.mole.model.MoleData
+import com.monsteraltech.skincare.body.mole.domain.model.MoleListEntry
 import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
 import com.monsteraltech.skincare.databinding.ItemMoleSelectorBinding
 import java.text.SimpleDateFormat
 import java.util.Locale
 class MoleSelectorAdapter(
-    private val onMoleClick: (MoleData) -> Unit
-) : ListAdapter<MoleData, MoleSelectorAdapter.MoleViewHolder>(MoleDiffCallback()) {
+    private val onMoleClick: (MoleListEntry) -> Unit
+) : ListAdapter<MoleListEntry, MoleSelectorAdapter.MoleViewHolder>(MoleDiffCallback()) {
     private var searchQuery: String = ""
     fun updateSearchQuery(query: String) {
         searchQuery = query.lowercase()
@@ -36,10 +36,10 @@ class MoleSelectorAdapter(
     }
     class MoleViewHolder(
         private val binding: ItemMoleSelectorBinding,
-        private val onMoleClick: (MoleData) -> Unit
+        private val onMoleClick: (MoleListEntry) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
         private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        fun bind(mole: MoleData, searchQuery: String = "") {
+        fun bind(mole: MoleListEntry, searchQuery: String = "") {
             binding.apply {
                 moleTitle.text = highlightSearchTerm(mole.title, searchQuery)
                 moleBodyPart.text = highlightSearchTerm(mole.bodyPart, searchQuery)
@@ -77,27 +77,28 @@ class MoleSelectorAdapter(
             }
             return spannableString
         }
-        private fun setupMetadata(mole: MoleData) {
+        private fun setupMetadata(mole: MoleListEntry) {
             binding.apply {
                 analysisCountText.text = binding.root.context.getString(R.string.mole_analysis_count, mole.analysisCount)
                 lastAnalysisText.text = formatLastAnalysisDate(mole)
-                createdDateText.text = binding.root.context.getString(R.string.mole_created_date, dateFormat.format(mole.createdAt.toDate()))
+                createdDateText.text = binding.root.context.getString(R.string.mole_created_date, dateFormat.format(java.util.Date(mole.createdAtEpochMillis)))
             }
         }
-        private fun formatLastAnalysisDate(mole: MoleData): String {
-            return if (mole.lastAnalysisDate != null) {
-                binding.root.context.getString(R.string.mole_last_analysis, dateFormat.format(mole.lastAnalysisDate.toDate()))
+        private fun formatLastAnalysisDate(mole: MoleListEntry): String {
+            return if (mole.lastAnalysisAtEpochMillis != null) {
+                binding.root.context.getString(R.string.mole_last_analysis, dateFormat.format(java.util.Date(mole.lastAnalysisAtEpochMillis)))
             } else {
                 binding.root.context.getString(R.string.mole_no_previous_analysis)
             }
         }
-        private fun loadMoleImage(mole: MoleData) {
-            if (mole.imageUrl.isNotEmpty()) {
+        private fun loadMoleImage(mole: MoleListEntry) {
+            Glide.with(binding.moleImage).clear(binding.moleImage)
+            if (mole.imageReference.isNotEmpty()) {
                 Glide.with(binding.moleImage)
-                    .load(if (mole.imageUrl.startsWith("http")) {
-                        mole.imageUrl
+                    .load(if (mole.imageReference.startsWith("http")) {
+                        mole.imageReference
                     } else {
-                        ImageLoadingUtil.getImageSource(binding.root.context, mole.imageUrl)
+                        ImageLoadingUtil.getImageSource(binding.root.context, mole.imageReference)
                     })
                     .transform(CircleCrop())
                     .placeholder(R.drawable.ic_image_placeholder)
@@ -108,11 +109,11 @@ class MoleSelectorAdapter(
             }
         }
     }
-    private class MoleDiffCallback : DiffUtil.ItemCallback<MoleData>() {
-        override fun areItemsTheSame(oldItem: MoleData, newItem: MoleData): Boolean {
+    private class MoleDiffCallback : DiffUtil.ItemCallback<MoleListEntry>() {
+        override fun areItemsTheSame(oldItem: MoleListEntry, newItem: MoleListEntry): Boolean {
             return oldItem.id == newItem.id
         }
-        override fun areContentsTheSame(oldItem: MoleData, newItem: MoleData): Boolean {
+        override fun areContentsTheSame(oldItem: MoleListEntry, newItem: MoleListEntry): Boolean {
             return oldItem == newItem
         }
     }

@@ -1,5 +1,4 @@
 package com.monsteraltech.skincare.body
-import kotlinx.coroutines.CancellationException
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -15,6 +14,10 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.ViewModelProvider
+import com.monsteraltech.skincare.body.mole.MoleListViewModel
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import dagger.hilt.android.AndroidEntryPoint
@@ -29,9 +32,7 @@ import com.monsteraltech.skincare.body.mole.Mole
 import com.monsteraltech.skincare.body.mole.MoleAdapter
 import com.monsteraltech.skincare.body.mole.MoleDetailActivity
 import com.monsteraltech.skincare.camera.CameraActivity
-import com.monsteraltech.skincare.body.mole.repository.MoleRepository
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class BodyPartActivity : AppCompatActivity() {
@@ -48,7 +49,8 @@ class BodyPartActivity : AppCompatActivity() {
     private lateinit var progressBar: CircularProgressIndicator
     private lateinit var emptyStateLayout: LinearLayout
     private lateinit var noResultsLayout: LinearLayout
-    @Inject lateinit var moleRepository: MoleRepository
+    private val viewModel by lazy { ViewModelProvider(this)[MoleListViewModel::class.java] }
+    private lateinit var loadMoreButton: MaterialButton
     private val moleList = ArrayList<Mole>()
     private val imageAnalysisLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -92,7 +94,7 @@ class BodyPartActivity : AppCompatActivity() {
         setupRecyclerView()
         setupSearchBar()
         setupClickListeners(color)
-        loadMoles(color)
+        observeMoles(color)
     }
     private fun initializeViews() {
         toolbar = findViewById(R.id.toolbar)
@@ -106,6 +108,7 @@ class BodyPartActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         emptyStateLayout = findViewById(R.id.emptyStateLayout)
         noResultsLayout = findViewById(R.id.noResultsLayout)
+        loadMoreButton = findViewById(R.id.loadMoreButton)
         bodyPartTitleTextView.text = bodyPart
     }
     private fun setupToolbar() {
@@ -143,9 +146,6 @@ class BodyPartActivity : AppCompatActivity() {
                     )
                 )
                 startActivity(intent)
-            },
-            onFilterChanged = { isEmpty ->
-                handleFilteredEmptyState(isEmpty)
             }
         )
         lunarRecyclerView.adapter = moleAdapter
@@ -155,42 +155,37 @@ class BodyPartActivity : AppCompatActivity() {
             changeDuration = 250L
         }
     }
-    private fun loadMoles(colorCode: String?) {
-        if (colorCode == null) return
-        showLoading(true)
+    private fun observeMoles(colorCode: String?) {
+        loadMoreButton.setOnClickListener {
+            if (viewModel.uiState.value is MoleListViewModel.UiState.Failed) viewModel.retry() else viewModel.loadMore()
+        }
         lifecycleScope.launch {
-            try {
-                val localMoles = moleRepository.getMolesForBodyPart(colorCode).getOrThrow()
-                moleList.clear()
-                for (moleData in localMoles) {
-                    moleList.add(
-                        Mole(
-                            id = moleData.id,
-                            title = moleData.title,
-                            description = moleData.description,
-                            imageUrl = moleData.imageUrl,
-                            analysisResult = moleData.aiResult,
-                            analysisCount = moleData.analysisCount
-                        )
-                    )
-                }
-                runOnUiThread {
-                    showLoading(false)
-                    updateMoleCount()
-                    moleAdapter.notifyDataSetChanged()
-                    if (moleList.isEmpty()) {
-                        showEmptyState(true)
-                    } else {
-                        showEmptyState(false)
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.start(bodyPartColor = colorCode.orEmpty())
+                viewModel.uiState.collect { state ->
+                    when (state) {
+                        MoleListViewModel.UiState.Loading -> { showLoading(true); loadMoreButton.visibility = View.GONE }
+                        is MoleListViewModel.UiState.Ready -> {
+                            val page = state.page
+                            showLoading(false)
+                            moleAdapter.submitList(page.items.map { Mole(id = it.id, title = it.title,
+                                description = it.description, imageUrl = it.imageReference,
+                                analysisResult = it.analysisResult, analysisCount = it.analysisCount) })
+                            updateMoleCount(page.totalCount)
+                            if (page.totalCount == 0) showEmptyState(true)
+                            else if (page.matchingCount == 0) showNoResultsState(true)
+                            else { showEmptyState(false); showNoResultsState(false) }
+                            loadMoreButton.visibility = if (page.hasMore) View.VISIBLE else View.GONE
+                            loadMoreButton.text = getString(R.string.list_load_more, page.items.size, page.matchingCount)
+                        }
+                        is MoleListViewModel.UiState.Failed -> {
+                            showLoading(false)
+                            lunarRecyclerView.visibility = View.GONE
+                            moleCountText.setText(if (state.authentication) R.string.error_authentication else R.string.list_load_error)
+                            loadMoreButton.visibility = View.VISIBLE
+                            loadMoreButton.setText(R.string.list_retry)
+                        }
                     }
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (e: Exception) {
-                runOnUiThread {
-                    showLoading(false)
-                    showEmptyState(true)
-                    Toast.makeText(this@BodyPartActivity, "Error al cargar lunares: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -211,30 +206,19 @@ class BodyPartActivity : AppCompatActivity() {
         lunarRecyclerView.visibility = if (show) View.GONE else View.VISIBLE
         emptyStateLayout.visibility = View.GONE
     }
-    private fun updateMoleCount() {
-        val count = moleList.size
+    private fun updateMoleCount(count: Int) {
         moleCountText.text = when (count) {
             0 -> "No hay lunares registrados"
             1 -> "1 lunar registrado"
             else -> "$count lunares registrados"
         }
     }
-    private fun handleFilteredEmptyState(isEmpty: Boolean) {
-        if (isEmpty && moleList.isNotEmpty()) {
-            showNoResultsState(true)
-        } else if (isEmpty && moleList.isEmpty()) {
-            showEmptyState(true)
-        } else {
-            showEmptyState(false)
-            showNoResultsState(false)
-            lunarRecyclerView.visibility = View.VISIBLE
-        }
-    }
     private fun setupSearchBar() {
+        searchEditText.setText(viewModel.query)
         searchEditText.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                moleAdapter.filter.filter(s)
+                viewModel.search(s?.toString().orEmpty())
             }
             override fun afterTextChanged(s: android.text.Editable?) {}
         })
@@ -246,13 +230,6 @@ class BodyPartActivity : AppCompatActivity() {
             } else {
                 false
             }
-        }
-    }
-    override fun onResume() {
-        super.onResume()
-        val color = intent.getStringExtra("COLOR_VALUE")
-        if (color != null) {
-            loadMoles(color)
         }
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

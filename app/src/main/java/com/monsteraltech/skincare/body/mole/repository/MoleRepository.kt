@@ -113,7 +113,7 @@ class MoleRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 require(userId.isNotBlank()) { "ID de usuario no válido" }
-                dao.getMoles(userId).map(::moleWithImage)
+                dao.getAllMoles(userId).map(::moleWithImage)
             }.logFailure("Error al obtener los lunares locales")
         }
 

@@ -17,6 +17,8 @@ import com.monsteraltech.skincare.analysis.comparison.LesionPairRegistrationEngi
 import com.monsteraltech.skincare.analysis.comparison.ObservationComparisonPreparer
 import com.monsteraltech.skincare.analysis.comparison.OpenCvLesionPairRegistrationEngine
 import com.monsteraltech.skincare.body.mole.data.repository.LocalMoleObservationRepository
+import com.monsteraltech.skincare.body.mole.data.repository.LocalMoleReadRepository
+import com.monsteraltech.skincare.body.mole.domain.repository.MoleReadRepository
 import com.monsteraltech.skincare.body.mole.data.local.ObservationMigration
 import com.monsteraltech.skincare.body.mole.data.local.SkinCareDatabase
 import com.monsteraltech.skincare.body.mole.domain.repository.MoleObservationRepository
@@ -70,6 +72,9 @@ object AppModule {
     fun provideMoleObservationRepository(
         repository: LocalMoleObservationRepository
     ): MoleObservationRepository = repository
+
+    @Provides
+    fun provideMoleReadRepository(repository: LocalMoleReadRepository): MoleReadRepository = repository
 
     @Provides
     @Singleton

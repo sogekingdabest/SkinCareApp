@@ -171,6 +171,13 @@
 
         </LinearLayout>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/loadMoreButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:text="@string/list_load_more_action" />
+
         <!-- Action Buttons -->
         <LinearLayout
             android:layout_width="match_parent"

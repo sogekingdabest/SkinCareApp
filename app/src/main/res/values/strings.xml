@@ -433,4 +433,9 @@
     <string name="backup_existing_data_preserved">Se han conservado los registros y la observación actual que ya tenías.</string>
     <string name="backup_cleanup_warning">La restauración terminó, pero quedaron archivos temporales pendientes de limpieza.</string>
     <string name="backup_profile_changed">El perfil activo ha cambiado. Vuelve a seleccionar la copia desde el perfil al que quieras añadir los datos.</string>
+    <string name="list_load_more_action">Cargar más</string>
+    <string name="list_load_more">Cargar más (%1$d de %2$d)</string>
+    <string name="list_retry">Reintentar</string>
+    <string name="list_load_error">No se pudo cargar la lista</string>
+    <string name="history_summary">Historial de análisis\n(%1$d análisis - Último: %2$s)</string>
 </resources>

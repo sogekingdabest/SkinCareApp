@@ -6,6 +6,8 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import kotlinx.coroutines.flow.Flow
+import com.monsteraltech.skincare.body.mole.domain.model.MoleListEntry
 
 @Dao
 interface MoleDao {
@@ -53,18 +55,24 @@ interface MoleDao {
     @Query("SELECT userId FROM moles WHERE id = :moleId LIMIT 1")
     suspend fun getMoleOwner(moleId: String): String?
 
-    @Query(
-        """
-        SELECT * FROM moles
-        WHERE userId = :userId
-        ORDER BY updatedAtEpochMillis DESC
-        LIMIT :limit
-        """
-    )
-    suspend fun getMoles(userId: String, limit: Int = 50): List<MoleEntity>
-
-    @Query("SELECT * FROM moles WHERE userId = :userId ORDER BY updatedAtEpochMillis DESC")
+    @Query("SELECT * FROM moles WHERE userId = :userId ORDER BY updatedAtEpochMillis DESC, id ASC")
     suspend fun getAllMoles(userId: String): List<MoleEntity>
+
+    @Query("""SELECT id, title, description, bodyPart, bodyPartColorCode,
+        imagePath AS imageReference, analysisResult, analysisCount, createdAtEpochMillis,
+        lastAnalysisAtEpochMillis FROM moles WHERE userId = :userId
+        AND (:bodyPartColor IS NULL OR bodyPartColorCode = :bodyPartColor)
+        ORDER BY updatedAtEpochMillis DESC, id ASC""")
+    fun observeMoleList(userId: String, bodyPartColor: String?): Flow<List<MoleListEntry>>
+
+    @Query("""SELECT COUNT(*) FROM mole_analyses a JOIN moles m ON m.id = a.moleId AND m.userId = a.userId
+        WHERE m.id = :moleId AND m.userId = :userId""")
+    fun observeHistoryChanges(userId: String, moleId: String): Flow<Int>
+
+    @Query("""SELECT a.* FROM mole_analyses a JOIN moles m ON m.id = a.moleId AND m.userId = a.userId
+        WHERE a.moleId = :moleId AND a.userId = :userId
+        ORDER BY (a.id = m.currentAnalysisId) DESC, a.createdAtEpochMillis DESC, a.id ASC LIMIT :limit""")
+    suspend fun getAnalysisHistoryPage(userId: String, moleId: String, limit: Int): List<AnalysisEntity>
 
     @Query(
         """

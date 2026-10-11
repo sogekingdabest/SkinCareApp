@@ -490,7 +490,8 @@ class AnalysisResultActivity : AppCompatActivity() {
             val description = binding.descriptionEditText.text.toString()
             if (selectedMole != null) {
                 viewModel.saveToExistingMole(
-                    mole = selectedMole,
+                    moleId = selectedMole.id,
+                    existingMoleTitle = selectedMole.title,
                     title = title,
                     description = description,
                     bodyPart = selectedBodyPart,
