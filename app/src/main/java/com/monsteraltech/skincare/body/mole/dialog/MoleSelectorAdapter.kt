@@ -1,4 +1,5 @@
 package com.monsteraltech.skincare.body.mole.dialog
+import com.monsteraltech.skincare.body.presentation.BodyRegions
 import android.graphics.Typeface
 import android.text.SpannableString
 import android.text.Spanned
@@ -42,7 +43,7 @@ class MoleSelectorAdapter(
         fun bind(mole: MoleListEntry, searchQuery: String = "") {
             binding.apply {
                 moleTitle.text = highlightSearchTerm(mole.title, searchQuery)
-                moleBodyPart.text = highlightSearchTerm(mole.bodyPart, searchQuery)
+                moleBodyPart.text = highlightSearchTerm(BodyRegions.label(root.context, mole.bodyRegionId, mole.bodyPart), searchQuery)
                 moleDescription.text = if (mole.description.isNotEmpty()) {
                     highlightSearchTerm(mole.description, searchQuery)
                 } else {
@@ -53,7 +54,7 @@ class MoleSelectorAdapter(
                 root.setOnClickListener {
                     onMoleClick(mole)
                 }
-                root.contentDescription = "Lunar ${mole.title} en ${mole.bodyPart}, " +
+                root.contentDescription = "Lunar ${mole.title} en ${BodyRegions.label(root.context, mole.bodyRegionId, mole.bodyPart)}, " +
                         "${mole.analysisCount} análisis, " +
                         "último análisis ${formatLastAnalysisDate(mole)}"
             }

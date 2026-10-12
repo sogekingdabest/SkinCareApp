@@ -95,6 +95,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
     private fun createMoleViewerIntentForHistoricalAnalysis(analysis: AnalysisData): Intent {
         return Intent(this, MoleViewerActivity::class.java).apply {
             putExtra("MOLE_ID", analysis.moleId)
+            putExtra(com.monsteraltech.skincare.body.presentation.BodyRegionContract.EXTRA_REGION_ID, moleData?.bodyRegionId?.value)
             putExtra("LUNAR_TITLE", moleData?.title ?: "Análisis Histórico")
             putExtra("LUNAR_DESCRIPTION", analysis.description)
             putExtra("LUNAR_IMAGE_URL", analysis.imageUrl)

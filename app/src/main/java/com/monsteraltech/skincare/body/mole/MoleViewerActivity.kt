@@ -495,6 +495,7 @@ class MoleViewerActivity : AppCompatActivity() {
                     MoleCaptureContract.EXTRA_MOLE_DESCRIPTION,
                     args.description
                 )
+                putExtra(MoleCaptureContract.EXTRA_BODY_REGION_ID, (viewModel.bodyRegionId.value ?: args.bodyRegionId)?.value)
                 putExtra(
                     MoleCaptureContract.EXTRA_BODY_PART_COLOR,
                     args.bodyPartColorCode

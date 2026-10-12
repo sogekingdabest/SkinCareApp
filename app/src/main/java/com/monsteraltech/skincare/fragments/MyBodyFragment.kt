@@ -13,6 +13,9 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.button.MaterialButton
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.body.BodyPartActivity
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.presentation.BodyRegions
+import com.monsteraltech.skincare.body.presentation.BodyRegionContract
 import com.monsteraltech.skincare.utils.MedicalDisclaimerHelper
 class MyBodyFragment : Fragment() {
     @SuppressLint("ClickableViewAccessibility")
@@ -59,8 +62,7 @@ class MyBodyFragment : Fragment() {
                     if (x >= 0 && y >= 0 && x < bitmap.width && y < bitmap.height) {
                         val pixelColor = bitmap.getPixel(x.toInt(), y.toInt())
                         Log.d("MyBodyFragment", String.format("Pixel color: #%08X", pixelColor))
-                        val hexColor = String.format("#%08X", pixelColor)
-                        handleColorClick(hexColor)
+                        BodyRegions.fromMaskColor(pixelColor)?.let(::handleRegionClick)
                     }
                 }
                 true
@@ -74,12 +76,9 @@ class MyBodyFragment : Fragment() {
 
         MedicalDisclaimerHelper(requireContext()).showInitialDisclaimerIfNeeded(requireActivity())
     }
-    private fun handleColorClick(color: String) {
-        Log.d("MyBodyFragment", "Color clicado: $color")
+    private fun handleRegionClick(region: BodyRegionId) {
         val intent = Intent(requireContext(), BodyPartActivity::class.java)
-        intent.putExtra("COLOR_VALUE", color)
-        if (color != "#00000000") {
-            startActivity(intent)
-        }
+        intent.putExtra(BodyRegionContract.EXTRA_REGION_ID, region.value)
+        startActivity(intent)
     }
 }

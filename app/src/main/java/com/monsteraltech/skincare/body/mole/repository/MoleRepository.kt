@@ -1,5 +1,7 @@
 package com.monsteraltech.skincare.body.mole.repository
 
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.data.LegacyBodyRegionMapping
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
@@ -68,6 +70,7 @@ class MoleRepository @Inject constructor(
                         description = description,
                         bodyPart = bodyPart,
                         bodyPartColorCode = bodyPartColorCode,
+                        bodyRegionId = LegacyBodyRegionMapping.resolve(BodyRegionId.fromValue(analysisData.analysisMetadata["bodyRegionId"] as? String), bodyPartColorCode, bodyPart),
                         imageUrl = localImagePath,
                         aiResult = analysisData.analysisResult,
                         userId = userId,
@@ -117,11 +120,10 @@ class MoleRepository @Inject constructor(
             }.logFailure("Error al obtener los lunares locales")
         }
 
-    suspend fun getMolesForBodyPart(bodyPartColorCode: String): Result<List<MoleData>> =
+    suspend fun getMolesForBodyRegion(regionId: BodyRegionId): Result<List<MoleData>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                require(bodyPartColorCode.isNotBlank()) { "Código de zona corporal no válido" }
-                dao.getMolesForBodyPart(requireCurrentUserId(), bodyPartColorCode)
+                dao.getMolesForBodyRegion(requireCurrentUserId(), regionId.value)
                     .map(::moleWithImage)
             }.logFailure("Error al obtener los lunares de la zona")
         }

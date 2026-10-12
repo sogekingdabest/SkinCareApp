@@ -1,4 +1,6 @@
 package com.monsteraltech.skincare.camera
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.presentation.BodyRegionContract
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -27,6 +29,7 @@ class PreviewActivity : AppCompatActivity() {
     private var photoFile: File? = null
     private var isFrontCamera: Boolean = false
     private var bodyPartColorCode: String? = null
+    private var bodyRegionId: BodyRegionId? = null
     private var preprocessingApplied: Boolean = false
     private var processingMetadata: String = ""
     private var targetMoleId: String? = null
@@ -44,6 +47,7 @@ class PreviewActivity : AppCompatActivity() {
                 MoleCaptureContract.EXTRA_IS_FRONT_CAMERA,
                 false
             )
+        bodyRegionId = BodyRegionContract.read(intent)
         bodyPartColorCode =
             intent.getStringExtra(
                 MoleCaptureContract.EXTRA_BODY_PART_COLOR
@@ -130,6 +134,7 @@ class PreviewActivity : AppCompatActivity() {
         }
         Log.d(TAG, "Confirmando imagen y navegando a análisis: $photoPath")
         val intent = Intent(this, AnalysisResultActivity::class.java).apply {
+            putExtra(MoleCaptureContract.EXTRA_BODY_REGION_ID, bodyRegionId?.value)
             putExtra(MoleCaptureContract.EXTRA_PHOTO_PATH, photoPath)
             putExtra(
                 MoleCaptureContract.EXTRA_IS_FRONT_CAMERA,

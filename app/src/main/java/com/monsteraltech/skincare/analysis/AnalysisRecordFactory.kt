@@ -2,6 +2,7 @@ package com.monsteraltech.skincare.analysis
 
 import com.monsteraltech.skincare.body.mole.model.ABCDEScores
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
+import com.monsteraltech.skincare.body.data.LegacyBodyRegionMapping
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
@@ -32,6 +33,7 @@ class AnalysisRecordFactory @Inject constructor(private val reports: AnalysisRep
             "title" to title,
             "description" to description,
             "bodyPart" to bodyPart,
+            "bodyRegionId" to LegacyBodyRegionMapping.resolve(annotations.bodyRegionId, bodyPartColorCode, bodyPart).value,
             "bodyPartColorCode" to (bodyPartColorCode ?: ""),
             "urgencyLevel" to result.urgencyLevel.name,
             "explanations" to result.explanations

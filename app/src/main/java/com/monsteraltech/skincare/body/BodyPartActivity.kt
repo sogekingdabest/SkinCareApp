@@ -1,4 +1,7 @@
 package com.monsteraltech.skincare.body
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.presentation.BodyRegions
+import com.monsteraltech.skincare.body.presentation.BodyRegionContract
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -36,6 +39,7 @@ import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class BodyPartActivity : AppCompatActivity() {
+    private var bodyRegionId = BodyRegionId.UNKNOWN
     private lateinit var toolbar: MaterialToolbar
     private lateinit var searchEditText: TextInputEditText
     private lateinit var searchInputLayout: TextInputLayout
@@ -64,37 +68,14 @@ class BodyPartActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_body)
-        val color = intent.getStringExtra("COLOR_VALUE")
-        when (color) {
-            "#FF000000" -> {
-                bodyPart = "Cabeza"
-            }
-            "#FFED1C24" -> {
-                bodyPart = "Brazo derecho"
-            }
-            "#FFFFC90E" -> {
-                bodyPart = "Torso"
-            }
-            "#FF22B14C" -> {
-                bodyPart = "Brazo izquierdo"
-            }
-            "#FF3F48CC" -> {
-                bodyPart = "Pierna derecha"
-            }
-            "#FFED00FF" -> {
-                bodyPart = "Pierna izquierda"
-            }
-            else -> {
-                bodyPart = "Parte desconocida"
-                Toast.makeText(this, "Área Desconocida", Toast.LENGTH_SHORT).show()
-            }
-        }
+        bodyRegionId = BodyRegionContract.read(intent, "COLOR_VALUE") ?: BodyRegionId.UNKNOWN
+        bodyPart = BodyRegions.label(this, bodyRegionId)
         initializeViews()
         setupToolbar()
         setupRecyclerView()
         setupSearchBar()
-        setupClickListeners(color)
-        observeMoles(color)
+        setupClickListeners()
+        observeMoles()
     }
     private fun initializeViews() {
         toolbar = findViewById(R.id.toolbar)
@@ -116,9 +97,9 @@ class BodyPartActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = bodyPart
     }
-    private fun setupClickListeners(color: String?) {
+    private fun setupClickListeners() {
         val cameraIntent = Intent(this, CameraActivity::class.java).apply {
-            putExtra("BODY_PART_COLOR", color)
+            putExtra(BodyRegionContract.EXTRA_REGION_ID, bodyRegionId.value)
         }
         addButton.setOnClickListener {
             imageAnalysisLauncher.launch(cameraIntent)
@@ -139,12 +120,7 @@ class BodyPartActivity : AppCompatActivity() {
                 intent.putExtra("LUNAR_ANALYSIS_RESULT", mole.analysisResult)
                 intent.putExtra("LUNAR_IMAGE_URL", mole.imageUrl)
                 intent.putExtra("ANALYSIS_COUNT", mole.analysisCount)
-                intent.putExtra(
-                    "BODY_PART_COLOR",
-                    this@BodyPartActivity.intent.getStringExtra(
-                        "COLOR_VALUE"
-                    )
-                )
+                intent.putExtra(BodyRegionContract.EXTRA_REGION_ID, bodyRegionId.value)
                 startActivity(intent)
             }
         )
@@ -155,13 +131,13 @@ class BodyPartActivity : AppCompatActivity() {
             changeDuration = 250L
         }
     }
-    private fun observeMoles(colorCode: String?) {
+    private fun observeMoles() {
         loadMoreButton.setOnClickListener {
             if (viewModel.uiState.value is MoleListViewModel.UiState.Failed) viewModel.retry() else viewModel.loadMore()
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.start(bodyPartColor = colorCode.orEmpty())
+                viewModel.start(bodyRegionId = bodyRegionId)
                 viewModel.uiState.collect { state ->
                     when (state) {
                         MoleListViewModel.UiState.Loading -> { showLoading(true); loadMoreButton.visibility = View.GONE }

@@ -1,5 +1,7 @@
 package com.monsteraltech.skincare.backup
 
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.data.LegacyBodyRegionMapping
 import android.content.Context
 import android.net.Uri
 import androidx.room.withTransaction
@@ -248,6 +250,7 @@ class LocalBackupService @Inject constructor(
                 "Versión de datos no compatible: ${payload.schemaVersion}"
             )
         }
+        if (payload.schemaVersion >= 3) require(payload.moles.all { BodyRegionId.fromValue(it.bodyRegionId) != null }) { "La copia contiene IDs de zona corporal no válidos" }
         require(payload.moles.size <= MAX_MOLES) { "Demasiados lunares en la copia" }
         require(payload.analyses.size <= MAX_ANALYSES) { "Demasiados análisis en la copia" }
         require(payload.imageEntries.size <= MAX_IMAGES) { "Demasiadas imágenes en la copia" }
@@ -276,14 +279,18 @@ class LocalBackupService @Inject constructor(
     }
 
     internal fun normalizeLegacyPayload(payload: BackupPayload): BackupPayload {
-        if (payload.schemaVersion != 1) return payload
-        val current = payload.moles.filter { it.analysisCount > 0 || it.analysisResult.isNotBlank() }
-            .map(LegacyObservation::snapshot)
-        val existingIds = payload.analyses.mapTo(mutableSetOf()) { it.id }
-        val analyses = payload.analyses + current.filter { it.id !in existingIds }
-        val currentIds = current.associate { it.moleId to it.id }
-        return payload.copy(schemaVersion = 2,
-            moles = payload.moles.map { it.copy(currentAnalysisId = currentIds[it.id]) }, analyses = analyses)
+        val observations = if (payload.schemaVersion == 1) {
+            val current = payload.moles.filter { it.analysisCount > 0 || it.analysisResult.isNotBlank() }
+                .map(LegacyObservation::snapshot)
+            val existingIds = payload.analyses.mapTo(mutableSetOf()) { it.id }
+            val analyses = payload.analyses + current.filter { it.id !in existingIds }
+            val currentIds = current.associate { it.moleId to it.id }
+            payload.copy(schemaVersion = 2,
+                moles = payload.moles.map { it.copy(currentAnalysisId = currentIds[it.id]) }, analyses = analyses)
+        } else payload
+        return if (observations.schemaVersion < 3) observations.copy(schemaVersion = 3,
+            moles = observations.moles.map { it.copy(bodyRegionId = LegacyBodyRegionMapping.resolve(
+                null, it.bodyPartColorCode, it.bodyPart).value) }) else observations
     }
 
     private fun buildImageEntries(
@@ -344,7 +351,7 @@ class LocalBackupService @Inject constructor(
         const val MIME_TYPE = "application/octet-stream"
         const val FILE_EXTENSION = "skb"
         const val MIN_PASSWORD_LENGTH = EncryptedBackupCodec.MIN_PASSWORD_LENGTH
-        private const val PAYLOAD_VERSION = 2
+        private const val PAYLOAD_VERSION = 3
         private const val MAX_MOLES = 10_000
         private const val MAX_ANALYSES = 100_000
         private const val MAX_IMAGES = 100_000

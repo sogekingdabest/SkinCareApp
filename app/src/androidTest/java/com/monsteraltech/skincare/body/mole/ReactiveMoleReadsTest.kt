@@ -50,6 +50,7 @@ class ReactiveMoleReadsTest {
     }
     private fun mole(id: String, owner: String = "fixture", title: String = id, zone: String = "zone") =
         mapper.toEntity(MoleData(id = id, userId = owner, title = title, bodyPart = "Brazo", bodyPartColorCode = zone,
+            bodyRegionId = if (zone == "zone") com.monsteraltech.skincare.body.domain.BodyRegionId.RIGHT_ARM else com.monsteraltech.skincare.body.domain.BodyRegionId.LEFT_ARM,
             createdAt = Instant.ofEpochMilli(1000), updatedAt = Instant.ofEpochMilli(2000)))
     private suspend fun seed() = database.withTransaction {
         (1..70).forEach { database.moleDao().insertMole(mole("m${it.toString().padStart(3, '0')}", title = if (it == 70) "ÁREA NEEDLE" else "Entry $it")) }
@@ -64,12 +65,12 @@ class ReactiveMoleReadsTest {
 
     @Test fun recordsBeyondFiftyRemainAvailableAndSearchableWithStableOrdering() = runBlocking {
         seed()
-        val page = reader.observeMoles("fixture", MoleListQuery(bodyPartColor = "zone"), 50).first()
+        val page = reader.observeMoles("fixture", MoleListQuery(bodyRegionId = com.monsteraltech.skincare.body.domain.BodyRegionId.RIGHT_ARM), 50).first()
         assertEquals(70, page.totalCount); assertEquals(50, page.items.size); assertTrue(page.hasMore)
         assertEquals("m001", page.items.first().id); assertEquals("m050", page.items.last().id)
-        val expanded = reader.observeMoles("fixture", MoleListQuery(bodyPartColor = "zone"), 100).first()
+        val expanded = reader.observeMoles("fixture", MoleListQuery(bodyRegionId = com.monsteraltech.skincare.body.domain.BodyRegionId.RIGHT_ARM), 100).first()
         assertEquals(70, expanded.items.size)
-        val searched = reader.observeMoles("fixture", MoleListQuery("área", bodyPartColor = "zone", selector = true), 50).first()
+        val searched = reader.observeMoles("fixture", MoleListQuery("área", bodyRegionId = com.monsteraltech.skincare.body.domain.BodyRegionId.RIGHT_ARM, selector = true), 50).first()
         assertEquals(listOf("m070"), searched.items.map { it.id })
         assertEquals(1, searched.matchingCount)
         assertEquals(71, database.moleDao().getAllMoles("fixture").size)

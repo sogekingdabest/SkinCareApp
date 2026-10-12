@@ -1,4 +1,7 @@
 package com.monsteraltech.skincare.analysis
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.presentation.BodyRegionContract
+import com.monsteraltech.skincare.body.presentation.BodyRegions
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -40,26 +43,18 @@ class AnalysisResultActivity : AppCompatActivity() {
     private lateinit var disclaimerHelper: MedicalDisclaimerHelper
     private var bodyPartColorCode: String? = null
     private var selectedBodyPart: String = ""
+    private var selectedBodyRegionId: BodyRegionId? = null
     private var overlayShown = false
     private var targetMoleId: String? = null
     private var targetMoleTitle: String? = null
     private var targetMoleDescription: String? = null
-
-    private val bodyPartToColorMap = mapOf(
-        "Cabeza" to "#FF000000",
-        "Brazo derecho" to "#FFED1C24",
-        "Torso" to "#FFFFC90E",
-        "Brazo izquierdo" to "#FF22B14C",
-        "Pierna derecha" to "#FF3F48CC",
-        "Pierna izquierda" to "#FFED00FF"
-    )
-    private val colorToBodyPartMap = bodyPartToColorMap.entries.associate { (k, v) -> v to k }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityAnalysisResultEnhancedBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        selectedBodyRegionId = BodyRegionContract.read(intent)
         bodyPartColorCode =
             intent.getStringExtra(
                 MoleCaptureContract.EXTRA_BODY_PART_COLOR
@@ -255,8 +250,10 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun setupBodyPart() {
-        if (bodyPartColorCode != null && colorToBodyPartMap.containsKey(bodyPartColorCode)) {
-            selectedBodyPart = colorToBodyPartMap[bodyPartColorCode] ?: ""
+        val region = BodyRegions.item(selectedBodyRegionId)
+        if (region != null) {
+            selectedBodyPart = getString(region.nameRes)
+            bodyPartColorCode = region.legacyColor
             binding.bodyPartTextView.text = selectedBodyPart
             binding.bodyPartTextView.visibility = View.VISIBLE
             binding.bodyPartInputLayout.visibility = View.GONE
@@ -267,17 +264,14 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun setupBodyPartSpinner() {
-        val bodyPartsList = arrayListOf("Seleccionar parte del cuerpo") + bodyPartToColorMap.keys.toList()
-        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, bodyPartsList)
+        val choices = listOf(getString(R.string.body_region_prompt)) + BodyRegions.selectable.map { getString(it.nameRes) }
+        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, choices)
         binding.bodyPartSpinner.setAdapter(adapter)
         binding.bodyPartSpinner.setOnItemClickListener { _, _, position, _ ->
-            if (position > 0) {
-                selectedBodyPart = bodyPartsList[position]
-                bodyPartColorCode = bodyPartToColorMap[selectedBodyPart]
-            } else {
-                selectedBodyPart = ""
-                bodyPartColorCode = null
-            }
+            val region = BodyRegions.selectable.getOrNull(position - 1)
+            selectedBodyRegionId = region?.id
+            selectedBodyPart = region?.let { getString(it.nameRes) }.orEmpty()
+            bodyPartColorCode = region?.legacyColor
         }
     }
 
@@ -496,6 +490,7 @@ class AnalysisResultActivity : AppCompatActivity() {
                     description = description,
                     bodyPart = selectedBodyPart,
                     bodyPartColorCode = bodyPartColorCode,
+                    bodyRegionId = selectedBodyRegionId,
                     userInput = currentUserInputIfVisible()
                 )
             } else {
@@ -504,6 +499,7 @@ class AnalysisResultActivity : AppCompatActivity() {
                     description = description,
                     bodyPart = selectedBodyPart,
                     bodyPartColorCode = bodyPartColorCode,
+                    bodyRegionId = selectedBodyRegionId,
                     userInput = currentUserInputIfVisible()
                 )
             }
@@ -519,6 +515,7 @@ class AnalysisResultActivity : AppCompatActivity() {
                 description = binding.descriptionEditText.text.toString(),
                 bodyPart = selectedBodyPart,
                 bodyPartColorCode = bodyPartColorCode,
+                bodyRegionId = selectedBodyRegionId,
                 userInput = currentUserInputIfVisible()
             )
             return
@@ -531,14 +528,15 @@ class AnalysisResultActivity : AppCompatActivity() {
             description = binding.descriptionEditText.text.toString(),
             bodyPart = selectedBodyPart,
             bodyPartColorCode = bodyPartColorCode,
+            bodyRegionId = selectedBodyRegionId,
             userInput = currentUserInputIfVisible()
         )
     }
 
     private fun navigateBack() {
-        val intent = if (bodyPartColorCode != null) {
+        val intent = if (selectedBodyRegionId != null && selectedBodyRegionId != BodyRegionId.UNKNOWN) {
             Intent(this, BodyPartActivity::class.java).apply {
-                putExtra("COLOR_VALUE", bodyPartColorCode)
+                putExtra(BodyRegionContract.EXTRA_REGION_ID, selectedBodyRegionId?.value)
             }
         } else {
             Intent(this, MainActivity::class.java)

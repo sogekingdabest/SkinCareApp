@@ -17,6 +17,7 @@ import com.monsteraltech.skincare.body.mole.data.repository.LocalMoleObservation
 import com.monsteraltech.skincare.body.mole.data.repository.LocalMoleReadRepository
 import com.monsteraltech.skincare.body.mole.domain.repository.MoleReadRepository
 import com.monsteraltech.skincare.body.mole.data.local.ObservationMigration
+import com.monsteraltech.skincare.body.mole.data.local.BodyRegionMigration
 import com.monsteraltech.skincare.body.mole.data.local.SkinCareDatabase
 import com.monsteraltech.skincare.body.mole.domain.repository.MoleObservationRepository
 import com.monsteraltech.skincare.data.SessionManager
@@ -51,7 +52,7 @@ object AppModule {
         context,
         SkinCareDatabase::class.java,
         "skincare_private.db"
-    ).addMigrations(ObservationMigration.FROM_1_TO_2).build()
+    ).addMigrations(ObservationMigration.FROM_1_TO_2, BodyRegionMigration.FROM_2_TO_3).build()
 
     @Provides
     @Singleton

@@ -17,7 +17,11 @@ class LocalObservationStore @Inject constructor(private val database: SkinCareDa
     suspend fun append(userId: String, moleId: String, analysis: AnalysisEntity) = database.withTransaction {
         require(analysis.id.isNotBlank() && analysis.moleId == moleId && analysis.userId == userId)
         val current = dao.getMole(userId, moleId) ?: throw NoSuchElementException("Lunar no encontrado")
-        val saved = analysis.copy(imagePath = analysis.imagePath.ifBlank { current.imagePath })
+        val model = mapper.toModel(analysis)
+        val metadata = model.analysisMetadata + mapOf("bodyRegionId" to current.bodyRegionId,
+            "bodyPart" to current.bodyPart, "bodyPartColorCode" to current.bodyPartColorCode)
+        val saved = analysis.copy(imagePath = analysis.imagePath.ifBlank { current.imagePath },
+            analysisMetadataJson = mapper.toEntity(model.copy(analysisMetadata = metadata), userId).analysisMetadataJson)
         dao.insertAnalysis(saved)
         dao.upsertMole(withSummary(current, saved, dao.countAnalyses(userId, moleId)))
     }

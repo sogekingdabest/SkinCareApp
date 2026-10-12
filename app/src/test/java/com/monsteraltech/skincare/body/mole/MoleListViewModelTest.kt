@@ -47,7 +47,7 @@ class MoleListViewModelTest {
         assertFalse(ready().page.hasMore)
     }
     @Test fun `live changes update the list without another start or manual refresh`() = runTest(dispatcher) {
-        observe(); model.start("zone"); runCurrent()
+        observe(); model.start(com.monsteraltech.skincare.body.domain.BodyRegionId.UNKNOWN); runCurrent()
         entries.value = listOf(entry("new", "New title")); runCurrent()
         assertEquals("New title", ready().page.items.single().title)
         verify(exactly = 1) { repository.observeMoles(any(), any(), any()) }

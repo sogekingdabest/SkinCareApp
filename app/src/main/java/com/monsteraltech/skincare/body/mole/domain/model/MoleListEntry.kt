@@ -1,5 +1,7 @@
 package com.monsteraltech.skincare.body.mole.domain.model
 
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+
 /** Lightweight list metadata; dates and image references are independent of SDK/UI types. */
 data class MoleListEntry(
     val id: String,
@@ -11,10 +13,11 @@ data class MoleListEntry(
     val analysisResult: String,
     val analysisCount: Int,
     val createdAtEpochMillis: Long,
-    val lastAnalysisAtEpochMillis: Long?
+    val lastAnalysisAtEpochMillis: Long?,
+    val bodyRegionId: BodyRegionId = BodyRegionId.UNKNOWN
 )
 
-data class MoleListQuery(val text: String = "", val bodyPartColor: String? = null, val selector: Boolean = false)
+data class MoleListQuery(val text: String = "", val bodyRegionId: BodyRegionId? = null, val selector: Boolean = false)
 data class MoleListPage(val items: List<MoleListEntry>, val matchingCount: Int, val totalCount: Int) {
     val hasMore get() = items.size < matchingCount
 }

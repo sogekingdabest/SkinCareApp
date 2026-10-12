@@ -1,5 +1,6 @@
 package com.monsteraltech.skincare.body.mole.model
 import java.time.Instant
+import com.monsteraltech.skincare.body.domain.BodyRegionId
 data class MoleData(
     val id: String = "",
     val title: String = "",
@@ -26,5 +27,6 @@ data class MoleData(
     val recommendation: String = "",
     val urgency: String = "",
     val analysisMetadata: Map<String, Any> = emptyMap(),
-    val currentAnalysisId: String? = null
+    val currentAnalysisId: String? = null,
+    val bodyRegionId: BodyRegionId? = null
 )

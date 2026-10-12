@@ -1,5 +1,6 @@
 package com.monsteraltech.skincare.body.mole.data.repository
 
+import com.monsteraltech.skincare.body.domain.BodyRegionId
 import androidx.room.withTransaction
 import com.monsteraltech.skincare.body.mole.data.local.LocalMoleMapper
 import com.monsteraltech.skincare.body.mole.data.local.MoleEntity
@@ -26,7 +27,7 @@ class LocalMoleReadRepository @Inject constructor(
     private val mapper = LocalMoleMapper()
     override fun observeMoles(ownerId: String, query: MoleListQuery, limit: Int): Flow<MoleListPage> = flow {
         require(ownerId.isNotBlank() && limit > 0)
-        emitAll(dao.observeMoleList(ownerId, query.bodyPartColor).map { entries ->
+        emitAll(dao.observeMoleList(ownerId, query.bodyRegionId?.value).map { entries ->
             // Search all lightweight metadata before limiting visible rows, preserving Unicode/date matching.
             val matched = entries.filter { MoleListSearch.matches(it, query) }
             val visible = matched.take(limit)
@@ -50,5 +51,6 @@ class LocalMoleReadRepository @Inject constructor(
     }.flowOn(dispatcher)
 
     private fun MoleEntity.toListEntry() = MoleListEntry(id, title, description, bodyPart, bodyPartColorCode,
-        imagePath, analysisResult, analysisCount, createdAtEpochMillis, lastAnalysisAtEpochMillis)
+        imagePath, analysisResult, analysisCount, createdAtEpochMillis, lastAnalysisAtEpochMillis,
+        BodyRegionId.fromValue(bodyRegionId) ?: BodyRegionId.UNKNOWN)
 }

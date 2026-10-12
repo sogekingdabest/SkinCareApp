@@ -1,6 +1,8 @@
 package com.monsteraltech.skincare.body.mole.data.local
 
 import java.time.Instant
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.data.LegacyBodyRegionMapping
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.monsteraltech.skincare.body.mole.model.ABCDEScores
@@ -39,7 +41,8 @@ internal class LocalMoleMapper(
         recommendation = mole.recommendation,
         urgency = mole.urgency,
         analysisMetadataJson = gson.toJson(mole.analysisMetadata),
-        currentAnalysisId = mole.currentAnalysisId
+        currentAnalysisId = mole.currentAnalysisId,
+        bodyRegionId = LegacyBodyRegionMapping.resolve(mole.bodyRegionId, mole.bodyPartColorCode, mole.bodyPart).value
     )
 
     fun toModel(entity: MoleEntity): MoleData = MoleData(
@@ -68,7 +71,8 @@ internal class LocalMoleMapper(
         recommendation = entity.recommendation,
         urgency = entity.urgency,
         analysisMetadata = metadataFromJson(entity.analysisMetadataJson),
-        currentAnalysisId = entity.currentAnalysisId
+        currentAnalysisId = entity.currentAnalysisId,
+        bodyRegionId = BodyRegionId.fromValue(entity.bodyRegionId) ?: BodyRegionId.UNKNOWN
     )
 
     fun toEntity(analysis: AnalysisData, userId: String): AnalysisEntity = AnalysisEntity(

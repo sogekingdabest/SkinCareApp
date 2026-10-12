@@ -86,4 +86,15 @@ class LocalMoleMapperTest {
         assertEquals(analysis.combinedScore, restored.combinedScore)
         assertEquals(true, restored.analysisMetadata["validCapture"])
     }
+    @Test fun `region identity roundtrips without depending on stored name or color`() {
+        val original = com.monsteraltech.skincare.body.mole.model.MoleData(id = "m", userId = "owner",
+            bodyPart = "Changed label", bodyPartColorCode = "#AABBCC",
+            bodyRegionId = com.monsteraltech.skincare.body.domain.BodyRegionId.RIGHT_ARM)
+        val entity = LocalMoleMapper().toEntity(original)
+        assertEquals("right_arm", entity.bodyRegionId)
+        val restored = LocalMoleMapper().toModel(entity)
+        assertEquals(original.bodyRegionId, restored.bodyRegionId)
+        assertEquals(original.bodyPartColorCode, restored.bodyPartColorCode)
+        assertEquals(original.bodyPart, restored.bodyPart)
+    }
 }

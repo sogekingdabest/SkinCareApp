@@ -438,4 +438,12 @@
     <string name="list_retry">Reintentar</string>
     <string name="list_load_error">No se pudo cargar la lista</string>
     <string name="history_summary">Historial de análisis\n(%1$d análisis - Último: %2$s)</string>
+    <string name="body_region_head">Cabeza</string>
+    <string name="body_region_right_arm">Brazo derecho</string>
+    <string name="body_region_torso">Torso</string>
+    <string name="body_region_left_arm">Brazo izquierdo</string>
+    <string name="body_region_right_leg">Pierna derecha</string>
+    <string name="body_region_left_leg">Pierna izquierda</string>
+    <string name="body_region_unknown">Parte desconocida</string>
+    <string name="body_region_prompt">Seleccionar parte del cuerpo</string>
 </resources>

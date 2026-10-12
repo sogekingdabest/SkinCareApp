@@ -58,12 +58,12 @@ interface MoleDao {
     @Query("SELECT * FROM moles WHERE userId = :userId ORDER BY updatedAtEpochMillis DESC, id ASC")
     suspend fun getAllMoles(userId: String): List<MoleEntity>
 
-    @Query("""SELECT id, title, description, bodyPart, bodyPartColorCode,
+    @Query("""SELECT id, title, description, bodyPart, bodyPartColorCode, bodyRegionId,
         imagePath AS imageReference, analysisResult, analysisCount, createdAtEpochMillis,
         lastAnalysisAtEpochMillis FROM moles WHERE userId = :userId
-        AND (:bodyPartColor IS NULL OR bodyPartColorCode = :bodyPartColor)
+        AND (:regionId IS NULL OR bodyRegionId = :regionId)
         ORDER BY updatedAtEpochMillis DESC, id ASC""")
-    fun observeMoleList(userId: String, bodyPartColor: String?): Flow<List<MoleListEntry>>
+    fun observeMoleList(userId: String, regionId: String?): Flow<List<MoleListEntry>>
 
     @Query("""SELECT COUNT(*) FROM mole_analyses a JOIN moles m ON m.id = a.moleId AND m.userId = a.userId
         WHERE m.id = :moleId AND m.userId = :userId""")
@@ -77,13 +77,13 @@ interface MoleDao {
     @Query(
         """
         SELECT * FROM moles
-        WHERE userId = :userId AND bodyPartColorCode = :bodyPartColorCode
+        WHERE userId = :userId AND bodyRegionId = :regionId
         ORDER BY updatedAtEpochMillis DESC
         """
     )
-    suspend fun getMolesForBodyPart(
+    suspend fun getMolesForBodyRegion(
         userId: String,
-        bodyPartColorCode: String
+        regionId: String
     ): List<MoleEntity>
 
     @Query(

@@ -1,5 +1,6 @@
 package com.monsteraltech.skincare.analysis
 
+import com.monsteraltech.skincare.body.domain.BodyRegionId
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.annotation.StringRes
@@ -362,7 +363,8 @@ class AnalysisResultViewModel @Inject constructor(
         description: String,
         bodyPart: String,
         bodyPartColorCode: String?,
-        userInput: UserAbcdeInput?
+        userInput: UserAbcdeInput?,
+        bodyRegionId: BodyRegionId? = null
     ) {
         val result = validateForSave(requireTitle = true, title = title, bodyPart = bodyPart) ?: return
         val imageFile = photoFile ?: run {
@@ -376,7 +378,7 @@ class AnalysisResultViewModel @Inject constructor(
             try {
                 val saveResult = saveCapture.saveNew(
                     imageFile, AnalysisOutcome.Complete(result),
-                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput)
+                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId)
                 )
                 if (saveResult.isSuccess) {
                     _events.send(Event.SaveCompleted())
@@ -399,7 +401,8 @@ class AnalysisResultViewModel @Inject constructor(
         description: String,
         bodyPart: String,
         bodyPartColorCode: String?,
-        userInput: UserAbcdeInput?
+        userInput: UserAbcdeInput?,
+        bodyRegionId: BodyRegionId? = null
     ) = saveToExistingMole(
         moleId = mole.id,
         existingMoleTitle = mole.title,
@@ -407,7 +410,8 @@ class AnalysisResultViewModel @Inject constructor(
         description = description,
         bodyPart = bodyPart,
         bodyPartColorCode = bodyPartColorCode,
-        userInput = userInput
+        userInput = userInput,
+        bodyRegionId = bodyRegionId
     )
 
     fun saveToExistingMole(
@@ -417,7 +421,8 @@ class AnalysisResultViewModel @Inject constructor(
         description: String,
         bodyPart: String,
         bodyPartColorCode: String?,
-        userInput: UserAbcdeInput?
+        userInput: UserAbcdeInput?,
+        bodyRegionId: BodyRegionId? = null
     ) {
         val result = validateForSave(requireTitle = false, title = title, bodyPart = bodyPart) ?: return
         val imageFile = photoFile ?: run {
@@ -431,7 +436,7 @@ class AnalysisResultViewModel @Inject constructor(
             try {
                 val saveResult = saveCapture.append(
                     moleId, imageFile, AnalysisOutcome.Complete(result),
-                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput)
+                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId)
                 )
                 if (saveResult.isSuccess) {
                     _events.send(

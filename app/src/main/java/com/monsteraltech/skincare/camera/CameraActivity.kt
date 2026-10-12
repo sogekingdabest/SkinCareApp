@@ -1,5 +1,7 @@
 package com.monsteraltech.skincare.camera
 import android.Manifest
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.presentation.BodyRegionContract
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
@@ -79,6 +81,7 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var digitalZoomController: DigitalZoomController
     private lateinit var zoomControlsView: ZoomControlsView
     private var bodyPartColor: String? = null
+    private var bodyRegionId: BodyRegionId? = null
     private var targetMoleId: String? = null
     private var targetMoleTitle: String? = null
     private var targetMoleDescription: String? = null
@@ -86,6 +89,7 @@ class CameraActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
+        bodyRegionId = BodyRegionContract.read(intent)
         bodyPartColor =
             intent.getStringExtra(
                 MoleCaptureContract.EXTRA_BODY_PART_COLOR
@@ -368,6 +372,7 @@ class CameraActivity : AppCompatActivity() {
         processingMetadata: String = ""
     ) {
         val intent = Intent(this, PreviewActivity::class.java)
+        intent.putExtra(MoleCaptureContract.EXTRA_BODY_REGION_ID, bodyRegionId?.value)
         intent.putExtra(MoleCaptureContract.EXTRA_PHOTO_PATH, photoPath)
         intent.putExtra(
             MoleCaptureContract.EXTRA_IS_FRONT_CAMERA,

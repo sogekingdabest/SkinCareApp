@@ -1,5 +1,6 @@
 package com.monsteraltech.skincare.backup
 
+import com.monsteraltech.skincare.body.data.LegacyBodyRegionMapping
 import androidx.room.withTransaction
 import com.monsteraltech.skincare.body.mole.data.local.AnalysisEntity
 import com.monsteraltech.skincare.body.mole.data.local.MoleEntity
@@ -99,6 +100,7 @@ class BackupRecordRestorer @Inject constructor(
         }
         return Records(payload.moles.map { mole -> mole.copy(
             id = moleIds.getValue(mole.id), userId = ownerId,
+            bodyRegionId = if (payload.schemaVersion < 3) LegacyBodyRegionMapping.resolve(null, mole.bodyPartColorCode, mole.bodyPart).value else mole.bodyRegionId,
             imagePath = imagePaths[mole.imagePath].orEmpty(),
             currentAnalysisId = mole.currentAnalysisId?.let(analysisIds::getValue)
         ) }, payload.analyses.map { analysis -> analysis.copy(

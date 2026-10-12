@@ -58,11 +58,14 @@ class ObservationPersistenceTest {
         assertEquals(listOf(first), database.moleDao().getAnalysisHistory("owner", "m"))
         store.append("owner", "m", second)
         val snapshot = store.current("owner", "m")
-        assertEquals(second, snapshot.analysis)
+        val storedSecond = checkNotNull(snapshot.analysis)
+        // Site metadata is new; every clinical field and reference must remain identical.
+        assertEquals(second, storedSecond.copy(analysisMetadataJson = second.analysisMetadataJson))
+        assertEquals(snapshot.mole.bodyRegionId, mapper.toModel(storedSecond).analysisMetadata["bodyRegionId"])
         assertEquals(2, snapshot.mole.analysisCount)
         assertEquals(1000L, snapshot.mole.firstAnalysisAtEpochMillis)
         assertEquals(2000L, snapshot.mole.lastAnalysisAtEpochMillis)
-        assertEquals(listOf(second, first), database.moleDao().getAnalysisHistory("owner", "m"))
+        assertEquals(listOf(storedSecond, first), database.moleDao().getAnalysisHistory("owner", "m"))
         assertEquals(first, database.moleDao().getAnalysis("owner", "m", "first"))
     }
 
@@ -178,7 +181,7 @@ class ObservationPersistenceTest {
             insertLegacy(old, "mole_analyses", first)
             helper.close()
             val opened = Room.databaseBuilder(context, SkinCareDatabase::class.java, name)
-                .addMigrations(ObservationMigration.FROM_1_TO_2).build().also { migrated = it }
+                .addMigrations(ObservationMigration.FROM_1_TO_2, BodyRegionMigration.FROM_2_TO_3).build().also { migrated = it }
             val migratedStore = LocalObservationStore(opened)
             val snapshot = migratedStore.current("owner", "m")
             assertEquals(LegacyObservation.id(legacy), snapshot.analysis!!.id)
@@ -198,6 +201,7 @@ class ObservationPersistenceTest {
 
     private fun insertLegacy(db: SupportSQLiteDatabase, table: String, row: Any) {
         val values = JSONObject(Gson().toJson(row))
+        if (table == "moles") values.remove("bodyRegionId")
         val keys = values.keys().asSequence().toList()
         val args = keys.map { values.get(it) }.toTypedArray()
         db.execSQL("INSERT INTO $table (${keys.joinToString(",")}) VALUES (${keys.joinToString(",") { "?" }})", args)

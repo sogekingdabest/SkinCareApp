@@ -42,7 +42,7 @@ class ObservationBackupTest {
         val normalized = service.normalizeLegacyPayload(payload(1))
         val repeated = service.normalizeLegacyPayload(payload(1))
         assertEquals(normalized, repeated)
-        assertEquals(2, normalized.schemaVersion)
+        assertEquals(3, normalized.schemaVersion)
         assertEquals(1, normalized.analyses.size)
         assertEquals(normalized.analyses.single().id, normalized.moles.single().currentAnalysisId)
         assertEquals("original.jpg", normalized.analyses.single().imagePath)
@@ -112,5 +112,30 @@ class ObservationBackupTest {
             try { service.validatePayload(invalid); fail("Expected invalid backup") }
             catch (_: IllegalArgumentException) { }
         }
+    }
+    @Test fun `version two backup infers a region without changing observations or images`() {
+        val old = payload().copy(moles = listOf(mole.copy(currentAnalysisId = analysis.id,
+            bodyPart = "Brazo derecho", bodyPartColorCode = "#FFED1C24")))
+        val migrated = service.normalizeLegacyPayload(old)
+        assertEquals(3, migrated.schemaVersion)
+        assertEquals("right_arm", migrated.moles.single().bodyRegionId)
+        assertEquals(old.analyses, migrated.analyses)
+        assertEquals(old.imageEntries, migrated.imageEntries)
+        assertEquals(old.moles.single().currentAnalysisId, migrated.moles.single().currentAnalysisId)
+        service.validatePayload(migrated)
+    }
+
+    @Test fun `modern backup IDs have authority over labels and palettes`() {
+        val modern = payload().copy(schemaVersion = 3,
+            moles = listOf(mole.copy(currentAnalysisId = analysis.id, bodyPart = "Changed",
+                bodyPartColorCode = "#FF000000", bodyRegionId = "left_leg")))
+        assertEquals(modern, service.normalizeLegacyPayload(modern))
+        service.validatePayload(modern)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `malformed modern region ID is rejected before restoring data`() {
+        service.validatePayload(payload().copy(schemaVersion = 3,
+            moles = listOf(mole.copy(currentAnalysisId = analysis.id, bodyRegionId = "not-an-id"))))
     }
 }

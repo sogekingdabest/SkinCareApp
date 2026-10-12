@@ -1,5 +1,6 @@
 package com.monsteraltech.skincare.body.mole
 
+import com.monsteraltech.skincare.body.domain.BodyRegionId
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -41,12 +42,12 @@ class MoleListViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState.Loading)
 
-    fun start(bodyPartColor: String? = null, selector: Boolean = false) {
+    fun start(bodyRegionId: BodyRegionId? = null, selector: Boolean = false) {
         val owner = profile.ownerId.orEmpty()
         val previous = request.value
-        if (previous != null && previous.owner == owner && previous.query.bodyPartColor == bodyPartColor && previous.query.selector == selector) return
+        if (previous != null && previous.owner == owner && previous.query.bodyRegionId == bodyRegionId && previous.query.selector == selector) return
         val limit = if (previous == null) (saved.get<Int>("list_limit") ?: PAGE_SIZE).coerceAtLeast(PAGE_SIZE) else PAGE_SIZE
-        request.value = Request(owner, MoleListQuery(query, bodyPartColor, selector), limit)
+        request.value = Request(owner, MoleListQuery(query, bodyRegionId, selector), limit)
     }
     fun search(text: String) {
         if (text == query) return

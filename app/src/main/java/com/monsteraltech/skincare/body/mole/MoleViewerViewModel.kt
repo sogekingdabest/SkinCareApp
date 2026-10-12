@@ -1,5 +1,6 @@
 package com.monsteraltech.skincare.body.mole
 
+import com.monsteraltech.skincare.body.domain.BodyRegionId
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -59,6 +60,8 @@ class MoleViewerViewModel @Inject constructor(
     private val _events = Channel<Event>(Channel.BUFFERED)
     val events: Flow<Event> = _events.receiveAsFlow()
 
+    private val _bodyRegionId = MutableStateFlow<BodyRegionId?>(null)
+    val bodyRegionId = _bodyRegionId.asStateFlow()
     private var args: MoleViewerArgs? = null
     private var isLoading = false
 
@@ -66,6 +69,7 @@ class MoleViewerViewModel @Inject constructor(
     fun initialize(args: MoleViewerArgs) {
         if (this.args != null) return
         this.args = args
+        _bodyRegionId.value = args.bodyRegionId
         load(args)
     }
 
@@ -138,6 +142,7 @@ class MoleViewerViewModel @Inject constructor(
             isLoading = false
             retryResult.result
                 .onSuccess { snapshot ->
+                    _bodyRegionId.value = snapshot.mole.bodyRegionId ?: BodyRegionId.UNKNOWN
                     if (retryResult.attemptsMade > 1) {
                         _events.trySend(Event.RetrySucceeded(retryResult.attemptsMade))
                     }

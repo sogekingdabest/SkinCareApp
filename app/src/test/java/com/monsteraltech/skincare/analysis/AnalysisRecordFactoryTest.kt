@@ -95,4 +95,11 @@ class AnalysisRecordFactoryTest {
         assertNotEquals(first.id, second.id)
         assertEquals(first.moleId, second.moleId)
     }
+    @Test fun `stored anatomical identity survives label and palette changes`() {
+        val record = records.create(AnalysisOutcome.Complete(combinedResult()), "m-1",
+            annotations.copy(bodyPart = "Localized label", bodyPartColorCode = "#123456",
+                bodyRegionId = com.monsteraltech.skincare.body.domain.BodyRegionId.TORSO))
+        assertEquals("torso", record.analysisMetadata["bodyRegionId"])
+        assertEquals("Localized label", record.analysisMetadata["bodyPart"])
+    }
 }

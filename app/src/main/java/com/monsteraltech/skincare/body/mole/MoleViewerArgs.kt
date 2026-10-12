@@ -1,5 +1,7 @@
 package com.monsteraltech.skincare.body.mole
 
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.presentation.BodyRegionContract
 import android.content.Intent
 import java.time.Instant
 import com.monsteraltech.skincare.body.mole.model.ABCDEScores
@@ -19,7 +21,8 @@ data class MoleViewerArgs(
     val aiResult: String,
     val analysisCount: Int,
     val historicalAnalysis: AnalysisData?,
-    val bodyPartColorCode: String? = null
+    val bodyPartColorCode: String? = null,
+    val bodyRegionId: BodyRegionId? = null
 ) {
     companion object {
         fun fromIntent(intent: Intent): MoleViewerArgs {
@@ -32,7 +35,8 @@ data class MoleViewerArgs(
                 aiResult = intent.getStringExtra("LUNAR_ANALYSIS_RESULT") ?: "",
                 analysisCount = if (isHistorical) 1 else intent.getIntExtra("ANALYSIS_COUNT", 0),
                 historicalAnalysis = if (isHistorical) reconstructHistoricalAnalysis(intent) else null,
-                bodyPartColorCode = intent.getStringExtra("BODY_PART_COLOR")
+                bodyPartColorCode = intent.getStringExtra("BODY_PART_COLOR"),
+                bodyRegionId = BodyRegionContract.read(intent)
             )
         }
 
