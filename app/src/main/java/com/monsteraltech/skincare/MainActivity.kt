@@ -10,7 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
-import com.monsteraltech.skincare.account.UserProfileManager
+import com.monsteraltech.skincare.account.AccountProfileRepository
 import com.monsteraltech.skincare.camera.CameraActivity
 import com.monsteraltech.skincare.data.SessionManager
 import com.monsteraltech.skincare.data.auth.AuthRepository
@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var authRepository: AuthRepository
     @Inject
-    lateinit var userProfileManager: UserProfileManager
+    lateinit var userProfileManager: AccountProfileRepository
     private lateinit var themeManager: ThemeManager
     private lateinit var sessionManager: SessionManager
     private lateinit var disclaimerHelper: MedicalDisclaimerHelper

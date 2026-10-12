@@ -55,7 +55,7 @@ class AnalysisHistoryAdapter(
     }
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val analysis = analysisList[position]
-        val date = analysis.createdAt.toDate()
+        val date = java.util.Date.from(analysis.createdAt)
         val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
         holder.dateText.text = dateFormat.format(date)
         val recyclerView = holder.itemView.parent as? RecyclerView

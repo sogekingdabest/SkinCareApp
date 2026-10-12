@@ -1,7 +1,7 @@
 package com.monsteraltech.skincare.body.mole
 
 import android.content.Context
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import com.monsteraltech.skincare.body.mole.error.ErrorHandler
 import com.monsteraltech.skincare.body.mole.model.ABCDEScores
@@ -41,7 +41,7 @@ class MoleViewerViewModelTest {
         moleRepository = mockk()
         activeProfile = mockk()
         every { activeProfile.ownerId } returns "user-1"
-        viewModel = MoleViewerViewModel(context, moleRepository, activeProfile)
+        viewModel = MoleViewerViewModel(context, moleRepository, activeProfile, com.monsteraltech.skincare.body.mole.data.LegacyAnalysisResultDecoder())
     }
 
     @After
@@ -71,7 +71,7 @@ class MoleViewerViewModelTest {
         riskLevel = "MEDIUM",
         recommendation = "test",
         abcdeScores = ABCDEScores(totalScore = 5f),
-        createdAt = Timestamp.now()
+        createdAt = Instant.ofEpochMilli(System.currentTimeMillis())
     )
 
     private fun moleData() = MoleData(

@@ -44,6 +44,12 @@ class AccountLifecycleTest {
             if (committed) this.settings = settings
             return AccountResult.success(committed)
         }
+        override suspend fun applySettingsPatch(patch: AccountSettingsPatch, ownerId: String): AccountResult<AccountSettings> {
+            val candidate = patch.applyTo(settings)
+            val result = updateUserSettings(candidate)
+            return if (result.getDataOrNull() == true) AccountResult.success(candidate)
+                else AccountResult.error(IllegalStateException("write failed"))
+        }
         override fun isUserAuthenticated() = true
         override fun getCurrentUserId() = "lifecycle-fixture"
         fun releaseLoads() {

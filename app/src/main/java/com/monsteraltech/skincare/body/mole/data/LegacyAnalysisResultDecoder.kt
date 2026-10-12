@@ -1,13 +1,17 @@
-package com.monsteraltech.skincare.body.mole.model
-import com.google.firebase.Timestamp
+package com.monsteraltech.skincare.body.mole.data
+
+import com.monsteraltech.skincare.body.mole.model.AnalysisData
+import com.monsteraltech.skincare.body.mole.model.ABCDEScores
+import javax.inject.Inject
+import java.time.Instant
 import org.json.JSONObject
 import java.util.UUID
-object AnalysisDataConverter {
-    fun fromAiResultString(
+class LegacyAnalysisResultDecoder @Inject constructor() {
+    fun decode(
         aiResult: String,
         moleId: String,
         imageUrl: String,
-        createdAt: Timestamp = Timestamp.now()
+        createdAt: Instant = Instant.ofEpochMilli(System.currentTimeMillis())
     ): AnalysisData? {
         if (aiResult.isEmpty()) return null
         return try {
@@ -42,48 +46,6 @@ object AnalysisDataConverter {
                 analysisMetadata = mapOf("originalFormat" to "text")
             )
         }
-    }
-    fun toAiResultString(analysisData: AnalysisData): String {
-        return try {
-            val jsonObject = JSONObject().apply {
-                put("probability", analysisData.aiProbability)
-                put("confidence", analysisData.aiConfidence)
-                put("combinedScore", analysisData.combinedScore)
-                put("riskLevel", analysisData.riskLevel)
-                put("recommendation", analysisData.recommendation)
-                put("abcdeScores", JSONObject().apply {
-                    put("asymmetryScore", analysisData.abcdeScores.asymmetryScore)
-                    put("borderScore", analysisData.abcdeScores.borderScore)
-                    put("colorScore", analysisData.abcdeScores.colorScore)
-                    put("diameterScore", analysisData.abcdeScores.diameterScore)
-                    analysisData.abcdeScores.evolutionScore?.let {
-                        put("evolutionScore", it)
-                    }
-                    put("totalScore", analysisData.abcdeScores.totalScore)
-                })
-                put("analysisDate", analysisData.createdAt.seconds)
-                put("metadata", JSONObject(analysisData.analysisMetadata))
-            }
-            jsonObject.toString()
-        } catch (e: Exception) {
-            analysisData.analysisResult.ifEmpty {
-                "Análisis realizado el ${analysisData.createdAt.toDate()}"
-            }
-        }
-    }
-    fun updateMoleDataWithAnalysis(
-        moleData: MoleData,
-        analysisData: AnalysisData
-    ): MoleData {
-        val newAnalysisCount = moleData.analysisCount + 1
-        val firstAnalysisDate = moleData.firstAnalysisDate ?: analysisData.createdAt
-        return moleData.copy(
-            analysisCount = newAnalysisCount,
-            lastAnalysisDate = analysisData.createdAt,
-            firstAnalysisDate = firstAnalysisDate,
-            updatedAt = Timestamp.now(),
-            aiResult = toAiResultString(analysisData)
-        )
     }
     private fun parseABCDEScoresFromJson(jsonObject: JSONObject): ABCDEScores {
         val abcdeJson = jsonObject.optJSONObject("abcdeScores")

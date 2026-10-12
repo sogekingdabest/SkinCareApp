@@ -8,9 +8,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import com.monsteraltech.skincare.account.PasswordChangeManager
-import com.monsteraltech.skincare.account.UserProfileManager
-import com.monsteraltech.skincare.account.AccountProfileRepository
 import com.monsteraltech.skincare.utils.ThemeManager
 import com.monsteraltech.skincare.analysis.comparison.LocalObservationComparisonPreparer
 import com.monsteraltech.skincare.analysis.comparison.LesionPairRegistrationEngine
@@ -22,16 +19,12 @@ import com.monsteraltech.skincare.body.mole.domain.repository.MoleReadRepository
 import com.monsteraltech.skincare.body.mole.data.local.ObservationMigration
 import com.monsteraltech.skincare.body.mole.data.local.SkinCareDatabase
 import com.monsteraltech.skincare.body.mole.domain.repository.MoleObservationRepository
-import com.monsteraltech.skincare.data.FirebaseDataManager
 import com.monsteraltech.skincare.data.SessionManager
-import com.monsteraltech.skincare.data.identity.ActiveProfile
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineDispatcher
 
 /**
- * Providers raíz de la app. Las clases existentes conservan sus constructores
- * con valores por defecto para no romper los puntos de instanciación aún no
- * migrados a Hilt; aquí se centraliza cómo se construyen para el código nuevo.
+ * Providers raíz de SDK y almacenamiento. Los bindings de cada responsabilidad
+ * se declaran en sus módulos de datos y las clases propias usan constructor injection.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -45,13 +38,6 @@ object AppModule {
     @Singleton
     fun provideSessionManager(@ApplicationContext context: Context): SessionManager =
         SessionManager.getInstance(context)
-
-    @Provides
-    @Singleton
-    fun provideFirebaseDataManager(@IoDispatcher dispatcher: CoroutineDispatcher): FirebaseDataManager = FirebaseDataManager(dispatcher)
-
-    @Provides
-    fun provideAccountProfileRepository(manager: UserProfileManager): AccountProfileRepository = manager
 
     @Provides
     @Singleton
@@ -88,13 +74,4 @@ object AppModule {
         engine: OpenCvLesionPairRegistrationEngine
     ): LesionPairRegistrationEngine = engine
 
-    @Provides
-    fun providePasswordChangeManager(): PasswordChangeManager = PasswordChangeManager()
-
-    @Provides
-    fun provideUserProfileManager(
-        firebaseDataManager: FirebaseDataManager,
-        firebaseAuth: FirebaseAuth,
-        activeProfile: ActiveProfile
-    ): UserProfileManager = UserProfileManager(firebaseDataManager, firebaseAuth, activeProfile)
 }

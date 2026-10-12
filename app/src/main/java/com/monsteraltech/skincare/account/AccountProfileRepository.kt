@@ -5,6 +5,7 @@ interface AccountProfileRepository {
     suspend fun getCurrentUserInfo(): AccountResult<UserInfo>
     suspend fun getUserSettings(): AccountResult<AccountSettings>
     suspend fun updateUserSettings(settings: AccountSettings): AccountResult<Boolean>
+    suspend fun applySettingsPatch(patch: AccountSettingsPatch, ownerId: String): AccountResult<AccountSettings>
     fun isUserAuthenticated(): Boolean
     fun getCurrentUserId(): String?
 }

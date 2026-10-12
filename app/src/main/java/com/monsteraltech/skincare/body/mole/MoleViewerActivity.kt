@@ -177,7 +177,7 @@ class MoleViewerActivity : AppCompatActivity() {
         binding.recommendationText.text = analysisData.recommendation.ifEmpty {
             "Análisis completado. Consulte los resultados detallados."
         }
-        binding.analysisDateText.text = "Fecha: ${formatDate(analysisData.createdAt.toDate())}"
+        binding.analysisDateText.text = "Fecha: ${formatDate(java.util.Date.from(analysisData.createdAt))}"
         binding.analysisDateText.visibility = View.VISIBLE
 
         renderHistoryButton(analysisCount)

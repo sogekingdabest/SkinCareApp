@@ -3,7 +3,7 @@ package com.monsteraltech.skincare.account
 import android.os.StrictMode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.monsteraltech.skincare.data.FirebaseDataManager
+import com.monsteraltech.skincare.data.account.LocalAccountSettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -19,14 +19,14 @@ class AccountSettingsDispatcherTest {
     @Test fun settingsCalledFromMainPerformTheirDiskWorkOffMain() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
         val owner = "dispatcher-fixture-${UUID.randomUUID()}"
-        val data = FirebaseDataManager()
+        val data = LocalAccountSettingsRepository(context, Dispatchers.IO)
         val violations = CopyOnWriteArrayList<String>()
         try {
             withContext(Dispatchers.Main) {
                 val previous = StrictMode.getThreadPolicy()
                 StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().detectDiskReads().detectDiskWrites()
                     .penaltyListener(Executor { it.run() }) { violation ->
-                        if (violation.stackTrace.any { it.className.contains("FirebaseDataManager") }) violations += violation.toString()
+                        if (violation.stackTrace.any { it.className.contains("LocalAccountSettingsRepository") }) violations += violation.toString()
                     }.build())
                 try {
                     assertTrue(data.initializeUserSettings(owner))

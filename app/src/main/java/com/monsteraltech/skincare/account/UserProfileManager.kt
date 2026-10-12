@@ -1,24 +1,23 @@
 package com.monsteraltech.skincare.account
 import android.util.Log
-import com.google.firebase.auth.FirebaseAuth
-import com.monsteraltech.skincare.data.FirebaseDataManager
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 class UserProfileManager @Inject constructor(
-    private val firebaseDataManager: FirebaseDataManager,
-    private val auth: FirebaseAuth,
+    private val settingsRepository: AccountSettingsRepository,
+    private val profileSource: CurrentAccountProfileSource,
     private val activeProfile: ActiveProfile,
     private val retryManager: RetryManager = RetryManager()
 ) : AccountProfileRepository {
     private val TAG = "UserProfileManager"
     override suspend fun getCurrentUserInfo(): AccountResult<UserInfo> {
+        val ownerId = activeProfile.ownerId
         return retryManager.executeWithRetry(
             config = retryManager.createDataRetryConfig()
         ) {
             try {
                 Log.d(TAG, "Iniciando obtención de información de usuario")
-                if (!isUserAuthenticated()) {
+                if (ownerId == null || activeProfile.ownerId != ownerId) {
                     Log.w(TAG, "Usuario no autenticado")
                     return@executeWithRetry AccountResult.error(
                         Exception("Usuario no autenticado"),
@@ -33,10 +32,10 @@ class UserProfileManager @Inject constructor(
                         isLocalProfile = true
                     )
                 } else {
-                    firebaseDataManager.getCurrentUserProfile()
+                    profileSource.getCurrentUserProfile()
                 }
-                if (userInfo != null) {
-                    Log.d(TAG, "Información de usuario obtenida exitosamente: ${userInfo.email}")
+                if (userInfo != null && userInfo.uid == ownerId && activeProfile.ownerId == ownerId) {
+                    Log.d(TAG, "Información de usuario obtenida exitosamente")
                     AccountResult.success(userInfo)
                 } else {
                     Log.w(TAG, "No se pudo obtener información del usuario")
@@ -72,11 +71,11 @@ class UserProfileManager @Inject constructor(
                         AccountResult.ErrorType.AUTHENTICATION_ERROR
                     )
                 }
-                val result = firebaseDataManager.updateUserSettings(
+                val result = settingsRepository.updateUserSettings(
                     settings,
                     ownerId
                 )
-                if (result) {
+                if (result && activeProfile.ownerId == ownerId) {
                     Log.d(TAG, "Configuraciones de usuario actualizadas exitosamente")
                     AccountResult.success(true)
                 } else {
@@ -97,7 +96,21 @@ class UserProfileManager @Inject constructor(
             }
         }
     }
+    override suspend fun applySettingsPatch(patch: AccountSettingsPatch, ownerId: String): AccountResult<AccountSettings> {
+        if (activeProfile.ownerId != ownerId) return AccountResult.error(
+            SecurityException("El perfil activo ha cambiado"), "Debes iniciar sesión para actualizar configuraciones",
+            AccountResult.ErrorType.AUTHENTICATION_ERROR
+        )
+        return try {
+            val saved = settingsRepository.applyPatch(patch, ownerId)
+            if (saved != null && activeProfile.ownerId == ownerId) AccountResult.success(saved)
+            else AccountResult.error(IllegalStateException("No se pudieron guardar las configuraciones"))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) { AccountResult.error(error) }
+    }
     override suspend fun getUserSettings(): AccountResult<AccountSettings> {
+        val ownerId = activeProfile.ownerId
         return retryManager.executeWithRetry(
             config = retryManager.createDataRetryConfig()
         ) {
@@ -107,27 +120,17 @@ class UserProfileManager @Inject constructor(
                     Log.w(TAG, "Usuario no autenticado, usando configuraciones por defecto")
                     return@executeWithRetry AccountResult.success(AccountSettings())
                 }
-                val settings = firebaseDataManager.getUserSettings(activeProfile.requireOwnerId())
+                if (ownerId == null || activeProfile.ownerId != ownerId) {
+                    return@executeWithRetry AccountResult.success(AccountSettings())
+                }
+                val settings = settingsRepository.getUserSettings(ownerId)
+                if (activeProfile.ownerId != ownerId) return@executeWithRetry AccountResult.success(AccountSettings())
                 Log.d(TAG, "Configuraciones de usuario obtenidas exitosamente")
                 AccountResult.success(settings)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Error al obtener configuraciones de usuario: ${e.message}", e)
-                if (e.message?.contains("PERMISSION_DENIED") == true) {
-                    Log.w(TAG, "Error de permisos detectado, intentando crear configuraciones iniciales")
-                    val userId = getCurrentUserId()
-                    if (userId != null) {
-                        try {
-                            firebaseDataManager.initializeUserSettings(userId)
-                            Log.d(TAG, "Configuraciones iniciales creadas, usando configuraciones por defecto")
-                        } catch (cancelled: CancellationException) {
-                            throw cancelled
-                        } catch (initError: Exception) {
-                            Log.e(TAG, "Error al crear configuraciones iniciales: ${initError.message}")
-                        }
-                    }
-                }
                 Log.d(TAG, "Usando configuraciones por defecto debido al error")
                 AccountResult.success(AccountSettings())
             }
@@ -142,7 +145,7 @@ class UserProfileManager @Inject constructor(
     }
     override fun getCurrentUserId(): String? {
         val userId = activeProfile.ownerId
-        Log.d(TAG, "UID del usuario actual: $userId")
+        Log.d(TAG, "Identificador de perfil disponible: ${userId != null}")
         return userId
     }
 }

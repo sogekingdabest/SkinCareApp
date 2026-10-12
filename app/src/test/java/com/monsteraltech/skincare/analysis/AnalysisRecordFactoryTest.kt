@@ -1,7 +1,6 @@
 package com.monsteraltech.skincare.analysis
 
 import com.monsteraltech.skincare.body.mole.model.UserAbcdeInput
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -44,13 +43,11 @@ class AnalysisRecordFactoryTest {
 
     @Test fun `the persisted record retains all computed scores and complete status`() {
         val result = combinedResult()
-        val image = File("capture.jpg")
         val date = Date(1234567890000L)
-        val record = records.create(AnalysisOutcome.Complete(result), "mole-1", image, annotations, date, "observation-1")
+        val record = records.create(AnalysisOutcome.Complete(result), "mole-1", annotations, date, "observation-1")
         assertEquals("mole-1", record.moleId)
         assertEquals("observation-1", record.id)
-        assertSame(image, record.imageData)
-        assertEquals(date, record.createdAt.toDate())
+        assertEquals(date.time, record.createdAt.toEpochMilli())
         assertEquals(result.aiProbability, record.aiProbability)
         assertEquals(result.aiConfidence, record.aiConfidence)
         assertEquals(result.combinedScore, record.combinedScore)
@@ -68,7 +65,7 @@ class AnalysisRecordFactoryTest {
 
     @Test fun `user annotations survive in metadata and report without overwriting AI scores`() {
         val input = UserAbcdeInput(asymmetry = 1.5f, border = 3f)
-        val record = records.create(AnalysisOutcome.Complete(combinedResult()), "m-1", File("photo.jpg"),
+        val record = records.create(AnalysisOutcome.Complete(combinedResult()), "m-1",
             annotations.copy(bodyPartColorCode = "#123456", userInput = input))
         input.toMetadataMap().forEach { (key, value) -> assertEquals(value, record.analysisMetadata[key]) }
         assertEquals(1f, record.abcdeScores.asymmetryScore)
@@ -93,8 +90,8 @@ class AnalysisRecordFactoryTest {
     }
 
     @Test fun `separate captures receive distinct identities`() {
-        val first = records.create(AnalysisOutcome.Complete(combinedResult()), "m-1", File("photo.jpg"), annotations)
-        val second = records.create(AnalysisOutcome.Complete(combinedResult()), "m-1", File("photo.jpg"), annotations)
+        val first = records.create(AnalysisOutcome.Complete(combinedResult()), "m-1", annotations)
+        val second = records.create(AnalysisOutcome.Complete(combinedResult()), "m-1", annotations)
         assertNotEquals(first.id, second.id)
         assertEquals(first.moleId, second.moleId)
     }

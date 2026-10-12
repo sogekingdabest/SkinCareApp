@@ -56,7 +56,7 @@ class AnalysisDetailActivity : AppCompatActivity() {
                 evolutionScore = evolutionScore,
                 totalScore = totalScore
             )
-            val createdAt = com.google.firebase.Timestamp(java.util.Date(createdAtMillis))
+            val createdAt = java.time.Instant.ofEpochMilli(createdAtMillis)
             val metadataBundle = intent.getBundleExtra("ANALYSIS_METADATA")
             val analysisMetadata = metadataBundle?.let { bundle ->
                 val map = mutableMapOf<String, Any>()
@@ -112,7 +112,7 @@ class AnalysisDetailActivity : AppCompatActivity() {
         } else {
             binding.recommendationText.text = "Análisis completado. Consulte los resultados detallados."
         }
-        val date = analysis.createdAt.toDate()
+        val date = java.util.Date.from(analysis.createdAt)
         val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
         binding.analysisDateText.text = "Fecha: ${dateFormat.format(date)}"
         displayUserABCDEValues(analysis)
@@ -276,7 +276,7 @@ class AnalysisDetailActivity : AppCompatActivity() {
             intent.putExtra("RISK_LEVEL", analysisData.riskLevel)
             intent.putExtra("RECOMMENDATION", analysisData.recommendation)
             intent.putExtra("IMAGE_URL", analysisData.imageUrl)
-            intent.putExtra("CREATED_AT", analysisData.createdAt.toDate().time)
+            intent.putExtra("CREATED_AT", analysisData.createdAt.toEpochMilli())
             intent.putExtra("ASYMMETRY_SCORE", analysisData.abcdeScores.asymmetryScore)
             intent.putExtra("BORDER_SCORE", analysisData.abcdeScores.borderScore)
             intent.putExtra("COLOR_SCORE", analysisData.abcdeScores.colorScore)

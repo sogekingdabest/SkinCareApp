@@ -26,7 +26,7 @@ class AccountViewModelTest {
         every { repository.isUserAuthenticated() } returns true
         coEvery { repository.getCurrentUserInfo() } returns AccountResult.success(UserInfo(uid = "fixture"))
         coEvery { repository.getUserSettings() } coAnswers { AccountResult.success(saved) }
-        coEvery { repository.updateUserSettings(any()) } coAnswers { saved = firstArg(); AccountResult.success(true) }
+        coEvery { repository.applySettingsPatch(any(), any()) } coAnswers { saved = firstArg<AccountSettingsPatch>().applyTo(saved); AccountResult.success(saved) }
         model = AccountViewModel(repository, themeManager)
         store.put("account", model)
     }
@@ -47,8 +47,8 @@ class AccountViewModelTest {
     }
 
     @Test fun `rapid setting edits merge serially with latest persisted values`() = runTest(dispatcher) {
-        coEvery { repository.updateUserSettings(any()) } coAnswers {
-            delay(50); saved = firstArg(); AccountResult.success(true)
+        coEvery { repository.applySettingsPatch(any(), any()) } coAnswers {
+            delay(50); saved = firstArg<AccountSettingsPatch>().applyTo(saved); AccountResult.success(saved)
         }
         model.refresh(); runCurrent()
         model.changeSetting(AccountViewModel.Setting.NOTIFICATIONS, false)
@@ -74,7 +74,7 @@ class AccountViewModelTest {
 
     @Test fun `false write result restores confirmed settings and does not apply the requested theme`() = runTest(dispatcher) {
         model.refresh(); runCurrent()
-        coEvery { repository.updateUserSettings(any()) } returns AccountResult.success(false)
+        coEvery { repository.applySettingsPatch(any(), any()) } returns AccountResult.error(IllegalStateException("write failed"))
         model.changeSetting(AccountViewModel.Setting.DARK_MODE, true); advanceUntilIdle()
         assertEquals(saved, model.uiState.value.settings)
         assertEquals(false, model.uiState.value.committedDarkMode)
@@ -86,7 +86,7 @@ class AccountViewModelTest {
         model.refresh(); runCurrent()
         coEvery { repository.getUserSettings() } returns AccountResult.error(Exception("read failed"))
         model.changeSetting(AccountViewModel.Setting.NOTIFICATIONS, false); advanceUntilIdle()
-        coVerify(exactly = 0) { repository.updateUserSettings(any()) }
+        coVerify(exactly = 0) { repository.applySettingsPatch(any(), any()) }
         assertEquals(saved, model.uiState.value.settings)
         assertEquals(AccountViewModel.Event.Error(R.string.settings_error), model.events.first())
     }
@@ -94,7 +94,7 @@ class AccountViewModelTest {
     @Test fun `clearing the ViewModel cancels pending writes without an error event`() = runTest(dispatcher) {
         model.refresh(); runCurrent()
         var cancelled = false
-        coEvery { repository.updateUserSettings(any()) } coAnswers {
+        coEvery { repository.applySettingsPatch(any(), any()) } coAnswers {
             try { awaitCancellation() } finally { cancelled = true }
         }
         model.changeSetting(AccountViewModel.Setting.DARK_MODE, true); runCurrent()
@@ -117,7 +117,7 @@ class AccountViewModelTest {
         every { repository.isUserAuthenticated() } returns false
         model.changeSetting(AccountViewModel.Setting.DARK_MODE, true); runCurrent()
         coVerify(exactly = 0) { repository.getUserSettings() }
-        coVerify(exactly = 0) { repository.updateUserSettings(any()) }
+        coVerify(exactly = 0) { repository.applySettingsPatch(any(), any()) }
         assertEquals(AccountViewModel.Event.Error(R.string.error_authentication), model.events.first())
     }
 }

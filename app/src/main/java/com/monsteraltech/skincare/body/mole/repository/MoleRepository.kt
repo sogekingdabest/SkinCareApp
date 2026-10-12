@@ -3,7 +3,7 @@ package com.monsteraltech.skincare.body.mole.repository
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import com.monsteraltech.skincare.body.mole.data.local.LocalMoleMapper
 import com.monsteraltech.skincare.body.mole.data.local.SkinCareDatabase
@@ -60,7 +60,7 @@ class MoleRepository @Inject constructor(
             val compressedImage = compressImage(context, imageFile)
             try {
                 imagePersistence.save(compressedImage, userId) { localImagePath ->
-                    val now = Timestamp.now()
+                    val now = Instant.ofEpochMilli(System.currentTimeMillis())
                     val mole = MoleData(
                         id = analysisData.moleId,
                         currentAnalysisId = analysisData.id,

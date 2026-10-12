@@ -4,7 +4,7 @@ import androidx.room.Room
 import androidx.room.withTransaction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.monsteraltech.skincare.account.AccountSettings
 import com.monsteraltech.skincare.backup.BackupPayload
 import com.monsteraltech.skincare.backup.BackupRecordRestorer
@@ -50,7 +50,7 @@ class ReactiveMoleReadsTest {
     }
     private fun mole(id: String, owner: String = "fixture", title: String = id, zone: String = "zone") =
         mapper.toEntity(MoleData(id = id, userId = owner, title = title, bodyPart = "Brazo", bodyPartColorCode = zone,
-            createdAt = Timestamp(Date(1000)), updatedAt = Timestamp(Date(2000))))
+            createdAt = Instant.ofEpochMilli(1000), updatedAt = Instant.ofEpochMilli(2000)))
     private suspend fun seed() = database.withTransaction {
         (1..70).forEach { database.moleDao().insertMole(mole("m${it.toString().padStart(3, '0')}", title = if (it == 70) "ÁREA NEEDLE" else "Entry $it")) }
         database.moleDao().insertMole(mole("other-owner", owner = "other", title = "NEEDLE"))
@@ -103,7 +103,7 @@ class ReactiveMoleReadsTest {
     }
 
     @Test fun historyHeaderCurrentSelectionAndAnnotationsStayInOneReactiveSnapshot() = runBlocking {
-        fun analysis(id: String, time: Long) = mapper.toEntity(AnalysisData(id = id, moleId = "m", createdAt = Timestamp(Date(time))), "fixture")
+        fun analysis(id: String, time: Long) = mapper.toEntity(AnalysisData(id = id, moleId = "m", createdAt = Instant.ofEpochMilli(time)), "fixture")
         observations.create(mole("m"), analysis("first", 1000))
         val updates = Channel<AnalysisHistoryPage>(Channel.UNLIMITED)
         val job = launch { reader.observeHistory("fixture", "m", 1).collect { updates.send(it) } }

@@ -5,7 +5,7 @@ import androidx.credentials.CredentialManager
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
-import com.monsteraltech.skincare.data.FirebaseDataManager
+import com.monsteraltech.skincare.account.AccountSettingsRepository
 import com.monsteraltech.skincare.data.SessionManager
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import io.mockk.*
@@ -21,7 +21,7 @@ class AuthLifecycleTest {
     private val context = mockk<Context>()
     private val auth = mockk<FirebaseAuth>(relaxed = true)
     private val session = mockk<SessionManager>()
-    private val data = mockk<FirebaseDataManager>()
+    private val data = mockk<AccountSettingsRepository>()
     private val profile = mockk<ActiveProfile>(relaxed = true)
     private val credentials = mockk<CredentialManager>()
     private val repository = AuthRepository(context, auth, session, data, profile)
@@ -36,7 +36,7 @@ class AuthLifecycleTest {
     @Test fun `cancelled authentication never finalizes a late SDK result`() = runTest {
         val sdk = TaskCompletionSource<AuthResult>()
         every { auth.signInWithEmailAndPassword(any(), any()) } returns sdk.task
-        var result: Result<com.google.firebase.auth.FirebaseUser>? = null
+        var result: Result<Unit>? = null
         val job = launch { result = repository.signInWithEmail("fixture@example.test", "fixture") }
         runCurrent(); job.cancelAndJoin()
         sdk.setResult(mockk(relaxed = true)); runCurrent()

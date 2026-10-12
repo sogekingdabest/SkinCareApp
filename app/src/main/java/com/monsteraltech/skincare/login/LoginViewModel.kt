@@ -3,7 +3,6 @@ package com.monsteraltech.skincare.login
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.data.auth.AuthRepository
@@ -63,7 +62,7 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    private fun launchAuth(authCall: suspend () -> Result<FirebaseUser>) {
+    private fun launchAuth(authCall: suspend () -> Result<Unit>) {
         if (_isLoading.value) return
         viewModelScope.launch {
             _isLoading.value = true

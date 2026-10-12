@@ -1,6 +1,6 @@
 package com.monsteraltech.skincare.backup
 
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.monsteraltech.skincare.account.AccountSettings
 import com.monsteraltech.skincare.body.mole.data.local.LocalMoleMapper
 import com.monsteraltech.skincare.body.mole.data.local.MoleDao
@@ -22,7 +22,7 @@ class ObservationBackupTest {
     private val database = mockk<SkinCareDatabase>()
     private val service: LocalBackupService
     private val mole = mapper.toEntity(MoleData(id = "m", userId = "old-owner", analysisCount = 1,
-        aiResult = "current", imageUrl = "original.jpg", lastAnalysisDate = Timestamp(Date(2000))))
+        aiResult = "current", imageUrl = "original.jpg", lastAnalysisDate = Instant.ofEpochMilli(2000)))
     private val analysis = mapper.toEntity(AnalysisData(id = "capture", moleId = "m", imageUrl = "original.jpg"), "old-owner")
 
     init {

@@ -8,7 +8,7 @@ import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.google.gson.Gson
 import com.monsteraltech.skincare.analysis.comparison.LocalObservationImageDecoder
 import com.monsteraltech.skincare.body.mole.data.repository.LocalMoleObservationRepository
@@ -48,7 +48,7 @@ class ObservationPersistenceTest {
     private fun mole(id: String = "m") = mapper.toEntity(MoleData(id = id, userId = "owner", title = "Fixture"))
     private fun analysis(id: String, parent: String = "m", time: Long = 1000, image: String = "$id.jpg") =
         mapper.toEntity(AnalysisData(id = id, moleId = parent, description = id, analysisResult = "result-$id",
-            imageUrl = image, riskLevel = "LOW", recommendation = "fixture", createdAt = Timestamp(Date(time)),
+            imageUrl = image, riskLevel = "LOW", recommendation = "fixture", createdAt = Instant.ofEpochMilli(time),
             abcdeScores = ABCDEScores(totalScore = 4f, evolutionScore = 1f)), "owner")
 
     @Test fun firstAndSubsequentObservationsKeepTheirIDsImagesAndScores() = runBlocking {
@@ -151,7 +151,7 @@ class ObservationPersistenceTest {
         val first = analysis("m_analysis_1", image = "legacy-first.jpg")
         val legacy = mapper.toEntity(MoleData(id = "m", userId = "owner", analysisCount = 2,
             aiResult = "last-result", imageUrl = "legacy-current.jpg", aiProbability = 0.7,
-            lastAnalysisDate = Timestamp(Date(2000)), firstAnalysisDate = Timestamp(Date(1000))))
+            lastAnalysisDate = Instant.ofEpochMilli(2000), firstAnalysisDate = Instant.ofEpochMilli(1000)))
         val schema = JSONObject(InstrumentationRegistry.getInstrumentation().context.assets
             .open("com.monsteraltech.skincare.body.mole.data.local.SkinCareDatabase/1.json").bufferedReader().use { it.readText() })
             .getJSONObject("database")

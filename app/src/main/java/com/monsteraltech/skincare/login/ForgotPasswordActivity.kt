@@ -8,12 +8,18 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import com.google.android.material.textfield.TextInputLayout
-import com.google.firebase.auth.FirebaseAuth
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.utils.UIUtils
+@AndroidEntryPoint
 class ForgotPasswordActivity : AppCompatActivity() {
-    private lateinit var auth: FirebaseAuth
+    private val viewModel: ForgotPasswordViewModel by viewModels()
     private lateinit var logoImageView: ImageView
     private lateinit var welcomeTextView: TextView
     private lateinit var instructionsTextView: TextView
@@ -23,37 +29,18 @@ class ForgotPasswordActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_forgot_password)
-        val email = intent.getStringExtra("password")
-        auth = FirebaseAuth.getInstance()
+        val initialEmail = intent.getStringExtra("password")
         logoImageView = findViewById(R.id.logoImageView)
         welcomeTextView = findViewById(R.id.welcomeTextView)
         instructionsTextView = findViewById(R.id.instructionsTextView)
         emailEditText = findViewById(R.id.emailLabel)
         recuperarButton = findViewById(R.id.recuperarButton)
         loginTextView = findViewById(R.id.loginTextView)
-        emailEditText.editText?.setText(email)
+        emailEditText.editText?.setText(initialEmail)
         recuperarButton.setOnClickListener {
             if (validateEmail()) {
                 val email = emailEditText.editText?.text.toString().trim()
-                auth.sendPasswordResetEmail(email)
-                    .addOnCompleteListener { task ->
-                        if (task.isSuccessful) {
-                            UIUtils.showSuccessToast(this@ForgotPasswordActivity, getString(R.string.password_reset_email_sent))
-                            val intent = Intent(this@ForgotPasswordActivity, LoginActivity::class.java)
-                            val pairs = arrayOf(
-                                Pair<View, String>(logoImageView, "logoImageView"),
-                                Pair<View, String>(welcomeTextView, "textTrans"),
-                                Pair<View, String>(instructionsTextView, "instructionsTextView"),
-                                Pair<View, String>(emailEditText, "emailEditText"),
-                                Pair<View, String>(recuperarButton, "registerOrLoginButton"),
-                                Pair<View, String>(loginTextView, "registerOrLoginEditText")
-                            )
-                            val options = ActivityOptions.makeSceneTransitionAnimation(this@ForgotPasswordActivity, *pairs)
-                            startActivity(intent, options.toBundle())
-                        } else {
-                            UIUtils.showErrorToast(this@ForgotPasswordActivity, getString(R.string.error_password_reset_failed))
-                        }
-                    }
+                viewModel.send(email)
             } else {
                 val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
                 inputMethodManager.hideSoftInputFromWindow(emailEditText.editText?.windowToken, 0)
@@ -61,19 +48,37 @@ class ForgotPasswordActivity : AppCompatActivity() {
                 UIUtils.showErrorToast(this@ForgotPasswordActivity, getString(R.string.error_invalid_email))
             }
         }
-        loginTextView.setOnClickListener {
-            val intent = Intent(this@ForgotPasswordActivity, LoginActivity::class.java)
-            val pairs = arrayOf(
-                Pair<View, String>(logoImageView, "logoImageView"),
-                Pair<View, String>(welcomeTextView, "textTrans"),
-                Pair<View, String>(instructionsTextView, "instructionsTextView"),
-                Pair<View, String>(emailEditText, "emailEditText"),
-                Pair<View, String>(recuperarButton, "registerOrLoginButton"),
-                Pair<View, String>(loginTextView, "registerOrLoginEditText")
-            )
-            val options = ActivityOptions.makeSceneTransitionAnimation(this@ForgotPasswordActivity, *pairs)
-            startActivity(intent, options.toBundle())
+        loginTextView.setOnClickListener { navigateToLogin() }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { viewModel.isSending.collect { recuperarButton.isEnabled = !it } }
+                launch {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            ForgotPasswordViewModel.Event.Sent -> {
+                                UIUtils.showSuccessToast(this@ForgotPasswordActivity, getString(R.string.password_reset_email_sent))
+                                navigateToLogin()
+                            }
+                            ForgotPasswordViewModel.Event.Failed ->
+                                UIUtils.showErrorToast(this@ForgotPasswordActivity, getString(R.string.error_password_reset_failed))
+                        }
+                    }
+                }
+            }
         }
+    }
+    private fun navigateToLogin() {
+        val intent = Intent(this, LoginActivity::class.java)
+        val pairs = arrayOf(
+            Pair<View, String>(logoImageView, "logoImageView"),
+            Pair<View, String>(welcomeTextView, "textTrans"),
+            Pair<View, String>(instructionsTextView, "instructionsTextView"),
+            Pair<View, String>(emailEditText, "emailEditText"),
+            Pair<View, String>(recuperarButton, "registerOrLoginButton"),
+            Pair<View, String>(loginTextView, "registerOrLoginEditText")
+        )
+        val options = ActivityOptions.makeSceneTransitionAnimation(this, *pairs)
+        startActivity(intent, options.toBundle())
     }
     private fun validateEmail(): Boolean {
         val email = emailEditText.editText?.text.toString().trim()

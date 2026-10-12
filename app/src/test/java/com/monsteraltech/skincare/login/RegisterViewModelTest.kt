@@ -1,6 +1,5 @@
 package com.monsteraltech.skincare.login
 
-import com.google.firebase.auth.FirebaseUser
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.account.PasswordChangeManager
 import com.monsteraltech.skincare.data.auth.AuthRepository
@@ -114,9 +113,8 @@ class RegisterViewModelTest {
 
     @Test
     fun `registro correcto navega a main`() = runTest {
-        val user = mockk<FirebaseUser>(relaxed = true)
         coEvery { authRepository.registerWithEmail("a@b.com", validPassword) } returns
-                Result.success(user)
+                Result.success(Unit)
 
         viewModel.register("a@b.com", "a@b.com", validPassword, validPassword)
 
@@ -125,9 +123,8 @@ class RegisterViewModelTest {
 
     @Test
     fun `el email se normaliza con trim antes de registrar`() = runTest {
-        val user = mockk<FirebaseUser>(relaxed = true)
         coEvery { authRepository.registerWithEmail("a@b.com", validPassword) } returns
-                Result.success(user)
+                Result.success(Unit)
 
         viewModel.register(" a@b.com ", "a@b.com", validPassword, validPassword)
 

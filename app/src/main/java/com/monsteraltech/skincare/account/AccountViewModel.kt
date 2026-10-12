@@ -72,7 +72,7 @@ class AccountViewModel @Inject constructor(
                 _uiState.update { it.copy(isSaving = true) }
                 var previous = _uiState.value.settings
                 try {
-                    // Read under the same lock so rapid edits and changes from other screens are preserved.
+                    // Read for presentation; the repository applies only the edited field atomically.
                     val read = accountResult { repository.getUserSettings() }
                     val current = read.getDataOrNull()
                     if (current == null) {
@@ -85,11 +85,16 @@ class AccountViewModel @Inject constructor(
                         Setting.DARK_MODE -> current.copy(darkModeEnabled = value)
                     }
                     _uiState.update { it.copy(settings = next) }
-                    val result = accountResult { repository.updateUserSettings(next) }
+                    val patch = when (setting) {
+                        Setting.NOTIFICATIONS -> AccountSettingsPatch(notificationsEnabled = value)
+                        Setting.DARK_MODE -> AccountSettingsPatch(darkModeEnabled = value)
+                    }
+                    val result = accountResult { repository.applySettingsPatch(patch, current.userId) }
                     currentCoroutineContext().ensureActive()
-                    if (result.getDataOrNull() == true) {
-                        if (setting == Setting.DARK_MODE) themeManager.updateThemeFromSettings(next.darkModeEnabled)
-                        _uiState.update { it.copy(committedDarkMode = next.darkModeEnabled) }
+                    val committed = result.getDataOrNull()
+                    if (committed != null) {
+                        if (setting == Setting.DARK_MODE) themeManager.updateThemeFromSettings(committed.darkModeEnabled)
+                        _uiState.update { it.copy(settings = committed, committedDarkMode = committed.darkModeEnabled) }
                         messages.trySend(Event.SettingsSaved)
                     } else {
                         _uiState.update { it.copy(settings = current) }

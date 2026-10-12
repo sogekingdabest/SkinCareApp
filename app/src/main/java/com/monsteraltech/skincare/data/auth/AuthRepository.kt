@@ -9,9 +9,10 @@ import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
-import com.monsteraltech.skincare.data.FirebaseDataManager
+import com.monsteraltech.skincare.account.AccountSettingsRepository
 import com.monsteraltech.skincare.data.SessionManager
 import com.monsteraltech.skincare.data.identity.ActiveProfile
+import com.monsteraltech.skincare.login.PasswordResetRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
@@ -32,9 +33,9 @@ class AuthRepository @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val firebaseAuth: FirebaseAuth,
     private val sessionManager: SessionManager,
-    private val firebaseDataManager: FirebaseDataManager,
+    private val settingsRepository: AccountSettingsRepository,
     private val activeProfile: ActiveProfile
-) {
+) : PasswordResetRepository {
     companion object {
         private const val TAG = "AuthRepository"
     }
@@ -44,15 +45,12 @@ class AuthRepository @Inject constructor(
         class Unknown(cause: String?) : RegisterError(cause ?: "Error desconocido")
     }
 
-    val currentUser: FirebaseUser?
-        get() = firebaseAuth.currentUser
-
-    suspend fun signInWithEmail(email: String, password: String): Result<FirebaseUser> {
+    suspend fun signInWithEmail(email: String, password: String): Result<Unit> {
         return try {
             val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
             val user = result.user ?: return Result.failure(IllegalStateException("Usuario nulo tras autenticación"))
             finalizeSignIn(user)
-            Result.success(user)
+            Result.success(Unit)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {
@@ -62,13 +60,13 @@ class AuthRepository @Inject constructor(
     }
 
     /** Autentica en Firebase con el idToken obtenido de Credential Manager. */
-    suspend fun signInWithGoogleIdToken(idToken: String): Result<FirebaseUser> {
+    suspend fun signInWithGoogleIdToken(idToken: String): Result<Unit> {
         return try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             val result = firebaseAuth.signInWithCredential(credential).await()
             val user = result.user ?: return Result.failure(IllegalStateException("Usuario nulo tras autenticación"))
             finalizeSignIn(user)
-            Result.success(user)
+            Result.success(Unit)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {
@@ -77,12 +75,12 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    suspend fun registerWithEmail(email: String, password: String): Result<FirebaseUser> {
+    suspend fun registerWithEmail(email: String, password: String): Result<Unit> {
         return try {
             val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user ?: return Result.failure(RegisterError.Unknown("Usuario nulo tras registro"))
             finalizeSignIn(user)
-            Result.success(user)
+            Result.success(Unit)
         } catch (e: FirebaseAuthUserCollisionException) {
             Result.failure(RegisterError.EmailAlreadyInUse())
         } catch (cancelled: CancellationException) {
@@ -91,6 +89,15 @@ class AuthRepository @Inject constructor(
             Log.w(TAG, "Error en registro: ${e.message}")
             Result.failure(RegisterError.Unknown(e.message))
         }
+    }
+
+    override suspend fun sendPasswordReset(email: String): Result<Unit> = try {
+        firebaseAuth.sendPasswordResetEmail(email).await()
+        Result.success(Unit)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Result.failure(error)
     }
 
     /**
@@ -108,7 +115,7 @@ class AuthRepository @Inject constructor(
             Log.w(TAG, "No se pudo persistir la sesión: ${e.message}")
         }
         try {
-            firebaseDataManager.initializeUserSettings(user.uid)
+            settingsRepository.initializeUserSettings(user.uid)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {

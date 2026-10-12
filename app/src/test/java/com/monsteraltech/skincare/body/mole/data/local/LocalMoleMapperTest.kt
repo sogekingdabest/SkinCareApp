@@ -1,6 +1,6 @@
 package com.monsteraltech.skincare.body.mole.data.local
 
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.monsteraltech.skincare.body.mole.model.ABCDEScores
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import com.monsteraltech.skincare.body.mole.model.MoleData
@@ -14,7 +14,7 @@ class LocalMoleMapperTest {
 
     @Test
     fun `mole keeps health fields after local round trip`() {
-        val timestamp = Timestamp(Date(1_700_000_000_000L))
+        val timestamp = Instant.ofEpochMilli(1_700_000_000_000L)
         val mole = MoleData(
             id = "mole-1",
             currentAnalysisId = "observation-2",
@@ -50,7 +50,7 @@ class LocalMoleMapperTest {
         assertEquals(mole.imageUrl, restored.imageUrl)
         assertEquals(mole.aiProbability, restored.aiProbability)
         assertEquals(mole.abcdeTotalScore, restored.abcdeTotalScore)
-        assertEquals(mole.createdAt.toDate(), restored.createdAt.toDate())
+        assertEquals(mole.createdAt.toEpochMilli(), restored.createdAt.toEpochMilli())
         assertEquals("on-device", restored.analysisMetadata["source"])
         assertNotNull(restored.analysisMetadata["userEvolution"])
     }

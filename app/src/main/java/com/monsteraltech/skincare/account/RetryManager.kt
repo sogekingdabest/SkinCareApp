@@ -3,7 +3,7 @@ import android.util.Log
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import kotlin.math.pow
-class RetryManager {
+class RetryManager @javax.inject.Inject constructor() {
     companion object {
         private const val TAG = "RetryManager"
         private const val DEFAULT_MAX_RETRIES = 3

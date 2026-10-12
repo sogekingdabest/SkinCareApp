@@ -1,19 +1,16 @@
 package com.monsteraltech.skincare.analysis
 
-import com.google.firebase.Timestamp
 import com.monsteraltech.skincare.body.mole.model.ABCDEScores
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
-import java.io.File
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 
-/** SDK model construction is confined to this compatibility adapter. */
+/** Creates a portable observation record from a complete analysis and annotations. */
 class AnalysisRecordFactory @Inject constructor(private val reports: AnalysisReportFormatter) {
     fun create(
         complete: AnalysisOutcome.Complete,
         moleId: String,
-        image: File,
         annotations: AnalysisAnnotations,
         createdAt: Date = Date(),
         observationId: String = UUID.randomUUID().toString()
@@ -50,8 +47,7 @@ class AnalysisRecordFactory @Inject constructor(private val reports: AnalysisRep
             combinedScore = result.combinedScore,
             riskLevel = result.combinedRiskLevel.name,
             recommendation = result.recommendation,
-            imageData = image,
-            createdAt = Timestamp(createdAt),
+            createdAt = createdAt.toInstant(),
             id = observationId,
             analysisMetadata = metadata
         )

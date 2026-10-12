@@ -1,7 +1,7 @@
 package com.monsteraltech.skincare.body.mole
 
 import android.content.Intent
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.monsteraltech.skincare.body.mole.model.ABCDEScores
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import java.util.Date
@@ -68,8 +68,8 @@ data class MoleViewerArgs(
                     riskLevel = intent.getStringExtra("HISTORICAL_RISK_LEVEL") ?: "",
                     recommendation = intent.getStringExtra("HISTORICAL_RECOMMENDATION") ?: "",
                     imageUrl = intent.getStringExtra("LUNAR_IMAGE_URL") ?: "",
-                    createdAt = Timestamp(
-                        Date(intent.getLongExtra("HISTORICAL_CREATED_AT", System.currentTimeMillis()))
+                    createdAt = Instant.ofEpochMilli(
+                        intent.getLongExtra("HISTORICAL_CREATED_AT", System.currentTimeMillis())
                     ),
                     analysisMetadata = metadata
                 )

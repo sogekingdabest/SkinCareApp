@@ -5,7 +5,7 @@ import androidx.room.Room
 import androidx.room.withTransaction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.google.gson.Gson
 import com.monsteraltech.skincare.account.AccountSettings
 import com.monsteraltech.skincare.body.mole.data.local.LocalMoleMapper
@@ -56,7 +56,7 @@ class BackupConsistencyTest {
 
     private fun analysis(id: String, image: String, time: Long = 1000) = mapper.toEntity(AnalysisData(
         id = id, moleId = "m", description = id, analysisResult = "result-$id", imageUrl = image,
-        riskLevel = "LOW", recommendation = "fixture", createdAt = Timestamp(Date(time))), profile.ownerId)
+        riskLevel = "LOW", recommendation = "fixture", createdAt = Instant.ofEpochMilli(time)), profile.ownerId)
 
     private fun photo(name: String): String {
         val source = File(root, name).apply { writeText("bytes-$name") }

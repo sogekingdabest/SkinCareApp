@@ -1,5 +1,4 @@
 package com.monsteraltech.skincare.notifications
-import kotlinx.coroutines.CancellationException
 import android.app.TimePickerDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -9,26 +8,24 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.activity.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.monsteraltech.skincare.R
-import com.monsteraltech.skincare.account.AccountResult
-import com.monsteraltech.skincare.account.AccountSettings
-import com.monsteraltech.skincare.account.UserProfileManager
 import com.monsteraltech.skincare.databinding.ActivityNotificationSettingsBinding
 import com.monsteraltech.skincare.utils.UIUtils
 import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 @AndroidEntryPoint
 class NotificationSettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityNotificationSettingsBinding
-    private lateinit var notificationManager: NotificationManager
-    @Inject
-    lateinit var userProfileManager: UserProfileManager
+    private val viewModel: NotificationSettingsViewModel by viewModels()
     private lateinit var permissionManager: NotificationPermissionManager
     private var currentSettings = NotificationSettings()
-    private var currentAccountSettings = AccountSettings()
     private var generalNotificationsEnabled = false
-    private var isLoadingSettings = false
+    private var isRendering = false
+    private var isReady = false
+    private var isSaving = false
     companion object {
         private const val TAG = "NotificationSettings"
     }
@@ -38,28 +35,42 @@ class NotificationSettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
         setupToolbar()
         initializeComponents()
-        loadSettings()
         setupListeners()
+        observeViewModel()
     }
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, "onResume - Verificando estado actual")
+        viewModel.refresh()
+    }
+    private fun observeViewModel() {
         lifecycleScope.launch {
-            val result = userProfileManager.getUserSettings()
-            if (result is AccountResult.Success<*>) {
-                val accountSettings = result.data as AccountSettings
-                val newGeneralNotificationsEnabled = accountSettings.notificationsEnabled
-                if (newGeneralNotificationsEnabled != generalNotificationsEnabled) {
-                    Log.d(
-                            TAG,
-                            "Estado de notificaciones generales cambió: $generalNotificationsEnabled -> $newGeneralNotificationsEnabled"
-                    )
-                    generalNotificationsEnabled = newGeneralNotificationsEnabled
-                    updateUIState()
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.state.collect { state ->
+                        isReady = state is NotificationSettingsViewModel.State.Ready
+                        isSaving = (state as? NotificationSettingsViewModel.State.Ready)?.isSaving == true
+                        if (state is NotificationSettingsViewModel.State.Ready) {
+                            currentSettings = state.settings.toNotificationSettings()
+                            generalNotificationsEnabled = state.settings.notificationsEnabled
+                        } else {
+                            currentSettings = NotificationSettings()
+                            generalNotificationsEnabled = false
+                        }
+                        applySettingsToUI()
+                        if (state is NotificationSettingsViewModel.State.Failed) {
+                            UIUtils.showErrorToast(this@NotificationSettingsActivity, getString(R.string.error_unknown))
+                        }
+                    }
+                }
+                launch {
+                    viewModel.events.collect { event ->
+                        if (event == NotificationSettingsViewModel.Event.Saved) {
+                            UIUtils.showSuccessToast(this@NotificationSettingsActivity, getString(R.string.settings_saved))
+                        } else UIUtils.showErrorToast(this@NotificationSettingsActivity, getString(R.string.settings_error))
+                    }
                 }
             }
         }
-        debugCurrentState()
     }
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
@@ -71,53 +82,10 @@ class NotificationSettingsActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener { onBackPressed() }
     }
     private fun initializeComponents() {
-        notificationManager = NotificationManager(this)
         permissionManager = NotificationPermissionManager(this)
     }
-    private fun loadSettings() {
-        lifecycleScope.launch {
-            when (val result = userProfileManager.getUserSettings()) {
-                is AccountResult.Success<*> -> {
-                    Log.d(TAG, "Configuraciones cargadas desde Firebase")
-                    currentAccountSettings = result.data as AccountSettings
-                    currentSettings = currentAccountSettings.toNotificationSettings()
-                    generalNotificationsEnabled = currentAccountSettings.notificationsEnabled
-                    Log.d(TAG, "Configuraciones cargadas:")
-                    Log.d(
-                            TAG,
-                            "  - RAW notificationsEnabled: ${currentAccountSettings.notificationsEnabled}"
-                    )
-                    Log.d(TAG, "  - generalNotificationsEnabled: $generalNotificationsEnabled")
-                    Log.d(
-                            TAG,
-                            "  - moleCheckupsEnabled: ${currentAccountSettings.moleCheckupsEnabled}"
-                    )
-                    Log.d(TAG, "  - moleCheckupTime: ${currentAccountSettings.moleCheckupTime}")
-                    Log.d(
-                            TAG,
-                            "  - moleCheckupFrequency: ${currentAccountSettings.moleCheckupFrequency}"
-                    )
-                    applySettingsToUI()
-                }
-                is AccountResult.Error<*> -> {
-                    Log.e(TAG, "Error al cargar configuraciones: ${result.message}")
-                    UIUtils.showErrorToast(
-                            this@NotificationSettingsActivity,
-                            getString(R.string.error_unknown)
-                    )
-                    currentAccountSettings = AccountSettings()
-                    currentSettings = NotificationSettings()
-                    generalNotificationsEnabled = false
-                    applySettingsToUI()
-                }
-                is AccountResult.Loading<*> -> {
-                    Log.d(TAG, "Cargando configuraciones...")
-                }
-            }
-        }
-    }
     private fun applySettingsToUI() {
-        isLoadingSettings = true
+        isRendering = true
         binding.apply {
             switchMoleCheckups.isChecked = currentSettings.moleCheckups
             tvMoleTime.text = currentSettings.moleCheckupTime
@@ -126,12 +94,14 @@ class NotificationSettingsActivity : AppCompatActivity() {
             switchSound.isChecked = currentSettings.sound
             updateUIState()
         }
-        isLoadingSettings = false
+        isRendering = false
     }
     private fun updateUIState() {
         binding.apply {
-            switchMoleCheckups.isEnabled = generalNotificationsEnabled
-            val moleOptionsEnabled = generalNotificationsEnabled && switchMoleCheckups.isChecked
+            switchMoleCheckups.isEnabled = isReady && !isSaving && generalNotificationsEnabled
+            switchVibration.isEnabled = isReady && !isSaving
+            switchSound.isEnabled = isReady && !isSaving
+            val moleOptionsEnabled = isReady && !isSaving && generalNotificationsEnabled && switchMoleCheckups.isChecked
             layoutMoleOptions.alpha = if (moleOptionsEnabled) 1.0f else 0.5f
             layoutMoleTime.isEnabled = moleOptionsEnabled
             layoutMoleFrequency.isEnabled = moleOptionsEnabled
@@ -147,39 +117,36 @@ class NotificationSettingsActivity : AppCompatActivity() {
                     "UI State updated - generalNotifications: $generalNotificationsEnabled, moleCheckups: ${switchMoleCheckups.isChecked}, optionsEnabled: $moleOptionsEnabled"
             )
         }
-        debugCurrentState()
     }
     private fun setupListeners() {
         binding.apply {
             switchMoleCheckups.setOnCheckedChangeListener { _, isChecked ->
-                if (!isLoadingSettings) {
+                if (!isRendering) {
                     Log.d(TAG, "Switch mole checkups cambiado por usuario: $isChecked")
                     if (isChecked && !permissionManager.hasNotificationPermission()) {
                         showPermissionDialog()
+                        isRendering = true
                         switchMoleCheckups.isChecked = false
+                        isRendering = false
                         return@setOnCheckedChangeListener
                     }
-                    currentSettings = currentSettings.copy(moleCheckups = isChecked)
-                    updateUIState()
-                    saveSettings()
+                    viewModel.setCheckups(isChecked)
                 } else {
                     Log.d(TAG, "Switch mole checkups aplicado desde carga inicial: $isChecked")
                 }
             }
             switchVibration.setOnCheckedChangeListener { _, isChecked ->
-                if (!isLoadingSettings) {
+                if (!isRendering) {
                     Log.d(TAG, "Switch vibration cambiado por usuario: $isChecked")
-                    currentSettings = currentSettings.copy(vibration = isChecked)
-                    saveSettings()
+                    viewModel.setVibration(isChecked)
                 } else {
                     Log.d(TAG, "Switch vibration aplicado desde carga inicial: $isChecked")
                 }
             }
             switchSound.setOnCheckedChangeListener { _, isChecked ->
-                if (!isLoadingSettings) {
+                if (!isRendering) {
                     Log.d(TAG, "Switch sound cambiado por usuario: $isChecked")
-                    currentSettings = currentSettings.copy(sound = isChecked)
-                    saveSettings()
+                    viewModel.setSound(isChecked)
                 } else {
                     Log.d(TAG, "Switch sound aplicado desde carga inicial: $isChecked")
                 }
@@ -187,9 +154,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
             layoutMoleTime.setOnClickListener {
                 if (generalNotificationsEnabled && switchMoleCheckups.isChecked) {
                     showTimePicker(currentSettings.moleCheckupTime) { time ->
-                        currentSettings = currentSettings.copy(moleCheckupTime = time)
-                        tvMoleTime.text = time
-                        saveSettings()
+                        viewModel.setTime(time)
                     }
                 }
             }
@@ -199,9 +164,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
                             "Frecuencia de Revisión de Lunares",
                             currentSettings.moleCheckupFrequency
                     ) { frequency ->
-                        currentSettings = currentSettings.copy(moleCheckupFrequency = frequency)
-                        tvMoleFrequency.text = "$frequency días"
-                        saveSettings()
+                        viewModel.setFrequency(frequency)
                     }
                 }
             }
@@ -242,49 +205,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 .setNegativeButton("Cancelar", null)
                 .show()
     }
-    private fun saveSettings() {
-        lifecycleScope.launch {
-            try {
-                Log.d(TAG, "Guardando configuraciones en Firebase")
-                val updatedAccountSettings =
-                        currentSettings.toAccountSettings(currentAccountSettings)
-                when (val result = userProfileManager.updateUserSettings(updatedAccountSettings)) {
-                    is AccountResult.Success<*> -> {
-                        Log.d(TAG, "Configuraciones guardadas exitosamente")
-                        currentAccountSettings = updatedAccountSettings
-                        if (generalNotificationsEnabled &&
-                                        permissionManager.hasNotificationPermission()
-                        ) {
-                            notificationManager.scheduleNotifications(currentSettings)
-                            Log.d(TAG, "Notificaciones programadas")
-                        } else {
-                            notificationManager.cancelAllNotifications()
-                            Log.d(TAG, "Notificaciones canceladas")
-                        }
-                        UIUtils.showSuccessToast(
-                                        this@NotificationSettingsActivity,
-                                        getString(R.string.settings_saved)
-                                )
-                    }
-                    is AccountResult.Error<*> -> {
-                        Log.e(TAG, "Error al guardar configuraciones: ${result.message}")
-                        UIUtils.showErrorToast(
-                                this@NotificationSettingsActivity,
-                                getString(R.string.settings_error)
-                        )
-                    }
-                    is AccountResult.Loading<*> -> {
-                        Log.d(TAG, "Guardando configuraciones...")
-                    }
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (e: Exception) {
-                Log.e(TAG, "Error inesperado al guardar configuraciones: ${e.message}", e)
-                UIUtils.showErrorToast(this@NotificationSettingsActivity, getString(R.string.settings_error))
-            }
-        }
-    }
     private fun showPermissionDialog() {
         if (permissionManager.shouldShowRequestPermissionRationale(this)) {
             AlertDialog.Builder(this)
@@ -311,10 +231,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
                                 grantResults[0] == PackageManager.PERMISSION_GRANTED
                 ) {
                     Log.d(TAG, "Permiso de notificaciones concedido")
-                    binding.switchMoleCheckups.isChecked = true
-                    currentSettings = currentSettings.copy(moleCheckups = true)
-                    updateUIState()
-                    saveSettings()
+                    viewModel.setCheckups(true)
                 } else {
                     Log.d(TAG, "Permiso de notificaciones denegado")
                     UIUtils.showErrorToast(
@@ -324,32 +241,5 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-    private fun debugCurrentState() {
-        Log.d(TAG, "=== DEBUG CURRENT STATE ===")
-        Log.d(TAG, "generalNotificationsEnabled: $generalNotificationsEnabled")
-        Log.d(
-                TAG,
-                "currentAccountSettings.notificationsEnabled: ${currentAccountSettings.notificationsEnabled}"
-        )
-        Log.d(TAG, "currentSettings.moleCheckups: ${currentSettings.moleCheckups}")
-        Log.d(TAG, "switchMoleCheckups.isEnabled: ${binding.switchMoleCheckups.isEnabled}")
-        Log.d(TAG, "switchMoleCheckups.isChecked: ${binding.switchMoleCheckups.isChecked}")
-        Log.d(TAG, "layoutMoleOptions.isEnabled: ${binding.layoutMoleOptions.isEnabled}")
-        Log.d(TAG, "layoutMoleOptions.alpha: ${binding.layoutMoleOptions.alpha}")
-        Log.d(
-                TAG,
-                "cardNotificationDisabledMessage.visibility: ${binding.cardNotificationDisabledMessage.visibility}"
-        )
-        Log.d(
-                TAG,
-                "cardNotificationDisabledMessage.visibility == View.VISIBLE: ${binding.cardNotificationDisabledMessage.visibility == View.VISIBLE}"
-        )
-        Log.d(
-                TAG,
-                "cardNotificationDisabledMessage.visibility == View.GONE: ${binding.cardNotificationDisabledMessage.visibility == View.GONE}"
-        )
-        Log.d(TAG, "hasNotificationPermission: ${permissionManager.hasNotificationPermission()}")
-        Log.d(TAG, "========================")
     }
 }

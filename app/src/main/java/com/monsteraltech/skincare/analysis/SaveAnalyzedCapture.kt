@@ -19,7 +19,7 @@ class SaveAnalyzedCapture @Inject constructor(
         complete: AnalysisOutcome.Complete,
         annotations: AnalysisAnnotations
     ): Result<MoleData> {
-        val record = records.create(complete, UUID.randomUUID().toString(), image, annotations)
+        val record = records.create(complete, UUID.randomUUID().toString(), annotations)
         return repository.saveMoleWithAnalysis(
             context, image, annotations.title, annotations.description, annotations.bodyPart,
             annotations.bodyPartColorCode.orEmpty(), record
@@ -32,6 +32,6 @@ class SaveAnalyzedCapture @Inject constructor(
         complete: AnalysisOutcome.Complete,
         annotations: AnalysisAnnotations
     ): Result<Unit> = repository.saveAnalysisToMole(
-        context, moleId, records.create(complete, moleId, image, annotations), image
+        context, moleId, records.create(complete, moleId, annotations), image
     )
 }

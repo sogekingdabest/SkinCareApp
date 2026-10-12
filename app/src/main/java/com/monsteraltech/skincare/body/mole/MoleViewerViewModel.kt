@@ -9,7 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import com.monsteraltech.skincare.body.mole.error.ErrorHandler
 import com.monsteraltech.skincare.body.mole.error.RetryManager
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
-import com.monsteraltech.skincare.body.mole.model.AnalysisDataConverter
+import com.monsteraltech.skincare.body.mole.data.LegacyAnalysisResultDecoder
 import com.monsteraltech.skincare.body.mole.model.UserAbcdeInput
 import com.monsteraltech.skincare.body.mole.repository.MoleRepository
 import kotlinx.coroutines.channels.Channel
@@ -26,7 +26,8 @@ import javax.inject.Inject
 class MoleViewerViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val moleRepository: MoleRepository,
-    private val activeProfile: ActiveProfile
+    private val activeProfile: ActiveProfile,
+    private val legacyDecoder: LegacyAnalysisResultDecoder
 ) : ViewModel() {
 
     private val retryManager = RetryManager()
@@ -87,7 +88,7 @@ class MoleViewerViewModel @Inject constructor(
 
     private fun displayFromAiResult(args: MoleViewerArgs) {
         val analysisData = try {
-            AnalysisDataConverter.fromAiResultString(
+            legacyDecoder.decode(
                 aiResult = args.aiResult,
                 moleId = args.moleId,
                 imageUrl = args.imageUrl

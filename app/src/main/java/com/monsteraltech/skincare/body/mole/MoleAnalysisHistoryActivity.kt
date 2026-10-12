@@ -107,7 +107,7 @@ class MoleAnalysisHistoryActivity : AppCompatActivity() {
             putExtra("HISTORICAL_COMBINED_SCORE", analysis.combinedScore)
             putExtra("HISTORICAL_RISK_LEVEL", analysis.riskLevel)
             putExtra("HISTORICAL_RECOMMENDATION", analysis.recommendation)
-            putExtra("HISTORICAL_CREATED_AT", analysis.createdAt.toDate().time)
+            putExtra("HISTORICAL_CREATED_AT", analysis.createdAt.toEpochMilli())
             putExtra("HISTORICAL_ASYMMETRY_SCORE", analysis.abcdeScores.asymmetryScore)
             putExtra("HISTORICAL_BORDER_SCORE", analysis.abcdeScores.borderScore)
             putExtra("HISTORICAL_COLOR_SCORE", analysis.abcdeScores.colorScore)
