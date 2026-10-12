@@ -2,9 +2,14 @@ name: Android verification
 
 on:
   push:
-    branches: [main, 'codex/**']
+    branches: [main, 'codex/**', 'feature/**']
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_preview:
+        description: Build a signed APK preview without publishing a release
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -54,3 +59,13 @@ jobs:
             app/build/reports/tests/
             app/build/test-results/
             app/build/reports/lint-results-debug.*
+
+  release-preview:
+    if: github.event_name == 'workflow_dispatch' && inputs.release_preview
+    needs: verify
+    permissions:
+      contents: write
+    uses: ./.github/workflows/releases.yml
+    with:
+      publish: false
+    secrets: inherit

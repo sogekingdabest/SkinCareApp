@@ -1,0 +1,155 @@
+name: Android releases
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the APK as a GitHub release (main only)
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-releases-${{ github.ref }}
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main' || inputs.publish == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    outputs:
+      published: ${{ steps.version.outputs.published }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Checkout the exact integration commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Plan an immutable version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/android-release.py plan --repo "$GITHUB_REPOSITORY" --output "$GITHUB_OUTPUT"
+      - name: Set up Java 17
+        if: steps.version.outputs.published != 'true'
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle and validate wrapper
+        if: steps.version.outputs.published != 'true'
+        uses: gradle/actions/setup-gradle@07d1f8453baaff67fb503883367f8b13e6158a54 # v6
+      - name: Set up Android SDK
+        if: steps.version.outputs.published != 'true'
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+          log-accepted-android-sdk-licenses: false
+      - name: Prepare private release configuration
+        if: steps.version.outputs.published != 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+          FIREBASE_CONFIG: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+        run: |
+          python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+          for name in ['KEYSTORE_BASE64', 'STORE_PASSWORD', 'KEY_ALIAS', 'KEY_PASSWORD', 'FIREBASE_CONFIG']:
+              if not os.environ.get(name):
+                  raise SystemExit(f'Missing release configuration: {name}')
+          key = Path(os.environ['RUNNER_TEMP']) / 'skincare-release.p12'
+          key.write_bytes(base64.b64decode(os.environ['KEYSTORE_BASE64'], validate=True))
+          key.chmod(0o600)
+          config = json.loads(os.environ['FIREBASE_CONFIG'])
+          Path('app/google-services.json').write_text(json.dumps(config), encoding='utf-8')
+          with open(os.environ['GITHUB_ENV'], 'a') as out:
+              out.write(f'SKINCARE_RELEASE_STORE_FILE={key}\n')
+          PY
+      - name: Verify and build the signed release
+        if: steps.version.outputs.published != 'true'
+        env:
+          SKINCARE_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          SKINCARE_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          SKINCARE_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+          VERSION_NAME: ${{ steps.version.outputs.versionName }}
+          VERSION_CODE: ${{ steps.version.outputs.versionCode }}
+        run: |
+          python3 scripts/check-repository.py
+          python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+          ./gradlew --no-daemon --max-workers=2 --continue \
+            -PappVersionName="$VERSION_NAME" -PappVersionCode="$VERSION_CODE" \
+            :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleRelease
+      - name: Verify signature, version and package integrity
+        if: steps.version.outputs.published != 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION_CODE: ${{ steps.version.outputs.versionCode }}
+        run: >-
+          python3 scripts/android-release.py package
+          --apk app/build/outputs/apk/release/app-release.apk
+          --directory release-artifacts --tag "$TAG"
+          --version-code "$VERSION_CODE" --sdk "$ANDROID_HOME"
+      - name: Upload the installable APK and checksums
+        if: steps.version.outputs.published != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: signed-apk-${{ github.sha }}
+          path: release-artifacts/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload verification reports
+        if: always() && steps.version.outputs.published != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: release-verification-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+            app/build/reports/lint-results-debug.*
+      - name: Remove signing material from the runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/skincare-release.p12" app/google-services.json
+
+  publish:
+    needs: build
+    if: >-
+      github.ref == 'refs/heads/main' && needs.build.outputs.published != 'true' &&
+      (github.event_name == 'push' || inputs.publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the verified integration commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Download the verified signed package
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: signed-apk-${{ github.sha }}
+          path: release-artifacts/
+      - name: Publish after every required asset has uploaded
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/android-release.py publish --repo "$GITHUB_REPOSITORY" --directory release-artifacts

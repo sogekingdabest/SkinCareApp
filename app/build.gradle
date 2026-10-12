@@ -6,6 +6,20 @@ plugins {
     id 'com.google.dagger.hilt.android'
 }
 
+def releaseVersionCode = providers.gradleProperty('appVersionCode').orElse('1').get().toInteger()
+def releaseVersionName = providers.gradleProperty('appVersionName').orElse('1.0').get()
+if (releaseVersionCode < 1 || releaseVersionCode > 2100000000) {
+    throw new GradleException('appVersionCode must be between 1 and 2100000000')
+}
+def signingEnvironment = [
+    'SKINCARE_RELEASE_STORE_FILE', 'SKINCARE_RELEASE_STORE_PASSWORD',
+    'SKINCARE_RELEASE_KEY_ALIAS', 'SKINCARE_RELEASE_KEY_PASSWORD'
+].collectEntries { name -> [(name): providers.environmentVariable(name).orNull] }
+def hasReleaseSigning = signingEnvironment.values().every { it }
+if (signingEnvironment.values().any { it } && !hasReleaseSigning) {
+    throw new GradleException('Release signing requires all four SKINCARE_RELEASE signing values')
+}
+
 android {
     namespace 'com.monsteraltech.skincare'
     compileSdk 34
@@ -14,8 +28,8 @@ android {
         applicationId "com.monsteraltech.skincare"
         minSdk 29
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode releaseVersionCode
+        versionName releaseVersionName
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -24,11 +38,23 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create('githubRelease') {
+                storeFile file(signingEnvironment['SKINCARE_RELEASE_STORE_FILE'])
+                storePassword signingEnvironment['SKINCARE_RELEASE_STORE_PASSWORD']
+                keyAlias signingEnvironment['SKINCARE_RELEASE_KEY_ALIAS']
+                keyPassword signingEnvironment['SKINCARE_RELEASE_KEY_PASSWORD']
+            }
+        }
+    }
+
     buildTypes {
         debug {
             buildConfigField "boolean", "CAPTURE_VALIDITY_MODEL_ENABLED", "true"
         }
         release {
+            if (hasReleaseSigning) signingConfig signingConfigs.githubRelease
             buildConfigField "boolean", "CAPTURE_VALIDITY_MODEL_ENABLED", "false"
             minifyEnabled true
             shrinkResources true

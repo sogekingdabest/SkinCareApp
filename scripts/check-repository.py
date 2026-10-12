@@ -53,7 +53,7 @@ def main() -> int:
         errors.append("Firebase example needs the web client used by generated resources.")
 
     for path in tracked:
-        if path.startswith((".idea/", ".private/", ".agents/", ".claude/")) or Path(path).name in {"google-services.json", "local.properties", "skills-lock.json"} or path.endswith((".jks", ".keystore")):
+        if path.startswith((".idea/", ".private/", ".agents/", ".claude/")) or Path(path).name in {"google-services.json", "local.properties", "skills-lock.json"} or path.endswith((".jks", ".keystore", ".p12", ".pfx")):
             errors.append(f"Local configuration should not be tracked: {path}")
         if path.endswith(".md") and path != "README.md":
             errors.append(f"Technical documents must remain local: {path}")
