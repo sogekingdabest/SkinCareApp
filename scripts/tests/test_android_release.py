@@ -14,6 +14,22 @@ spec.loader.exec_module(release)
 
 
 class AndroidReleaseTests(unittest.TestCase):
+    def test_an_existing_draft_is_found_even_when_the_tag_endpoint_returns_404(self):
+        draft = {"id": 42, "tag_name": "v1.0.1", "draft": True}
+        with patch.object(release, "api", side_effect=[None, [draft]]) as api:
+            self.assertEqual(draft, release.release_by_tag("owner/repo", "v1.0.1"))
+            self.assertEqual("repos/owner/repo/releases?per_page=100&page=1", api.call_args.args[0])
+
+    def test_lookup_of_published_release_does_not_scan_drafts(self):
+        published = {"id": 42, "tag_name": "v1.0.1", "draft": False}
+        with patch.object(release, "api", return_value=published) as api:
+            self.assertEqual(published, release.release_by_tag("owner/repo", "v1.0.1"))
+            api.assert_called_once()
+
+    def test_a_tag_with_no_draft_or_public_release_returns_none(self):
+        with patch.object(release, "api", side_effect=[None, []]):
+            self.assertIsNone(release.release_by_tag("owner/repo", "v1.0.1"))
+
     def test_first_release_updates_version_code_above_existing_local_builds(self):
         version = release.select_version({}, "new")
         self.assertEqual(("v1.0.1", "1.0.1", 2),
