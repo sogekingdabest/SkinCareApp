@@ -43,10 +43,10 @@ class LocalObservationStore @Inject constructor(private val database: SkinCareDa
             analysisMetadataJson = saved.analysisMetadataJson
         )
 
-    suspend fun current(userId: String, moleId: String): Snapshot = database.withTransaction {
+    suspend fun current(userId: String, moleId: String, analysisId: String? = null): Snapshot = database.withTransaction {
         val mole = dao.getMole(userId, moleId) ?: throw NoSuchElementException("Lunar no encontrado")
-        val analysis = mole.currentAnalysisId?.let {
-            dao.getAnalysis(userId, moleId, it) ?: error("La observación actual no existe")
+        val analysis = (analysisId ?: mole.currentAnalysisId)?.let {
+            dao.getAnalysis(userId, moleId, it) ?: throw NoSuchElementException("Observación no encontrada")
         }
         Snapshot(mole, analysis)
     }

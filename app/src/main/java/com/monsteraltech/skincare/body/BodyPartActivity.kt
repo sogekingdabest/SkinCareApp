@@ -113,14 +113,7 @@ class BodyPartActivity : AppCompatActivity() {
         moleAdapter = MoleAdapter(
             moleList = moleList,
             onClick = { mole ->
-                val intent = Intent(this, MoleDetailActivity::class.java)
-                intent.putExtra("MOLE_ID", mole.id)
-                intent.putExtra("LUNAR_TITLE", mole.title)
-                intent.putExtra("LUNAR_DESCRIPTION", mole.description)
-                intent.putExtra("LUNAR_ANALYSIS_RESULT", mole.analysisResult)
-                intent.putExtra("LUNAR_IMAGE_URL", mole.imageUrl)
-                intent.putExtra("ANALYSIS_COUNT", mole.analysisCount)
-                intent.putExtra(BodyRegionContract.EXTRA_REGION_ID, bodyRegionId.value)
+                val intent = com.monsteraltech.skincare.body.mole.MoleViewerArgs(mole.id).toIntent(this)
                 startActivity(intent)
             }
         )

@@ -82,10 +82,11 @@ class SessionCheckActivity : AppCompatActivity() {
                     viewModel.uiState.collect { state -> render(state) }
                 }
                 launch {
-                    viewModel.events.collect { event ->
-                        when (event) {
-                            is SessionCheckViewModel.Event.NavigateToMain -> navigateToMain()
-                            is SessionCheckViewModel.Event.NavigateToLogin -> navigateToLogin()
+                    viewModel.destination.collect { destination ->
+                        when (destination) {
+                            SessionCheckViewModel.Destination.MAIN -> navigateToMain()
+                            SessionCheckViewModel.Destination.LOGIN -> navigateToLogin()
+                            null -> Unit
                         }
                     }
                 }
@@ -127,7 +128,7 @@ class SessionCheckActivity : AppCompatActivity() {
 
     private fun navigateToMain() {
         try {
-            val intent = Intent(this, MainActivity::class.java)
+            val intent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             val pairs = arrayOf(
                 android.util.Pair<View, String>(logoImageView, "logoImageView"),
                 android.util.Pair<View, String>(skinCareTextView, "textTrans")
@@ -136,13 +137,13 @@ class SessionCheckActivity : AppCompatActivity() {
             startActivity(intent, options.toBundle())
         } catch (e: Exception) {
             Log.e(TAG, "Error al navegar a MainActivity: ${e.message}", e)
-            startActivity(Intent(this, MainActivity::class.java))
+            startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
         }
     }
 
     private fun navigateToLogin() {
         try {
-            val intent = Intent(this, LoginActivity::class.java)
+            val intent = Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             val pairs = arrayOf(
                 android.util.Pair<View, String>(logoImageView, "logoImageView"),
                 android.util.Pair<View, String>(skinCareTextView, "textTrans")
@@ -151,7 +152,7 @@ class SessionCheckActivity : AppCompatActivity() {
             startActivity(intent, options.toBundle())
         } catch (e: Exception) {
             Log.e(TAG, "Error al navegar a LoginActivity: ${e.message}", e)
-            startActivity(Intent(this, LoginActivity::class.java))
+            startActivity(Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
         }
     }
 }

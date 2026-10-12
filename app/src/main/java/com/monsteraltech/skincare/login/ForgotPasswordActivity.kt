@@ -51,14 +51,14 @@ class ForgotPasswordActivity : AppCompatActivity() {
         loginTextView.setOnClickListener { navigateToLogin() }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { viewModel.sent.collect { if (it) {
+                    UIUtils.showSuccessToast(this@ForgotPasswordActivity, getString(R.string.password_reset_email_sent))
+                    navigateToLogin()
+                } } }
                 launch { viewModel.isSending.collect { recuperarButton.isEnabled = !it } }
                 launch {
                     viewModel.events.collect { event ->
                         when (event) {
-                            ForgotPasswordViewModel.Event.Sent -> {
-                                UIUtils.showSuccessToast(this@ForgotPasswordActivity, getString(R.string.password_reset_email_sent))
-                                navigateToLogin()
-                            }
                             ForgotPasswordViewModel.Event.Failed ->
                                 UIUtils.showErrorToast(this@ForgotPasswordActivity, getString(R.string.error_password_reset_failed))
                         }
@@ -68,7 +68,7 @@ class ForgotPasswordActivity : AppCompatActivity() {
         }
     }
     private fun navigateToLogin() {
-        val intent = Intent(this, LoginActivity::class.java)
+        val intent = Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         val pairs = arrayOf(
             Pair<View, String>(logoImageView, "logoImageView"),
             Pair<View, String>(welcomeTextView, "textTrans"),
@@ -79,6 +79,7 @@ class ForgotPasswordActivity : AppCompatActivity() {
         )
         val options = ActivityOptions.makeSceneTransitionAnimation(this, *pairs)
         startActivity(intent, options.toBundle())
+        finish()
     }
     private fun validateEmail(): Boolean {
         val email = emailEditText.editText?.text.toString().trim()

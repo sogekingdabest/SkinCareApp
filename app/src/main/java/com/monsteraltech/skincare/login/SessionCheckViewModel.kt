@@ -8,13 +8,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.data.SessionManager
 import com.monsteraltech.skincare.data.identity.ActiveProfile
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -40,43 +37,38 @@ class SessionCheckViewModel @Inject constructor(
         data class Error(@StringRes val messageRes: Int) : UiState
     }
 
-    sealed interface Event {
-        object NavigateToMain : Event
-        object NavigateToLogin : Event
-    }
-
+    enum class Destination { MAIN, LOGIN }
     private val _uiState = MutableStateFlow<UiState>(UiState.Splash)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
-
-    private val _events = Channel<Event>(Channel.BUFFERED)
-    val events: Flow<Event> = _events.receiveAsFlow()
+    private val _destination = MutableStateFlow<Destination?>(null)
+    val destination = _destination.asStateFlow()
 
     private var isChecking = false
 
     fun checkSession() {
-        if (isChecking) return
+        if (isChecking || _destination.value != null) return
         isChecking = true
         viewModelScope.launch {
             try {
                 _uiState.value = UiState.Loading
                 if (activeProfile.isLocal) {
                     _uiState.value = UiState.Success
-                    _events.send(Event.NavigateToMain)
+                    _destination.value = Destination.MAIN
                     return@launch
                 }
                 val startTime = System.currentTimeMillis()
                 val isSessionValid = sessionManager.isSessionValid(fastMode = true)
                 val elapsed = System.currentTimeMillis() - startTime
-                // Mantener el estado de carga un mÃ­nimo para evitar parpadeos.
+                // Mantener el estado de carga un mínimo para evitar parpadeos.
                 if (elapsed < MIN_LOADING_TIME_MS) {
                     delay(MIN_LOADING_TIME_MS - elapsed)
                 }
                 if (isSessionValid) {
                     _uiState.value = UiState.Success
                     delay(SUCCESS_TRANSITION_DELAY_MS)
-                    _events.send(Event.NavigateToMain)
+                    _destination.value = Destination.MAIN
                 } else {
-                    _events.send(Event.NavigateToLogin)
+                    _destination.value = Destination.LOGIN
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -89,7 +81,7 @@ class SessionCheckViewModel @Inject constructor(
     }
 
     /**
-     * Sin red no se puede verificar contra Firebase: si hay una sesiÃ³n local
+     * Sin red no se puede verificar contra Firebase: si hay una sesión local
      * no caducada se permite el acceso offline; si no, se vuelve al login.
      */
     private suspend fun handleSessionCheckError(exception: Exception) {
@@ -109,9 +101,9 @@ class SessionCheckViewModel @Inject constructor(
         if (storedSession != null && !storedSession.isExpired()) {
             _uiState.value = UiState.Success
             delay(SUCCESS_TRANSITION_DELAY_MS)
-            _events.send(Event.NavigateToMain)
+            _destination.value = Destination.MAIN
         } else {
-            _events.send(Event.NavigateToLogin)
+            _destination.value = Destination.LOGIN
         }
     }
 

@@ -1,11 +1,10 @@
 package com.monsteraltech.skincare.camera
-import com.monsteraltech.skincare.body.domain.BodyRegionId
-import com.monsteraltech.skincare.body.presentation.BodyRegionContract
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -19,6 +18,8 @@ import com.monsteraltech.skincare.utils.UIUtils
 import java.io.File
 @AndroidEntryPoint
 class PreviewActivity : AppCompatActivity() {
+    @Inject lateinit var drafts: CaptureDraftStore
+    private var args: CaptureArgs? = null
     @Inject lateinit var photoDecoder: CapturedPhotoDecoder
     private var displayedBitmap: Bitmap? = null
     private var decodeJob: Job? = null
@@ -28,65 +29,24 @@ class PreviewActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPreviewBinding
     private var photoFile: File? = null
     private var isFrontCamera: Boolean = false
-    private var bodyPartColorCode: String? = null
-    private var bodyRegionId: BodyRegionId? = null
-    private var preprocessingApplied: Boolean = false
-    private var processingMetadata: String = ""
-    private var targetMoleId: String? = null
-    private var targetMoleTitle: String? = null
-    private var targetMoleDescription: String? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityPreviewBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.confirmButton.isEnabled = false
-        val photoPath =
-            intent.getStringExtra(MoleCaptureContract.EXTRA_PHOTO_PATH)
-        isFrontCamera =
-            intent.getBooleanExtra(
-                MoleCaptureContract.EXTRA_IS_FRONT_CAMERA,
-                false
-            )
-        bodyRegionId = BodyRegionContract.read(intent)
-        bodyPartColorCode =
-            intent.getStringExtra(
-                MoleCaptureContract.EXTRA_BODY_PART_COLOR
-            )
-        preprocessingApplied =
-            intent.getBooleanExtra(
-                MoleCaptureContract.EXTRA_PREPROCESSING_APPLIED,
-                false
-            )
-        processingMetadata =
-            intent.getStringExtra(
-                MoleCaptureContract.EXTRA_PROCESSING_METADATA
-            ) ?: ""
-        targetMoleId =
-            intent.getStringExtra(MoleCaptureContract.EXTRA_MOLE_ID)
-                ?.takeIf(String::isNotBlank)
-        targetMoleTitle =
-            intent.getStringExtra(MoleCaptureContract.EXTRA_MOLE_TITLE)
-        targetMoleDescription =
-            intent.getStringExtra(
-                MoleCaptureContract.EXTRA_MOLE_DESCRIPTION
-            )
-        Log.d(TAG, "PreviewActivity iniciada con imagen: $photoPath")
-        Log.d(TAG, "Preprocesado aplicado: $preprocessingApplied")
-        if (preprocessingApplied) {
-            Log.d(TAG, "Metadata de procesamiento: $processingMetadata")
-        }
-        if (photoPath != null) {
-            photoFile = File(photoPath)
-            if (photoFile!!.exists()) {
-                displayImage(photoPath)
-                setupProcessingInfo()
-            } else {
-                handleImageError("Imagen no encontrada")
-            }
-        } else {
-            handleImageError("Ruta de imagen no válida")
+        try {
+            args = CaptureArgs.read(intent, savedInstanceState, drafts)
+            isFrontCamera = args!!.isFrontCamera
+            photoFile = drafts.file(args!!.captureId)
+            if (photoFile!!.isFile) displayImage(photoFile!!.absolutePath)
+            else handleImageError("Imagen no encontrada")
+        } catch (error: Exception) {
+            handleImageError("Referencia de captura no válida")
         }
         setupButtons()
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() = discardPhoto()
+        })
     }
     private fun displayImage(photoPath: String) {
         decodeJob = lifecycleScope.launch {
@@ -107,17 +67,6 @@ class PreviewActivity : AppCompatActivity() {
             }
         }
     }
-    private fun setupProcessingInfo() {
-        if (preprocessingApplied && processingMetadata.isNotEmpty()) {
-            val processingInfo = if (processingMetadata.contains("Error")) {
-                "⚠️ $processingMetadata"
-            } else {
-                "✅ Imagen mejorada automáticamente\n$processingMetadata"
-            }
-            UIUtils.showSuccessToast(this, getString(R.string.ui_operation_completed))
-            Log.d(TAG, "Info de procesamiento: $processingInfo")
-        }
-    }
     private fun setupButtons() {
         binding.confirmButton.setOnClickListener {
             confirmAndNavigateToAnalysis()
@@ -132,63 +81,21 @@ class PreviewActivity : AppCompatActivity() {
             UIUtils.showErrorToast(this, getString(R.string.error_data_not_found))
             return
         }
-        Log.d(TAG, "Confirmando imagen y navegando a análisis: $photoPath")
-        val intent = Intent(this, AnalysisResultActivity::class.java).apply {
-            putExtra(MoleCaptureContract.EXTRA_BODY_REGION_ID, bodyRegionId?.value)
-            putExtra(MoleCaptureContract.EXTRA_PHOTO_PATH, photoPath)
-            putExtra(
-                MoleCaptureContract.EXTRA_IS_FRONT_CAMERA,
-                isFrontCamera
-            )
-            putExtra(
-                MoleCaptureContract.EXTRA_BODY_PART_COLOR,
-                bodyPartColorCode
-            )
-            putExtra(
-                MoleCaptureContract.EXTRA_PREPROCESSING_APPLIED,
-                preprocessingApplied
-            )
-            putExtra(
-                MoleCaptureContract.EXTRA_PROCESSING_METADATA,
-                processingMetadata
-            )
-            putExtra(MoleCaptureContract.EXTRA_MOLE_ID, targetMoleId)
-            putExtra(
-                MoleCaptureContract.EXTRA_MOLE_TITLE,
-                targetMoleTitle
-            )
-            putExtra(
-                MoleCaptureContract.EXTRA_MOLE_DESCRIPTION,
-                targetMoleDescription
-            )
-        }
+        val intent = requireNotNull(args).toIntent(this, AnalysisResultActivity::class.java)
+        binding.confirmButton.isEnabled = false
         startActivity(intent)
         finish()
     }
     private fun discardPhoto() {
-        try {
-            photoFile?.let { file ->
-                if (file.exists()) {
-                    val deleted = file.delete()
-                    Log.d(TAG, "Archivo eliminado: $deleted - ${file.absolutePath}")
-                }
-            }
-            if (preprocessingApplied) {
-                val originalPath = photoFile?.absolutePath?.replace("processed-", "original-")
-                originalPath?.let { path ->
-                    val originalFile = File(path)
-                    if (originalFile.exists()) {
-                        val deleted = originalFile.delete()
-                        Log.d(TAG, "Archivo original eliminado: $deleted - $path")
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error eliminando archivos", e)
-        }
+        args?.let { drafts.discard(it.captureId) }
         setResult(RESULT_CANCELED)
         finish()
     }
+    override fun onSaveInstanceState(outState: Bundle) {
+        args?.save(outState)
+        super.onSaveInstanceState(outState)
+    }
+
     private fun handleImageError(message: String) {
         Log.e(TAG, "Error de imagen: $message")
         binding.previewImage.setImageResource(R.drawable.cat)

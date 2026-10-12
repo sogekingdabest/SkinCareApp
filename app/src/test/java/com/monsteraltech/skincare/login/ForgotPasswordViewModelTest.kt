@@ -21,7 +21,7 @@ class ForgotPasswordViewModelTest {
     @Test fun `successful reset trims the email and emits navigation once`() = runTest {
         coEvery { repository.sendPasswordReset("fixture@example.test") } returns Result.success(Unit)
         model.send(" fixture@example.test ")
-        assertEquals(ForgotPasswordViewModel.Event.Sent, model.events.first())
+        assertEquals(true, model.sent.value)
         assertFalse(model.isSending.value)
         coVerify(exactly = 1) { repository.sendPasswordReset("fixture@example.test") }
     }

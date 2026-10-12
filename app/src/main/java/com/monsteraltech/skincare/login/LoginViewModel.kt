@@ -1,6 +1,7 @@
 package com.monsteraltech.skincare.login
 
 import androidx.annotation.StringRes
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,13 +21,15 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val savedState: SavedStateHandle = SavedStateHandle()
 ) : ViewModel() {
 
     sealed interface Event {
-        object NavigateToMain : Event
         data class ShowMessage(@StringRes val messageRes: Int) : Event
     }
+
+    val requiresMain = savedState.getStateFlow("authCompleted", false)
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -47,13 +50,13 @@ class LoginViewModel @Inject constructor(
     }
 
     fun continueWithoutAccount() {
-        if (_isLoading.value) return
+        if (_isLoading.value || requiresMain.value) return
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 authRepository.continueWithoutAccount()
                 currentCoroutineContext().ensureActive()
-                _events.send(Event.NavigateToMain)
+                savedState["authCompleted"] = true
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -63,14 +66,14 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun launchAuth(authCall: suspend () -> Result<Unit>) {
-        if (_isLoading.value) return
+        if (_isLoading.value || requiresMain.value) return
         viewModelScope.launch {
             _isLoading.value = true
             val result = try { authCall() } finally { _isLoading.value = false }
             currentCoroutineContext().ensureActive()
             (result.exceptionOrNull() as? CancellationException)?.let { throw it }
             result
-                .onSuccess { _events.send(Event.NavigateToMain) }
+                .onSuccess { savedState["authCompleted"] = true }
                 .onFailure { _events.send(Event.ShowMessage(R.string.error_authentication)) }
         }
     }

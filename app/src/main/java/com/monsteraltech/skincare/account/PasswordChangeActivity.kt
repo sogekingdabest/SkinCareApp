@@ -136,6 +136,15 @@ class PasswordChangeActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
+                    viewModel.changed.collect { changed ->
+                        if (changed) {
+                            UIUtils.showSuccessToast(this@PasswordChangeActivity, getString(R.string.password_change_success))
+                            setResult(RESULT_OK)
+                            finishWithAnimation()
+                        }
+                    }
+                }
+                launch {
                     viewModel.isSaving.collect {
                         showLoading(it)
                         updateButtonState()
@@ -144,12 +153,6 @@ class PasswordChangeActivity : AppCompatActivity() {
                 launch {
                     viewModel.events.collect { event ->
                         when (event) {
-                            PasswordChangeViewModel.Event.Changed -> {
-                                UIUtils.showSuccessToast(this@PasswordChangeActivity, getString(R.string.password_change_success))
-                                setResult(RESULT_OK)
-                                delay(1500)
-                                finishWithAnimation()
-                            }
                             is PasswordChangeViewModel.Event.Failed -> handlePasswordChangeError(event.error)
                         }
                     }

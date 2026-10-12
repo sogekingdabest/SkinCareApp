@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.annotation.StringRes
 import androidx.annotation.VisibleForTesting
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.monsteraltech.skincare.data.identity.ActiveProfile
@@ -19,6 +20,7 @@ import com.monsteraltech.skincare.body.mole.domain.model.LesionRegistrationMetri
 import com.monsteraltech.skincare.body.mole.domain.model.ObservationComparability
 import com.monsteraltech.skincare.body.mole.domain.usecase.GetBaselineObservationUseCase
 import com.monsteraltech.skincare.camera.CapturedPhotoDecoder
+import java.util.UUID
 import com.monsteraltech.skincare.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineStart
@@ -46,7 +48,8 @@ class AnalysisResultViewModel @Inject constructor(
     private val comparisonPreparer: ObservationComparisonPreparer,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val imageAnalysisRunner: ImageAnalysisRunner,
-    private val photoDecoder: CapturedPhotoDecoder
+    private val photoDecoder: CapturedPhotoDecoder,
+    private val savedState: SavedStateHandle = SavedStateHandle()
 ) : ViewModel() {
 
     sealed interface AnalysisState {
@@ -64,8 +67,6 @@ class AnalysisResultViewModel @Inject constructor(
 
     sealed interface Event {
         data class ValidationFailed(@StringRes val messageRes: Int) : Event
-        /** Guardado correcto: la Activity notifica y navega atrás. */
-        data class SaveCompleted(val existingMoleTitle: String? = null) : Event
         data class SaveFailed(val detail: String?) : Event
         object AnalysisCancelled : Event
     }
@@ -124,6 +125,13 @@ class AnalysisResultViewModel @Inject constructor(
     private val _events = Channel<Event>(Channel.BUFFERED)
     val events: Flow<Event> = _events.receiveAsFlow()
 
+    data class SavedCapture(val moleId: String, val regionId: BodyRegionId, val existingMoleTitle: String? = null)
+    private val _savedCapture = MutableStateFlow<SavedCapture?>(null)
+    val savedCapture = _savedCapture.asStateFlow()
+    private val _targetMole = MutableStateFlow<MoleData?>(null)
+    val targetMole = _targetMole.asStateFlow()
+    private var captureId = UUID.randomUUID().toString()
+    private var captureOwner: String? = null
     private var analysisJob: Job? = null
     private var photoFile: File? = null
     private var comparisonBaselineBitmap: Bitmap? = null
@@ -148,15 +156,28 @@ class AnalysisResultViewModel @Inject constructor(
         photoPath: String,
         isFrontCamera: Boolean,
         pixelDensity: Float,
-        targetMoleId: String? = null
+        targetMoleId: String? = null,
+        captureId: String = this.captureId
     ) {
         if (analysisStarted) return
         analysisStarted = true
+        this.captureId = captureId
+        captureOwner = activeProfile.ownerId
+        val cancelledOnRestore = savedState.get<Boolean>("analysisCancelled") == true
         photoFile = File(photoPath)
         _analysisState.value = AnalysisState.Processing(0, "Cargando imagen", null)
 
         analysisJob = viewModelScope.launch(ioDispatcher, start = CoroutineStart.LAZY) {
             try {
+                // A process may die after the transaction commits but before the UI receives success.
+                if (recoverSavedCapture()) return@launch
+                if (cancelledOnRestore) {
+                    _analysisState.value = AnalysisState.Cancelled
+                    return@launch
+                }
+                if (targetMoleId != null) {
+                    _targetMole.value = saveCapture.getMole(targetMoleId, activeProfile.requireOwnerId()).getOrThrow()
+                }
                 resolveBaselineObservation(targetMoleId)
                 val bitmap = photoDecoder.decode(photoPath, isFrontCamera)
                 if (bitmap == null) {
@@ -353,6 +374,7 @@ class AnalysisResultViewModel @Inject constructor(
 
     fun cancelAnalysis() {
         if (!isProcessing) return
+        savedState["analysisCancelled"] = true
         _analysisState.value = AnalysisState.Cancelled
         analysisJob?.cancel()
         _events.trySend(Event.AnalysisCancelled)
@@ -366,22 +388,23 @@ class AnalysisResultViewModel @Inject constructor(
         userInput: UserAbcdeInput?,
         bodyRegionId: BodyRegionId? = null
     ) {
+        if (_isSaving.value || _savedCapture.value != null) return
         val result = validateForSave(requireTitle = true, title = title, bodyPart = bodyPart) ?: return
         val imageFile = photoFile ?: run {
             _events.trySend(Event.SaveFailed(null))
             return
         }
-        if (_isSaving.value) return
+        _isSaving.value = true
 
         viewModelScope.launch {
-            _isSaving.value = true
             try {
                 val saveResult = saveCapture.saveNew(
                     imageFile, AnalysisOutcome.Complete(result),
-                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId)
+                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId),
+                    captureId = captureId
                 )
                 if (saveResult.isSuccess) {
-                    _events.send(Event.SaveCompleted())
+                    check(recoverSavedCapture()) { "El guardado no tiene observación confirmada" }
                 } else {
                     _events.send(Event.SaveFailed(saveResult.exceptionOrNull()?.message))
                 }
@@ -405,7 +428,6 @@ class AnalysisResultViewModel @Inject constructor(
         bodyRegionId: BodyRegionId? = null
     ) = saveToExistingMole(
         moleId = mole.id,
-        existingMoleTitle = mole.title,
         title = title,
         description = description,
         bodyPart = bodyPart,
@@ -416,7 +438,6 @@ class AnalysisResultViewModel @Inject constructor(
 
     fun saveToExistingMole(
         moleId: String,
-        existingMoleTitle: String?,
         title: String,
         description: String,
         bodyPart: String,
@@ -424,26 +445,23 @@ class AnalysisResultViewModel @Inject constructor(
         userInput: UserAbcdeInput?,
         bodyRegionId: BodyRegionId? = null
     ) {
+        if (_isSaving.value || _savedCapture.value != null) return
         val result = validateForSave(requireTitle = false, title = title, bodyPart = bodyPart) ?: return
         val imageFile = photoFile ?: run {
             _events.trySend(Event.SaveFailed(null))
             return
         }
-        if (_isSaving.value) return
+        _isSaving.value = true
 
         viewModelScope.launch {
-            _isSaving.value = true
             try {
                 val saveResult = saveCapture.append(
                     moleId, imageFile, AnalysisOutcome.Complete(result),
-                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId)
+                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId),
+                    captureId = captureId
                 )
                 if (saveResult.isSuccess) {
-                    _events.send(
-                        Event.SaveCompleted(
-                            existingMoleTitle = existingMoleTitle
-                        )
-                    )
+                    check(recoverSavedCapture()) { "El guardado no tiene observación confirmada" }
                 } else {
                     _events.send(Event.SaveFailed(saveResult.exceptionOrNull()?.message))
                 }
@@ -457,13 +475,22 @@ class AnalysisResultViewModel @Inject constructor(
         }
     }
 
+    private suspend fun recoverSavedCapture(): Boolean {
+        check(activeProfile.ownerId == captureOwner) { "El perfil de la captura ha cambiado" }
+        val saved = saveCapture.findSaved(captureId) ?: return false
+        _savedCapture.value = SavedCapture(saved.mole.id, saved.mole.bodyRegionId ?: BodyRegionId.UNKNOWN,
+            saved.mole.title.takeIf { saved.mole.id != captureId })
+        _analysisState.value = AnalysisState.Idle
+        return true
+    }
+
     /** Devuelve el resultado listo para guardar, o null si la validación falla (evento emitido). */
     private fun validateForSave(
         requireTitle: Boolean,
         title: String,
         bodyPart: String
     ): MelanomaAIDetector.CombinedAnalysisResult? {
-        if (activeProfile.ownerId == null) {
+        if (activeProfile.ownerId == null || (captureOwner != null && activeProfile.ownerId != captureOwner)) {
             _events.trySend(Event.ValidationFailed(R.string.save_validation_login))
             return null
         }

@@ -24,7 +24,7 @@ class PasswordChangeViewModelTest {
         model.change("old", "new")
         coVerify(exactly = 1) { manager.changePassword("old", "new") }
         finish.complete(AccountResult.success(Unit))
-        assertEquals(PasswordChangeViewModel.Event.Changed, model.events.first())
+        assertEquals(true, model.changed.value)
         assertFalse(model.isSaving.value)
     }
 

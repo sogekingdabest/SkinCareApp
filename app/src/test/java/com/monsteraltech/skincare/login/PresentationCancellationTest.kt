@@ -8,6 +8,7 @@ import com.monsteraltech.skincare.data.identity.ActiveProfile
 import io.mockk.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
@@ -27,6 +28,7 @@ class PresentationCancellationTest {
         model.signInWithEmail("fixture@example.test", "fixture"); runCurrent()
         store.clear(); runCurrent()
         assertFalse(model.isLoading.value)
+        assertFalse(model.requiresMain.value)
         assertNull(withTimeoutOrNull(1) { model.events.first() })
     }
     @Test fun `clearing local login does not convert cancellation to an authentication error`() = runTest(dispatcher) {
@@ -35,6 +37,7 @@ class PresentationCancellationTest {
         val model = LoginViewModel(auth); store.put("login", model)
         model.continueWithoutAccount(); runCurrent(); store.clear(); runCurrent()
         assertFalse(model.isLoading.value)
+        assertFalse(model.requiresMain.value)
         assertNull(withTimeoutOrNull(1) { model.events.first() })
     }
     @Test fun `clearing registration resets loading and emits no stale event`() = runTest(dispatcher) {
@@ -46,6 +49,7 @@ class PresentationCancellationTest {
         model.register("fixture@example.test", "fixture@example.test", "Fixture123!", "Fixture123!")
         runCurrent(); store.clear(); runCurrent()
         assertFalse(model.isLoading.value)
+        assertFalse(model.requiresMain.value)
         assertNull(withTimeoutOrNull(1) { model.events.first() })
     }
     @Test fun `clearing session checking keeps cancellation out of its error state`() = runTest(dispatcher) {
@@ -55,6 +59,6 @@ class PresentationCancellationTest {
         val model = SessionCheckViewModel(session, profile); store.put("session", model)
         model.checkSession(); runCurrent(); store.clear(); runCurrent()
         assertEquals(SessionCheckViewModel.UiState.Loading, model.uiState.value)
-        assertNull(withTimeoutOrNull(1) { model.events.first() })
+        assertNull(withTimeoutOrNull(1) { model.destination.filterNotNull().first() })
     }
 }

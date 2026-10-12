@@ -39,6 +39,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnalysisResultViewModelTest {
 
+    private var savedReceipt: MoleRepository.CurrentAnalysis? = null
     private lateinit var context: Context
     private lateinit var moleRepository: MoleRepository
     private lateinit var activeProfile: ActiveProfile
@@ -63,6 +64,10 @@ class AnalysisResultViewModelTest {
         decoder = mockk()
         coEvery { decoder.decode(any(), any()) } returns null
         every { activeProfile.ownerId } returns "user-1"
+        every { activeProfile.requireOwnerId() } returns "user-1"
+        savedReceipt = null
+        coEvery { moleRepository.findSavedCapture(any()) } coAnswers { savedReceipt }
+        coEvery { moleRepository.getMoleById(any(), any()) } coAnswers { Result.success(MoleData(id = arg(1))) }
         viewModel = AnalysisResultViewModel(
             context,
             SaveAnalyzedCapture(context, moleRepository, AnalysisRecordFactory(AnalysisReportFormatter())),
@@ -174,7 +179,7 @@ class AnalysisResultViewModelTest {
 
         viewModel.saveAsNewMole("Título", "", "Torso", null, null)
         assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
-        viewModel.saveToExistingMole("m-1", null, "", "", "Torso", null, null)
+        viewModel.saveToExistingMole("m-1", "", "", "Torso", null, null)
         assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
         coVerify(exactly = 0) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
         coVerify(exactly = 0) { moleRepository.saveAnalysisToMole(any(), any(), any(), any()) }
@@ -295,15 +300,20 @@ class AnalysisResultViewModelTest {
     }
 
     @Test
-    fun `guardado correcto como lunar nuevo emite SaveCompleted`() = runTest {
+    fun `guardado correcto permanece observable sin consumidor de eventos`() = runTest {
         seedReadyState()
         coEvery {
             moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any())
-        } returns Result.success(MoleData(id = "nuevo"))
+        } coAnswers {
+            val record = arg<com.monsteraltech.skincare.body.mole.model.AnalysisData>(6)
+            val mole = MoleData(id = record.moleId)
+            savedReceipt = MoleRepository.CurrentAnalysis(mole, record)
+            Result.success(mole)
+        }
 
         viewModel.saveAsNewMole("Título", "desc", "Torso", "#FFFFC90E", null)
 
-        assertEquals(AnalysisResultViewModel.Event.SaveCompleted(), viewModel.events.first())
+        assertEquals(savedReceipt!!.mole.id, viewModel.savedCapture.value!!.moleId)
         assertEquals(false, viewModel.isSaving.value)
     }
 
@@ -312,13 +322,18 @@ class AnalysisResultViewModelTest {
         seedReadyState()
         coEvery {
             moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any())
-        } returns Result.success(MoleData(id = "nuevo"))
+        } coAnswers {
+            val record = arg<com.monsteraltech.skincare.body.mole.model.AnalysisData>(6)
+            val mole = MoleData(id = record.moleId)
+            savedReceipt = MoleRepository.CurrentAnalysis(mole, record)
+            Result.success(mole)
+        }
 
         viewModel.saveAsNewMole(
             "Título", "", "Torso", "#FFFFC90E",
             userInput = UserAbcdeInput(asymmetry = 1.5f, border = 3f)
         )
-        viewModel.events.first()
+        assertTrue(viewModel.savedCapture.value != null)
 
         coVerify {
             moleRepository.saveMoleWithAnalysis(
@@ -336,21 +351,22 @@ class AnalysisResultViewModelTest {
     }
 
     @Test
-    fun `asociar a un lunar existente emite SaveCompleted con su titulo`() = runTest {
+    fun `asociar a un lunar existente expone el destino confirmado por Room`() = runTest {
         seedReadyState()
         coEvery {
             moleRepository.saveAnalysisToMole(any(), any(), any(), any())
-        } returns Result.success(Unit)
+        } coAnswers {
+            val record = arg<com.monsteraltech.skincare.body.mole.model.AnalysisData>(2)
+            savedReceipt = MoleRepository.CurrentAnalysis(MoleData(id = record.moleId), record)
+            Result.success(Unit)
+        }
 
         viewModel.saveToExistingMole(
             mole = MoleData(id = "m-1", title = "Lunar hombro"),
             title = "", description = "", bodyPart = "Torso", bodyPartColorCode = null, userInput = null
         )
 
-        assertEquals(
-            AnalysisResultViewModel.Event.SaveCompleted(existingMoleTitle = "Lunar hombro"),
-            viewModel.events.first()
-        )
+        assertEquals("m-1", viewModel.savedCapture.value!!.moleId)
     }
 
     @Test
@@ -594,4 +610,53 @@ class AnalysisResultViewModelTest {
                     ).assessment.reason
             )
         }
+    @Test fun `un proceso nuevo recupera el recibo aunque ya no exista la imagen`() = runTest {
+        val id = "6e465812-dd0a-47da-b4cb-bb945cc40119"
+        savedReceipt = MoleRepository.CurrentAnalysis(MoleData(id = "already-saved"),
+            com.monsteraltech.skincare.body.mole.model.AnalysisData(id = id, moleId = "already-saved"))
+        viewModel.startAnalysis("missing.jpg", false, 1f, captureId = id)
+        assertEquals("already-saved", viewModel.savedCapture.value!!.moleId)
+        coVerify(exactly = 0) { decoder.decode(any(), any()) }
+        coVerify(exactly = 0) { runner.processImage(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `cambiar el perfil invalida el guardado de la captura cargada`() = runTest {
+        seedReadyState()
+        every { activeProfile.ownerId } returns "another"
+        viewModel.saveAsNewMole("Fixture", "", "Torso", null, null)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.save_validation_login), viewModel.events.first())
+        coVerify(exactly = 0) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `un doble click y un reintento despues del exito no duplican el guardado`() = runTest {
+        seedReadyState()
+        val response = kotlinx.coroutines.CompletableDeferred<Result<MoleData>>()
+        coEvery { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) } coAnswers {
+            val record = arg<com.monsteraltech.skincare.body.mole.model.AnalysisData>(6)
+            val result = response.await()
+            savedReceipt = MoleRepository.CurrentAnalysis(result.getOrThrow(), record)
+            result
+        }
+        repeat(2) { viewModel.saveAsNewMole("Fixture", "", "Torso", null, null) }
+        coVerify(exactly = 1) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+        response.complete(Result.success(MoleData(id = "saved")))
+        viewModel.saveAsNewMole("Fixture", "", "Torso", null, null)
+        coVerify(exactly = 1) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+        assertEquals("saved", viewModel.savedCapture.value!!.moleId)
+    }
+
+    @Test fun `un recibo confirmado precede a una cancelacion antigua al restaurar`() = runTest {
+        val id = "8933e667-b2e0-4e4d-9d3c-59b229af7b25"
+        savedReceipt = MoleRepository.CurrentAnalysis(MoleData(id = "committed"),
+            com.monsteraltech.skincare.body.mole.model.AnalysisData(id = id, moleId = "committed"))
+        val restored = AnalysisResultViewModel(context,
+            SaveAnalyzedCapture(context, moleRepository, AnalysisRecordFactory(AnalysisReportFormatter())),
+            activeProfile, getBaselineObservation, comparisonPreparer, UnconfinedTestDispatcher(), runner, decoder,
+            androidx.lifecycle.SavedStateHandle(mapOf("analysisCancelled" to true)))
+        restored.startAnalysis("missing.jpg", false, 1f, captureId = id)
+        assertEquals("committed", restored.savedCapture.value!!.moleId)
+        coVerify(exactly = 0) { decoder.decode(any(), any()) }
+    }
+
 }

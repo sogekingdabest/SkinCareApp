@@ -14,6 +14,7 @@ import com.google.android.material.slider.Slider
 import dagger.hilt.android.AndroidEntryPoint
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.body.mole.error.ErrorHandler
+import com.monsteraltech.skincare.body.mole.model.MoleData
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import com.monsteraltech.skincare.body.mole.model.UserAbcdeInput
 import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
@@ -44,7 +45,6 @@ class MoleViewerActivity : AppCompatActivity() {
 
         args = MoleViewerArgs.fromIntent(intent)
         setupToolbar()
-        setupHeader()
         setupUserInputSection()
         binding.viewHistoryButton.setOnClickListener { openAnalysisHistory() }
         binding.captureFollowUpButton.setOnClickListener {
@@ -53,7 +53,7 @@ class MoleViewerActivity : AppCompatActivity() {
         binding.captureFollowUpButton.visibility =
             if (
                 args.moleId.isNotBlank() &&
-                args.historicalAnalysis == null
+                args.analysisId == null
             ) {
                 View.VISIBLE
             } else {
@@ -69,10 +69,10 @@ class MoleViewerActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
     }
 
-    private fun setupHeader() {
-        binding.detailTitle.text = args.title
-        if (args.description.isNotEmpty()) {
-            binding.detailDescription.text = args.description
+    private fun setupHeader(mole: MoleData) {
+        binding.detailTitle.text = mole.title
+        if (mole.description.isNotEmpty()) {
+            binding.detailDescription.text = mole.description
             binding.detailDescription.visibility = View.VISIBLE
         } else {
             binding.detailDescription.visibility = View.GONE
@@ -80,7 +80,7 @@ class MoleViewerActivity : AppCompatActivity() {
         ImageLoadingUtil.loadImageWithFallback(
             context = this,
             imageView = binding.resultImageView,
-            imageUrl = args.imageUrl.ifEmpty { null },
+            imageUrl = mole.imageUrl.ifEmpty { null },
             config = ImageLoadingUtil.Configs.fullSize(),
             coroutineScope = lifecycleScope
         )
@@ -128,6 +128,8 @@ class MoleViewerActivity : AppCompatActivity() {
     }
 
     private fun render(state: MoleViewerViewModel.UiState) {
+        binding.captureFollowUpButton.visibility = if (args.analysisId == null &&
+            (state is MoleViewerViewModel.UiState.Analysis || (state is MoleViewerViewModel.UiState.NoAnalysis && viewModel.mole.value != null))) View.VISIBLE else View.GONE
         binding.emptyStateView.hideRetryIndicators()
         when (state) {
             is MoleViewerViewModel.UiState.Loading -> {
@@ -135,11 +137,15 @@ class MoleViewerActivity : AppCompatActivity() {
                 binding.analysisContainer.visibility = View.GONE
                 binding.emptyStateView.hide()
             }
-            is MoleViewerViewModel.UiState.Analysis ->
+            is MoleViewerViewModel.UiState.Analysis -> {
+                val header = if (args.analysisId != null) state.mole.copy(
+                    imageUrl = state.data.imageUrl, description = state.data.description
+                ) else state.mole
+                setupHeader(header)
                 renderAnalysis(state.data, state.analysisCount)
-            is MoleViewerViewModel.UiState.RawResult ->
-                renderRawResult(state.text, state.analysisCount)
+            }
             is MoleViewerViewModel.UiState.NoAnalysis -> {
+                viewModel.mole.value?.let { setupHeader(it) }
                 binding.progressBar.visibility = View.GONE
                 binding.analysisContainer.visibility = View.GONE
                 binding.viewHistoryButton.visibility = View.GONE
@@ -234,27 +240,8 @@ class MoleViewerActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderRawResult(text: String, analysisCount: Int) {
-        binding.progressBar.visibility = View.GONE
-        binding.analysisContainer.visibility = View.VISIBLE
-        binding.emptyStateView.hide()
-        binding.recommendationText.text = text
-        binding.combinedScoreText.text = "--"
-        binding.riskLevelText.text = "Riesgo: --"
-        binding.riskIndicator.visibility = View.GONE
-        binding.aiProbabilityText.visibility = View.GONE
-        binding.asymmetryLayout.visibility = View.GONE
-        binding.borderLayout.visibility = View.GONE
-        binding.colorLayout.visibility = View.GONE
-        binding.diameterLayout.visibility = View.GONE
-        binding.evolutionLayout.visibility = View.GONE
-        binding.abcdeTotalScore.text = "Score ABCDE Total: --"
-        binding.analysisDateText.visibility = View.GONE
-        renderHistoryButton(analysisCount)
-    }
-
     private fun renderHistoryButton(analysisCount: Int) {
-        if (analysisCount > 0 && args.moleId.isNotEmpty() && args.historicalAnalysis == null) {
+        if (analysisCount > 0 && args.moleId.isNotEmpty() && args.analysisId == null) {
             binding.viewHistoryButton.visibility = View.VISIBLE
             binding.viewHistoryButton.text = resources.getQuantityString(R.plurals.mole_observation_history, analysisCount, analysisCount)
         } else {
@@ -464,7 +451,6 @@ class MoleViewerActivity : AppCompatActivity() {
         if (args.moleId.isNotEmpty()) {
             val intent = Intent(this, MoleAnalysisHistoryActivity::class.java).apply {
                 putExtra("MOLE_ID", args.moleId)
-                putExtra("MOLE_TITLE", args.title)
             }
             startActivity(intent)
         } else {
@@ -487,19 +473,7 @@ class MoleViewerActivity : AppCompatActivity() {
                     MoleCaptureContract.EXTRA_MOLE_ID,
                     args.moleId
                 )
-                putExtra(
-                    MoleCaptureContract.EXTRA_MOLE_TITLE,
-                    args.title
-                )
-                putExtra(
-                    MoleCaptureContract.EXTRA_MOLE_DESCRIPTION,
-                    args.description
-                )
-                putExtra(MoleCaptureContract.EXTRA_BODY_REGION_ID, (viewModel.bodyRegionId.value ?: args.bodyRegionId)?.value)
-                putExtra(
-                    MoleCaptureContract.EXTRA_BODY_PART_COLOR,
-                    args.bodyPartColorCode
-                )
+                putExtra(MoleCaptureContract.EXTRA_BODY_REGION_ID, viewModel.bodyRegionId.value?.value)
             }
         )
     }

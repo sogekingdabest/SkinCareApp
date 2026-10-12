@@ -21,12 +21,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.Before
+import dagger.hilt.android.EntryPointAccessors
+import com.monsteraltech.skincare.testing.TestingDependencies
 import org.junit.runner.RunWith
 import org.opencv.android.OpenCVLoader
 
 @RunWith(AndroidJUnit4::class)
 class CaptureImagesTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
+
+    @Before fun prepareProfile() {
+        EntryPointAccessors.fromApplication(context, TestingDependencies::class.java)
+            .profile().activateLocalProfile()
+    }
 
     @Test fun luminanceRotationUsesRealOpenCvAndBothSensorStrides() {
         assertTrue(OpenCVLoader.initLocal())

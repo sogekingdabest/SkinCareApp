@@ -14,12 +14,17 @@ class SaveAnalyzedCapture @Inject constructor(
     private val repository: MoleRepository,
     private val records: AnalysisRecordFactory
 ) {
+    suspend fun findSaved(captureId: String) = repository.findSavedCapture(captureId)
+
+    suspend fun getMole(moleId: String, owner: String) = repository.getMoleById(owner, moleId)
+
     suspend fun saveNew(
         image: File,
         complete: AnalysisOutcome.Complete,
-        annotations: AnalysisAnnotations
+        annotations: AnalysisAnnotations,
+        captureId: String = UUID.randomUUID().toString()
     ): Result<MoleData> {
-        val record = records.create(complete, UUID.randomUUID().toString(), annotations)
+        val record = records.create(complete, captureId, annotations, observationId = captureId)
         return repository.saveMoleWithAnalysis(
             context, image, annotations.title, annotations.description, annotations.bodyPart,
             annotations.bodyPartColorCode.orEmpty(), record
@@ -30,8 +35,9 @@ class SaveAnalyzedCapture @Inject constructor(
         moleId: String,
         image: File,
         complete: AnalysisOutcome.Complete,
-        annotations: AnalysisAnnotations
+        annotations: AnalysisAnnotations,
+        captureId: String = UUID.randomUUID().toString()
     ): Result<Unit> = repository.saveAnalysisToMole(
-        context, moleId, records.create(complete, moleId, annotations), image
+        context, moleId, records.create(complete, moleId, annotations, observationId = captureId), image
     )
 }

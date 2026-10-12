@@ -21,6 +21,9 @@ interface MoleDao {
     @Query("SELECT * FROM mole_analyses WHERE id = :analysisId AND moleId = :moleId AND userId = :userId LIMIT 1")
     suspend fun getAnalysis(userId: String, moleId: String, analysisId: String): AnalysisEntity?
 
+    @Query("SELECT * FROM mole_analyses WHERE id = :analysisId AND userId = :userId LIMIT 1")
+    suspend fun getOwnedAnalysis(userId: String, analysisId: String): AnalysisEntity?
+
     @Query("SELECT COUNT(*) FROM mole_analyses WHERE moleId = :moleId AND userId = :userId")
     suspend fun countAnalyses(userId: String, moleId: String): Int
 

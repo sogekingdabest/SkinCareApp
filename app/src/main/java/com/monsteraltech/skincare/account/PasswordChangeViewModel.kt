@@ -1,5 +1,6 @@
 package com.monsteraltech.skincare.account
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,11 +15,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 @HiltViewModel
-class PasswordChangeViewModel @Inject constructor(private val manager: PasswordChangeManager) : ViewModel() {
+class PasswordChangeViewModel @Inject constructor(private val manager: PasswordChangeManager, private val savedState: SavedStateHandle = SavedStateHandle()) : ViewModel() {
     sealed interface Event {
-        object Changed : Event
         data class Failed(val error: AccountResult.Error<Unit>) : Event
     }
+    val changed = savedState.getStateFlow("passwordChanged", false)
     val isAuthenticated: Boolean get() = manager.isAuthenticated()
     private val _isSaving = MutableStateFlow(false)
     val isSaving = _isSaving.asStateFlow()
@@ -26,14 +27,14 @@ class PasswordChangeViewModel @Inject constructor(private val manager: PasswordC
     val events = _events.receiveAsFlow()
 
     fun change(current: String, new: String) {
-        if (_isSaving.value) return
+        if (_isSaving.value || changed.value) return
         _isSaving.value = true
         viewModelScope.launch {
             try {
                 val result = manager.changePassword(current, new)
                 currentCoroutineContext().ensureActive()
                 when (result) {
-                    is AccountResult.Success -> _events.send(Event.Changed)
+                    is AccountResult.Success -> savedState["passwordChanged"] = true
                     is AccountResult.Error -> {
                         (result.exception as? CancellationException)?.let { throw it }
                         _events.send(Event.Failed(result))

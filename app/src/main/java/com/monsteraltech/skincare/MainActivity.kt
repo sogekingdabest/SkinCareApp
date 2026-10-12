@@ -7,13 +7,15 @@ import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.activity.viewModels
+import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import com.monsteraltech.skincare.account.AccountProfileRepository
 import com.monsteraltech.skincare.camera.CameraActivity
 import com.monsteraltech.skincare.data.SessionManager
-import com.monsteraltech.skincare.data.auth.AuthRepository
 import com.monsteraltech.skincare.databinding.ActivityMainBinding
 import com.monsteraltech.skincare.fragments.AccountFragment
 import com.monsteraltech.skincare.fragments.MyBodyFragment
@@ -29,14 +31,14 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    @Inject
-    lateinit var authRepository: AuthRepository
+    private val viewModel: MainViewModel by viewModels()
     @Inject
     lateinit var userProfileManager: AccountProfileRepository
     private lateinit var themeManager: ThemeManager
     private lateinit var sessionManager: SessionManager
     private lateinit var disclaimerHelper: MedicalDisclaimerHelper
     private var isLoggingOut = false
+    private var selectedTab = R.id.navigation_my_body
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val startTime = System.currentTimeMillis()
@@ -61,23 +63,47 @@ class MainActivity : AppCompatActivity() {
         binding.navigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.navigation_my_body -> {
-                    openFragment(MyBodyFragment())
+                    openTab(R.id.navigation_my_body)
                     true
                 }
                 R.id.camera_capture_button -> {
                     val intent = Intent(this, CameraActivity::class.java)
                     startActivity(intent)
-                    true
+                    false
                 }
                 R.id.navigation_account -> {
-                    openFragment(AccountFragment())
+                    openTab(R.id.navigation_account)
                     true
                 }
                 else -> false
             }
         }
-        if (savedInstanceState == null) {
-            binding.navigation.selectedItemId = R.id.navigation_my_body
+        selectedTab = savedInstanceState?.getInt("selectedTab", R.id.navigation_my_body)
+            ?: R.id.navigation_my_body
+        binding.navigation.selectedItemId = selectedTab
+        openTab(selectedTab)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (selectedTab != R.id.navigation_my_body) {
+                    binding.navigation.selectedItemId = R.id.navigation_my_body
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.isLoggingOut.collect { loading ->
+                        isLoggingOut = loading
+                        binding.logoutLoadingOverlay.visibility = if (loading) View.VISIBLE else View.GONE
+                        binding.navigation.isEnabled = !loading
+                        invalidateOptionsMenu()
+                    }
+                }
+                launch { viewModel.requiresLogin.collect { if (it) navigateToLogin() } }
+            }
         }
         val elapsedTime = System.currentTimeMillis() - startTime
         Log.d("MainActivity", "MainActivity inicializada en ${elapsedTime}ms")
@@ -86,12 +112,29 @@ class MainActivity : AppCompatActivity() {
             checkPreloadedData()
         }
     }
-    private fun openFragment(fragment: Fragment) {
-        val transaction = supportFragmentManager.beginTransaction()
-        transaction.replace(R.id.fragment_container, fragment)
-        transaction.addToBackStack(null)
-        transaction.commit()
+    private fun openTab(itemId: Int) {
+        if (supportFragmentManager.isStateSaved) return
+        val tag = if (itemId == R.id.navigation_account) "account" else "my_body"
+        val selected = supportFragmentManager.findFragmentByTag(tag)
+            ?: if (tag == "account") AccountFragment() else MyBodyFragment()
+        supportFragmentManager.beginTransaction().apply {
+            setReorderingAllowed(true)
+            supportFragmentManager.fragments.filter { it !== selected }.forEach {
+                hide(it)
+                setMaxLifecycle(it, Lifecycle.State.STARTED)
+            }
+            if (!selected.isAdded) add(R.id.fragment_container, selected, tag) else show(selected)
+            setMaxLifecycle(selected, Lifecycle.State.RESUMED)
+            setPrimaryNavigationFragment(selected)
+        }.commitNow()
+        selectedTab = itemId
     }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt("selectedTab", selectedTab)
+        super.onSaveInstanceState(outState)
+    }
+
     private fun initializeManagers() {
         try {
             themeManager = ThemeManager.getInstance()
@@ -111,7 +154,7 @@ class MainActivity : AppCompatActivity() {
                 val cacheStats = sessionManager.getCacheStats()
                 Log.d("MainActivity", "Cache stats al iniciar: $cacheStats")
                 if (cacheStats["cached_data_exists"] == true) {
-                    Log.d("MainActivity", "Datos de sesiÃ³n precargados disponibles")
+                    Log.d("MainActivity", "Datos de sesión precargados disponibles")
                     preloadAdditionalUserData()
                 }
             } catch (cancelled: CancellationException) {
@@ -160,19 +203,8 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(getString(R.string.account_logout_cancel), null)
             .show()
     }
-    fun logoutWithProgress() {
-        if (isLoggingOut) return
-        isLoggingOut = true
-        binding.logoutLoadingOverlay.visibility = View.VISIBLE
-        binding.navigation.isEnabled = false
-        invalidateOptionsMenu()
-        lifecycleScope.launch {
-            // Cierre de sesiÃ³n completo (sesiÃ³n local + Firebase + Credential Manager).
-            // La limpieza termina antes de propagar la cancelación de esta pantalla.
-            authRepository.signOut()
-            navigateToLogin()
-        }
-    }
+    fun logoutWithProgress() = viewModel.logout()
+
     private fun navigateToLogin() {
         val intent = Intent(this, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

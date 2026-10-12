@@ -23,6 +23,9 @@ import com.monsteraltech.skincare.body.mole.dialog.MoleSelectorDialog
 import com.monsteraltech.skincare.body.mole.model.UserAbcdeInput
 import com.monsteraltech.skincare.body.mole.util.RiskLevelTranslator
 import com.monsteraltech.skincare.camera.MoleCaptureContract
+import com.monsteraltech.skincare.camera.CaptureArgs
+import com.monsteraltech.skincare.camera.CaptureDraftStore
+import javax.inject.Inject
 import com.monsteraltech.skincare.databinding.ActivityAnalysisResultEnhancedBinding
 import com.monsteraltech.skincare.utils.MedicalDisclaimerHelper
 import kotlinx.coroutines.launch
@@ -36,6 +39,11 @@ import java.util.Locale
 @AndroidEntryPoint
 class AnalysisResultActivity : AppCompatActivity() {
 
+    @Inject lateinit var drafts: CaptureDraftStore
+    private var captureArgs: CaptureArgs? = null
+    private var hasNavigated = false
+    private var savedInstanceStateForForm: Bundle? = null
+    private var targetHeaderLoaded = false
     private val viewModel: AnalysisResultViewModel by viewModels()
     private lateinit var binding: ActivityAnalysisResultEnhancedBinding
     private lateinit var explanationAdapter: ExplanationAdapter
@@ -46,11 +54,10 @@ class AnalysisResultActivity : AppCompatActivity() {
     private var selectedBodyRegionId: BodyRegionId? = null
     private var overlayShown = false
     private var targetMoleId: String? = null
-    private var targetMoleTitle: String? = null
-    private var targetMoleDescription: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        savedInstanceStateForForm = savedInstanceState
         binding = ActivityAnalysisResultEnhancedBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -62,33 +69,32 @@ class AnalysisResultActivity : AppCompatActivity() {
         targetMoleId =
             intent.getStringExtra(MoleCaptureContract.EXTRA_MOLE_ID)
                 ?.takeIf(String::isNotBlank)
-        targetMoleTitle =
-            intent.getStringExtra(MoleCaptureContract.EXTRA_MOLE_TITLE)
-        targetMoleDescription =
-            intent.getStringExtra(
-                MoleCaptureContract.EXTRA_MOLE_DESCRIPTION
-            )
         setupUI()
+        selectedBodyRegionId = savedInstanceState?.getString("selectedRegion")?.let(BodyRegionId::fromValue)
+            ?: selectedBodyRegionId
         setupBodyPart()
+        if (savedInstanceState?.getBoolean("manualInputVisible") == true) {
+            binding.userInputContainer.isVisible = true
+            binding.toggleUserInputButton.setText(R.string.user_abcde_hide_button)
+        }
         setupBackNavigation()
         observeViewModel()
 
-        val photoPath =
-            intent.getStringExtra(MoleCaptureContract.EXTRA_PHOTO_PATH)
-        if (photoPath != null) {
-            viewModel.startAnalysis(
-                photoPath = photoPath,
-                isFrontCamera =
-                    intent.getBooleanExtra(
-                        MoleCaptureContract.EXTRA_IS_FRONT_CAMERA,
-                        false
-                    ),
-                pixelDensity = resources.displayMetrics.density,
-                targetMoleId = targetMoleId
-            )
-        } else {
+        try {
+            captureArgs = CaptureArgs.read(intent, savedInstanceState, drafts)
+            val args = requireNotNull(captureArgs)
+            viewModel.startAnalysis(drafts.file(args.captureId).absolutePath, args.isFrontCamera,
+                resources.displayMetrics.density, args.moleId, args.captureId)
+        } catch (error: Exception) {
             showError(getString(R.string.analysis_image_load_error))
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        captureArgs?.save(outState)
+        outState.putString("selectedRegion", selectedBodyRegionId?.value)
+        outState.putBoolean("manualInputVisible", binding.userInputContainer.isVisible)
+        super.onSaveInstanceState(outState)
     }
 
     private fun setupUI() {
@@ -113,10 +119,6 @@ class AnalysisResultActivity : AppCompatActivity() {
         if (targetMoleId != null) {
             binding.saveButton.setText(R.string.save_follow_up)
             binding.assignToExistingMoleButton.visibility = View.GONE
-            binding.titleEditText.setText(targetMoleTitle.orEmpty())
-            binding.descriptionEditText.setText(
-                targetMoleDescription.orEmpty()
-            )
         }
         binding.historyButton.setOnClickListener { showHistoryDialog() }
         binding.infoButton.setOnClickListener { showABCDEInfo() }
@@ -138,6 +140,31 @@ class AnalysisResultActivity : AppCompatActivity() {
                 }
                 launch { viewModel.isSaving.collect { renderSaving(it) } }
                 launch { viewModel.events.collect { handleEvent(it) } }
+                launch {
+                    viewModel.savedCapture.collect { saved ->
+                        if (saved != null && !hasNavigated) {
+                            hasNavigated = true
+                            val message = saved.existingMoleTitle?.let { getString(R.string.save_associated_success, it) }
+                                ?: getString(R.string.save_success)
+                            Toast.makeText(this@AnalysisResultActivity, message, Toast.LENGTH_SHORT).show()
+                            navigateBack(saved.regionId)
+                            captureArgs?.let { drafts.discard(it.captureId) }
+                        }
+                    }
+                }
+                launch {
+                    viewModel.targetMole.collect { mole ->
+                        if (mole != null) {
+                            selectedBodyRegionId = mole.bodyRegionId
+                            setupBodyPart()
+                            if (!targetHeaderLoaded && savedInstanceStateForForm == null) {
+                                binding.titleEditText.setText(mole.title)
+                                binding.descriptionEditText.setText(mole.description)
+                            }
+                            targetHeaderLoaded = true
+                        }
+                    }
+                }
             }
         }
     }
@@ -187,13 +214,6 @@ class AnalysisResultActivity : AppCompatActivity() {
         when (event) {
             is AnalysisResultViewModel.Event.ValidationFailed ->
                 Toast.makeText(this, getString(event.messageRes), Toast.LENGTH_SHORT).show()
-            is AnalysisResultViewModel.Event.SaveCompleted -> {
-                val message = event.existingMoleTitle?.let {
-                    getString(R.string.save_associated_success, it)
-                } ?: getString(R.string.save_success)
-                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-                navigateBack()
-            }
             is AnalysisResultViewModel.Event.SaveFailed ->
                 Toast.makeText(
                     this,
@@ -220,21 +240,27 @@ class AnalysisResultActivity : AppCompatActivity() {
     private fun setupBackNavigation() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (viewModel.isSaving.value) return
                 if (viewModel.isProcessing) {
                     AlertDialog.Builder(this@AnalysisResultActivity)
                         .setTitle("Cancelar análisis")
                         .setMessage("¿Deseas cancelar el análisis en curso?")
                         .setPositiveButton("Sí") { _, _ ->
                             viewModel.cancelAnalysis()
-                            finish()
+                            discardAndFinish()
                         }
                         .setNegativeButton("No", null)
                         .show()
                 } else {
-                    finish()
+                    discardAndFinish()
                 }
             }
         })
+    }
+
+    private fun discardAndFinish() {
+        captureArgs?.let { drafts.discard(it.captureId) }
+        finish()
     }
 
     private fun showProcessingOverlay() {
@@ -485,7 +511,6 @@ class AnalysisResultActivity : AppCompatActivity() {
             if (selectedMole != null) {
                 viewModel.saveToExistingMole(
                     moleId = selectedMole.id,
-                    existingMoleTitle = selectedMole.title,
                     title = title,
                     description = description,
                     bodyPart = selectedBodyPart,
@@ -523,7 +548,6 @@ class AnalysisResultActivity : AppCompatActivity() {
 
         viewModel.saveToExistingMole(
             moleId = moleId,
-            existingMoleTitle = targetMoleTitle,
             title = binding.titleEditText.text.toString(),
             description = binding.descriptionEditText.text.toString(),
             bodyPart = selectedBodyPart,
@@ -533,10 +557,10 @@ class AnalysisResultActivity : AppCompatActivity() {
         )
     }
 
-    private fun navigateBack() {
-        val intent = if (selectedBodyRegionId != null && selectedBodyRegionId != BodyRegionId.UNKNOWN) {
+    private fun navigateBack(regionId: BodyRegionId) {
+        val intent = if (regionId != BodyRegionId.UNKNOWN) {
             Intent(this, BodyPartActivity::class.java).apply {
-                putExtra(BodyRegionContract.EXTRA_REGION_ID, selectedBodyRegionId?.value)
+                putExtra(BodyRegionContract.EXTRA_REGION_ID, regionId.value)
             }
         } else {
             Intent(this, MainActivity::class.java)

@@ -51,7 +51,7 @@ class LoginViewModelTest {
 
         viewModel.signInWithEmail("a@b.com", "1234")
 
-        assertEquals(LoginViewModel.Event.NavigateToMain, viewModel.events.first())
+        assertEquals(true, viewModel.requiresMain.value)
         assertFalse(viewModel.isLoading.value)
     }
 
@@ -84,7 +84,7 @@ class LoginViewModelTest {
 
         viewModel.signInWithGoogleToken("token-123")
 
-        assertEquals(LoginViewModel.Event.NavigateToMain, viewModel.events.first())
+        assertEquals(true, viewModel.requiresMain.value)
     }
 
     @Test
@@ -107,7 +107,7 @@ class LoginViewModelTest {
         viewModel.continueWithoutAccount()
 
         coVerify(exactly = 1) { authRepository.continueWithoutAccount() }
-        assertEquals(LoginViewModel.Event.NavigateToMain, viewModel.events.first())
+        assertEquals(true, viewModel.requiresMain.value)
         assertFalse(viewModel.isLoading.value)
     }
 }

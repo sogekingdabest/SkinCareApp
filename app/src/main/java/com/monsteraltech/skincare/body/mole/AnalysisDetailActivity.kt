@@ -6,13 +6,20 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.activity.viewModels
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
 import com.monsteraltech.skincare.body.mole.util.RiskLevelTranslator
 import com.monsteraltech.skincare.databinding.ActivityAnalysisDetailBinding
 import java.text.SimpleDateFormat
 import java.util.Locale
+@AndroidEntryPoint
 class AnalysisDetailActivity : AppCompatActivity() {
+    private val viewModel: MoleViewerViewModel by viewModels()
     private lateinit var binding: ActivityAnalysisDetailBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,69 +28,18 @@ class AnalysisDetailActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = "Detalle del Análisis"
-        val analysisData = reconstructAnalysisDataFromIntent()
-        if (analysisData == null) {
-            finish()
-            return
-        }
-        displayAnalysisDetails(analysisData)
-    }
-    private fun reconstructAnalysisDataFromIntent(): AnalysisData? {
-        return try {
-            val id = intent.getStringExtra("ANALYSIS_ID") ?: return null
-            val moleId = intent.getStringExtra("MOLE_ID") ?: ""
-            val analysisResult = intent.getStringExtra("ANALYSIS_RESULT") ?: ""
-            val aiProbability = intent.getFloatExtra("AI_PROBABILITY", 0f)
-            val aiConfidence = intent.getFloatExtra("AI_CONFIDENCE", 0f)
-            val combinedScore = intent.getFloatExtra("COMBINED_SCORE", 0f)
-            val riskLevel = intent.getStringExtra("RISK_LEVEL") ?: ""
-            val recommendation = intent.getStringExtra("RECOMMENDATION") ?: ""
-            val imageUrl = intent.getStringExtra("IMAGE_URL") ?: ""
-            val createdAtMillis = intent.getLongExtra("CREATED_AT", System.currentTimeMillis())
-            val asymmetryScore = intent.getFloatExtra("ASYMMETRY_SCORE", 0f)
-            val borderScore = intent.getFloatExtra("BORDER_SCORE", 0f)
-            val colorScore = intent.getFloatExtra("COLOR_SCORE", 0f)
-            val diameterScore = intent.getFloatExtra("DIAMETER_SCORE", 0f)
-            val evolutionScore = intent.getFloatExtra("EVOLUTION_SCORE", -1f).let {
-                if (it == -1f) null else it
-            }
-            val totalScore = intent.getFloatExtra("TOTAL_SCORE", 0f)
-            val abcdeScores = com.monsteraltech.skincare.body.mole.model.ABCDEScores(
-                asymmetryScore = asymmetryScore,
-                borderScore = borderScore,
-                colorScore = colorScore,
-                diameterScore = diameterScore,
-                evolutionScore = evolutionScore,
-                totalScore = totalScore
-            )
-            val createdAt = java.time.Instant.ofEpochMilli(createdAtMillis)
-            val metadataBundle = intent.getBundleExtra("ANALYSIS_METADATA")
-            val analysisMetadata = metadataBundle?.let { bundle ->
-                val map = mutableMapOf<String, Any>()
-                for (key in bundle.keySet()) {
-                    bundle.get(key)?.let { value ->
-                        map[key] = value
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    when (state) {
+                        is MoleViewerViewModel.UiState.Analysis -> displayAnalysisDetails(state.data)
+                        is MoleViewerViewModel.UiState.Error, MoleViewerViewModel.UiState.NoAnalysis -> finish()
+                        MoleViewerViewModel.UiState.Loading -> Unit
                     }
                 }
-                map.toMap()
-            } ?: emptyMap()
-            AnalysisData(
-                id = id,
-                moleId = moleId,
-                analysisResult = analysisResult,
-                aiProbability = aiProbability,
-                aiConfidence = aiConfidence,
-                abcdeScores = abcdeScores,
-                combinedScore = combinedScore,
-                riskLevel = riskLevel,
-                recommendation = recommendation,
-                imageUrl = imageUrl,
-                createdAt = createdAt,
-                analysisMetadata = analysisMetadata
-            )
-        } catch (e: Exception) {
-            null
+            }
         }
+        viewModel.initialize(MoleViewerArgs.fromIntent(intent))
     }
     private fun displayAnalysisDetails(analysis: AnalysisData) {
         ImageLoadingUtil.loadImageWithFallback(
@@ -265,37 +221,7 @@ class AnalysisDetailActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
     companion object {
-        fun createIntent(context: android.content.Context, analysisData: AnalysisData): Intent {
-            val intent = Intent(context, AnalysisDetailActivity::class.java)
-            intent.putExtra("ANALYSIS_ID", analysisData.id)
-            intent.putExtra("MOLE_ID", analysisData.moleId)
-            intent.putExtra("ANALYSIS_RESULT", analysisData.analysisResult)
-            intent.putExtra("AI_PROBABILITY", analysisData.aiProbability)
-            intent.putExtra("AI_CONFIDENCE", analysisData.aiConfidence)
-            intent.putExtra("COMBINED_SCORE", analysisData.combinedScore)
-            intent.putExtra("RISK_LEVEL", analysisData.riskLevel)
-            intent.putExtra("RECOMMENDATION", analysisData.recommendation)
-            intent.putExtra("IMAGE_URL", analysisData.imageUrl)
-            intent.putExtra("CREATED_AT", analysisData.createdAt.toEpochMilli())
-            intent.putExtra("ASYMMETRY_SCORE", analysisData.abcdeScores.asymmetryScore)
-            intent.putExtra("BORDER_SCORE", analysisData.abcdeScores.borderScore)
-            intent.putExtra("COLOR_SCORE", analysisData.abcdeScores.colorScore)
-            intent.putExtra("DIAMETER_SCORE", analysisData.abcdeScores.diameterScore)
-            intent.putExtra("EVOLUTION_SCORE", analysisData.abcdeScores.evolutionScore ?: -1f)
-            intent.putExtra("TOTAL_SCORE", analysisData.abcdeScores.totalScore)
-            val metadataBundle = Bundle()
-            analysisData.analysisMetadata.forEach { (key, value) ->
-                when (value) {
-                    is String -> metadataBundle.putString(key, value)
-                    is Float -> metadataBundle.putFloat(key, value)
-                    is Int -> metadataBundle.putInt(key, value)
-                    is Boolean -> metadataBundle.putBoolean(key, value)
-                    is Long -> metadataBundle.putLong(key, value)
-                    is Double -> metadataBundle.putDouble(key, value)
-                }
-            }
-            intent.putExtra("ANALYSIS_METADATA", metadataBundle)
-            return intent
-        }
+        fun createIntent(context: android.content.Context, analysisData: AnalysisData): Intent =
+            MoleViewerArgs(analysisData.moleId, analysisData.id).toIntent(context, AnalysisDetailActivity::class.java)
     }
 }

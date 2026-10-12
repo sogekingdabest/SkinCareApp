@@ -1,6 +1,7 @@
 package com.monsteraltech.skincare.login
 
 import androidx.annotation.StringRes
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val passwordChangeManager: PasswordChangeManager
+    private val passwordChangeManager: PasswordChangeManager,
+    private val savedState: SavedStateHandle = SavedStateHandle()
 ) : ViewModel() {
 
     companion object {
@@ -34,11 +36,12 @@ class RegisterViewModel @Inject constructor(
     }
 
     sealed interface Event {
-        object NavigateToMain : Event
         data class ShowMessage(@StringRes val messageRes: Int) : Event
         /** Mensajes dinámicos del validador de contraseñas. */
         data class ShowMessageText(val message: String) : Event
     }
+
+    val requiresMain = savedState.getStateFlow("authCompleted", false)
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -79,7 +82,7 @@ class RegisterViewModel @Inject constructor(
             return
         }
 
-        if (_isLoading.value) return
+        if (_isLoading.value || requiresMain.value) return
         viewModelScope.launch {
             _isLoading.value = true
             val result = try { authRepository.registerWithEmail(trimmedEmail, password) }
@@ -87,7 +90,7 @@ class RegisterViewModel @Inject constructor(
             currentCoroutineContext().ensureActive()
             (result.exceptionOrNull() as? CancellationException)?.let { throw it }
             result
-                .onSuccess { _events.send(Event.NavigateToMain) }
+                .onSuccess { savedState["authCompleted"] = true }
                 .onFailure { error ->
                     val messageRes = when (error) {
                         is AuthRepository.RegisterError.EmailAlreadyInUse -> R.string.error_email_in_use

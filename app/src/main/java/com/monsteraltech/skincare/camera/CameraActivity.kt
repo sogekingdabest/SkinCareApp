@@ -11,6 +11,7 @@ import android.util.Log
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.viewModels
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -40,12 +41,12 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
-import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 @AndroidEntryPoint
 class CameraActivity : AppCompatActivity() {
+    private val captureViewModel: CameraCaptureViewModel by viewModels()
     @Inject lateinit var frameProcessorFactory: CaptureFrameProcessorFactory
     private lateinit var frameProcessor: CaptureFrameProcessor
     companion object {
@@ -80,29 +81,16 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var guidanceMessageText: TextView
     private lateinit var digitalZoomController: DigitalZoomController
     private lateinit var zoomControlsView: ZoomControlsView
-    private var bodyPartColor: String? = null
     private var bodyRegionId: BodyRegionId? = null
     private var targetMoleId: String? = null
-    private var targetMoleTitle: String? = null
-    private var targetMoleDescription: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
         bodyRegionId = BodyRegionContract.read(intent)
-        bodyPartColor =
-            intent.getStringExtra(
-                MoleCaptureContract.EXTRA_BODY_PART_COLOR
-            )
         targetMoleId =
             intent.getStringExtra(MoleCaptureContract.EXTRA_MOLE_ID)
                 ?.takeIf(String::isNotBlank)
-        targetMoleTitle =
-            intent.getStringExtra(MoleCaptureContract.EXTRA_MOLE_TITLE)
-        targetMoleDescription =
-            intent.getStringExtra(
-                MoleCaptureContract.EXTRA_MOLE_DESCRIPTION
-            )
         val experimentalCapturePreferences = ExperimentalCapturePreferences(this)
         captureValidityModelEnabled =
             ExperimentalCapturePreferences.isCaptureValidityEffective(
@@ -133,6 +121,19 @@ class CameraActivity : AppCompatActivity() {
         }
 
         setupUI()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { captureViewModel.preview.collect { args ->
+                    if (args != null) {
+                        previewLauncher.launch(args.toIntent(this@CameraActivity, PreviewActivity::class.java))
+                        captureViewModel.previewOpened(args.captureId)
+                    }
+                } }
+                launch { captureViewModel.isCapturing.collect { capturing ->
+                    captureButton.isEnabled = !capturing && currentGuidanceResult?.state is CaptureState.ReadyToCapture
+                } }
+            }
+        }
         cameraExecutor = Executors.newSingleThreadExecutor()
         isOpenCVInitialized = initializeOpenCV()
 
@@ -279,7 +280,7 @@ class CameraActivity : AppCompatActivity() {
         }
         captureStatusIndicator.setImageResource(statusIcon)
 
-        val canCapture = guidanceResult.state is CaptureState.ReadyToCapture
+        val canCapture = guidanceResult.state is CaptureState.ReadyToCapture && !captureViewModel.isCapturing.value && captureViewModel.preview.value == null
         captureButton.isEnabled = canCapture
         captureButton.backgroundTintList = ColorStateList.valueOf(
             ContextCompat.getColor(this, if (canCapture) R.color.risk_very_low else R.color.risk_high)
@@ -337,11 +338,13 @@ class CameraActivity : AppCompatActivity() {
 
     private fun takePhoto() {
         val imageCapture = imageCapture ?: return
-        val captureDirectory = File(cacheDir, "private_captures").apply { mkdirs() }
-        val originalFile = File(
-            captureDirectory,
-            "original-${System.currentTimeMillis()}.jpg"
-        )
+        if (captureViewModel.isCapturing.value || captureViewModel.preview.value != null) return
+        val draft = try { captureViewModel.prepare(currentCameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA, bodyRegionId, targetMoleId) } catch (error: Exception) {
+            UIUtils.showErrorToast(this, getString(R.string.ui_error))
+            return
+        }
+        val originalFile = draft.file
+        captureButton.isEnabled = false
         val outputOptions = ImageCapture.OutputFileOptions.Builder(originalFile).build()
         imageCapture.takePicture(
             outputOptions,
@@ -349,60 +352,25 @@ class CameraActivity : AppCompatActivity() {
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     if (originalFile.exists()) {
-                        val isFrontCamera = currentCameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA
-                        navigateToPreview(originalFile.absolutePath, isFrontCamera)
+                        try { captureViewModel.completed(draft.id) } catch (error: Exception) {
+                            captureViewModel.failed(draft.id)
+                            Log.e(TAG, "Error conservando la captura", error)
+                            UIUtils.showErrorToast(this@CameraActivity, getString(R.string.ui_error))
+                        }
                     } else {
+                        captureViewModel.failed(draft.id)
                         Log.e(TAG, "Error: Archivo de imagen no encontrado después de captura")
                         UIUtils.showErrorToast(this@CameraActivity, getString(R.string.error_data_not_found))
                     }
                 }
 
                 override fun onError(exception: ImageCaptureException) {
+                    captureViewModel.failed(draft.id)
                     Log.e(TAG, "Error capturando foto", exception)
                     UIUtils.showErrorToast(this@CameraActivity, getString(R.string.ui_error))
                 }
             }
         )
-    }
-
-    fun navigateToPreview(
-        photoPath: String,
-        isFrontCamera: Boolean,
-        preprocessingApplied: Boolean = false,
-        processingMetadata: String = ""
-    ) {
-        val intent = Intent(this, PreviewActivity::class.java)
-        intent.putExtra(MoleCaptureContract.EXTRA_BODY_REGION_ID, bodyRegionId?.value)
-        intent.putExtra(MoleCaptureContract.EXTRA_PHOTO_PATH, photoPath)
-        intent.putExtra(
-            MoleCaptureContract.EXTRA_IS_FRONT_CAMERA,
-            isFrontCamera
-        )
-        intent.putExtra(
-            MoleCaptureContract.EXTRA_BODY_PART_COLOR,
-            bodyPartColor
-        )
-        intent.putExtra(
-            MoleCaptureContract.EXTRA_PREPROCESSING_APPLIED,
-            preprocessingApplied
-        )
-        intent.putExtra(
-            MoleCaptureContract.EXTRA_PROCESSING_METADATA,
-            processingMetadata
-        )
-        intent.putExtra(
-            MoleCaptureContract.EXTRA_MOLE_ID,
-            targetMoleId
-        )
-        intent.putExtra(
-            MoleCaptureContract.EXTRA_MOLE_TITLE,
-            targetMoleTitle
-        )
-        intent.putExtra(
-            MoleCaptureContract.EXTRA_MOLE_DESCRIPTION,
-            targetMoleDescription
-        )
-        previewLauncher.launch(intent)
     }
 
     override fun onResume() {

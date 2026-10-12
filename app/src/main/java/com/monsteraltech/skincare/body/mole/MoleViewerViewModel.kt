@@ -10,7 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import com.monsteraltech.skincare.body.mole.error.ErrorHandler
 import com.monsteraltech.skincare.body.mole.error.RetryManager
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
-import com.monsteraltech.skincare.body.mole.data.LegacyAnalysisResultDecoder
+import com.monsteraltech.skincare.body.mole.model.MoleData
 import com.monsteraltech.skincare.body.mole.model.UserAbcdeInput
 import com.monsteraltech.skincare.body.mole.repository.MoleRepository
 import kotlinx.coroutines.channels.Channel
@@ -27,8 +27,7 @@ import javax.inject.Inject
 class MoleViewerViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val moleRepository: MoleRepository,
-    private val activeProfile: ActiveProfile,
-    private val legacyDecoder: LegacyAnalysisResultDecoder
+    private val activeProfile: ActiveProfile
 ) : ViewModel() {
 
     private val retryManager = RetryManager()
@@ -36,9 +35,7 @@ class MoleViewerViewModel @Inject constructor(
     sealed interface UiState {
         object Loading : UiState
         /** Análisis estructurado listo para pintar. */
-        data class Analysis(val data: AnalysisData, val analysisCount: Int) : UiState
-        /** El resultado no se pudo parsear: se muestra el texto tal cual. */
-        data class RawResult(val text: String, val analysisCount: Int) : UiState
+        data class Analysis(val data: AnalysisData, val analysisCount: Int, val mole: MoleData) : UiState
         object NoAnalysis : UiState
         data class Error(val result: ErrorHandler.ErrorResult) : UiState
     }
@@ -62,6 +59,8 @@ class MoleViewerViewModel @Inject constructor(
 
     private val _bodyRegionId = MutableStateFlow<BodyRegionId?>(null)
     val bodyRegionId = _bodyRegionId.asStateFlow()
+    private val _mole = MutableStateFlow<MoleData?>(null)
+    val mole = _mole.asStateFlow()
     private var args: MoleViewerArgs? = null
     private var isLoading = false
 
@@ -69,7 +68,6 @@ class MoleViewerViewModel @Inject constructor(
     fun initialize(args: MoleViewerArgs) {
         if (this.args != null) return
         this.args = args
-        _bodyRegionId.value = args.bodyRegionId
         load(args)
     }
 
@@ -78,33 +76,8 @@ class MoleViewerViewModel @Inject constructor(
     }
 
     private fun load(args: MoleViewerArgs) {
-        when {
-            args.historicalAnalysis != null ->
-                _uiState.value = UiState.Analysis(args.historicalAnalysis, args.analysisCount)
-
-            args.moleId.isNotEmpty() -> loadFromRepository(args.moleId)
-
-            args.aiResult.isNotEmpty() -> displayFromAiResult(args)
-
-            else -> _uiState.value = UiState.NoAnalysis
-        }
-    }
-
-    private fun displayFromAiResult(args: MoleViewerArgs) {
-        val analysisData = try {
-            legacyDecoder.decode(
-                aiResult = args.aiResult,
-                moleId = args.moleId,
-                imageUrl = args.imageUrl
-            )
-        } catch (e: Exception) {
-            null
-        }
-        _uiState.value = if (analysisData != null) {
-            UiState.Analysis(analysisData, args.analysisCount)
-        } else {
-            UiState.RawResult(args.aiResult, args.analysisCount)
-        }
+        if (args.moleId.isBlank()) _uiState.value = UiState.NoAnalysis
+        else loadFromRepository(args.moleId)
     }
 
     private fun loadFromRepository(moleId: String) {
@@ -136,18 +109,19 @@ class MoleViewerViewModel @Inject constructor(
                     _events.trySend(Event.RetryAttempt(attempt, retryConfig.maxAttempts))
                 }
             ) {
-                moleRepository.getMoleWithCurrentAnalysis(userId, moleId)
+                moleRepository.getMoleWithAnalysis(userId, moleId, args?.analysisId)
             }
 
             isLoading = false
             retryResult.result
                 .onSuccess { snapshot ->
+                    _mole.value = snapshot.mole
                     _bodyRegionId.value = snapshot.mole.bodyRegionId ?: BodyRegionId.UNKNOWN
                     if (retryResult.attemptsMade > 1) {
                         _events.trySend(Event.RetrySucceeded(retryResult.attemptsMade))
                     }
                     _uiState.value = snapshot.analysis?.let {
-                        UiState.Analysis(it, snapshot.mole.analysisCount)
+                        UiState.Analysis(it, snapshot.mole.analysisCount, snapshot.mole)
                     } ?: UiState.NoAnalysis
                 }
                 .onFailure { exception ->
@@ -181,7 +155,7 @@ class MoleViewerViewModel @Inject constructor(
                 if (result.isSuccess) {
                     _events.trySend(Event.UserValuesSaved)
                     // Recargar para mostrar la tarjeta de valores guardados.
-                    if (args?.historicalAnalysis != null) {
+                    if (args?.analysisId != null) {
                         _uiState.value = displayed.copy(data = displayed.data.copy(
                             analysisMetadata = displayed.data.analysisMetadata + input.toMetadataMap()
                         ))

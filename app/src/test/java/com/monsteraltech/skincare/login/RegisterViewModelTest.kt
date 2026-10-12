@@ -118,7 +118,7 @@ class RegisterViewModelTest {
 
         viewModel.register("a@b.com", "a@b.com", validPassword, validPassword)
 
-        assertEquals(RegisterViewModel.Event.NavigateToMain, viewModel.events.first())
+        assertEquals(true, viewModel.requiresMain.value)
     }
 
     @Test

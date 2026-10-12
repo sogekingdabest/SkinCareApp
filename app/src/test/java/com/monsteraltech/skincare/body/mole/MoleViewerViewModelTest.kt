@@ -41,7 +41,7 @@ class MoleViewerViewModelTest {
         moleRepository = mockk()
         activeProfile = mockk()
         every { activeProfile.ownerId } returns "user-1"
-        viewModel = MoleViewerViewModel(context, moleRepository, activeProfile, com.monsteraltech.skincare.body.mole.data.LegacyAnalysisResultDecoder())
+        viewModel = MoleViewerViewModel(context, moleRepository, activeProfile)
     }
 
     @After
@@ -51,18 +51,8 @@ class MoleViewerViewModelTest {
 
     private fun args(
         moleId: String = "",
-        aiResult: String = "",
-        historical: AnalysisData? = null,
-        analysisCount: Int = 0
-    ) = MoleViewerArgs(
-        moleId = moleId,
-        title = "Lunar test",
-        description = "",
-        imageUrl = "",
-        aiResult = aiResult,
-        analysisCount = analysisCount,
-        historicalAnalysis = historical
-    )
+        historical: AnalysisData? = null
+    ) = MoleViewerArgs(moleId = moleId, analysisId = historical?.id)
 
     private fun historicalAnalysis() = AnalysisData(
         id = "hist-1",
@@ -94,8 +84,8 @@ class MoleViewerViewModelTest {
 
     @Test
     fun `el detalle actual conserva identidad y evolucion de la observacion`() = runTest {
-        coEvery { moleRepository.getMoleWithCurrentAnalysis(any(), any()) } returns Result.success(currentSnapshot())
-        viewModel.initialize(args(moleId = "mole-1", aiResult = "resumen desactualizado"))
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns Result.success(currentSnapshot())
+        viewModel.initialize(args(moleId = "mole-1"))
         val state = viewModel.uiState.value as MoleViewerViewModel.UiState.Analysis
         assertEquals("capture-3", state.data.id)
         assertEquals(1f, state.data.abcdeScores.evolutionScore)
@@ -103,7 +93,7 @@ class MoleViewerViewModelTest {
 
     @Test
     fun `un lunar sin observacion no inventa un analisis`() = runTest {
-        coEvery { moleRepository.getMoleWithCurrentAnalysis(any(), any()) } returns Result.success(
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns Result.success(
             MoleRepository.CurrentAnalysis(moleData().copy(analysisCount = 0), null))
         viewModel.initialize(args(moleId = "mole-1"))
         assertEquals(MoleViewerViewModel.UiState.NoAnalysis, viewModel.uiState.value)
@@ -112,27 +102,31 @@ class MoleViewerViewModelTest {
     @Test
     fun `la valoracion historica se vincula al id mostrado sin cambiar al actual`() = runTest {
         coEvery { moleRepository.updateMoleAnalysisMetadata(any(), any(), any(), any()) } returns Result.success(Unit)
-        viewModel.initialize(args(moleId = "mole-1", historical = historicalAnalysis(), analysisCount = 1))
+        coEvery { moleRepository.getMoleWithAnalysis("user-1", "mole-1", "hist-1") } returns
+            Result.success(MoleRepository.CurrentAnalysis(moleData(), historicalAnalysis()))
+        viewModel.initialize(args(moleId = "mole-1", historical = historicalAnalysis()))
         viewModel.saveUserValues(UserAbcdeInput(asymmetry = 1f))
         assertEquals(MoleViewerViewModel.Event.UserValuesSaved, viewModel.events.first())
         coVerify { moleRepository.updateMoleAnalysisMetadata("user-1", "mole-1", any(), "hist-1") }
         assertEquals("hist-1", (viewModel.uiState.value as MoleViewerViewModel.UiState.Analysis).data.id)
-        coVerify(exactly = 0) { moleRepository.getMoleWithCurrentAnalysis(any(), any()) }
+        coVerify(exactly = 0) { moleRepository.getMoleWithAnalysis(any(), any(), null) }
     }
 
     @Test
-    fun `un analisis historico se muestra directamente`() = runTest {
-        viewModel.initialize(args(moleId = "mole-1", historical = historicalAnalysis(), analysisCount = 1))
+    fun `un analisis historico se carga por su identidad desde el repositorio`() = runTest {
+        coEvery { moleRepository.getMoleWithAnalysis("user-1", "mole-1", "hist-1") } returns
+            Result.success(MoleRepository.CurrentAnalysis(moleData(), historicalAnalysis()))
+        viewModel.initialize(args(moleId = "mole-1", historical = historicalAnalysis()))
 
         val state = viewModel.uiState.value
         assertTrue(state is MoleViewerViewModel.UiState.Analysis)
         assertEquals("hist-1", (state as MoleViewerViewModel.UiState.Analysis).data.id)
-        coVerify(exactly = 0) { moleRepository.getMoleWithCurrentAnalysis(any(), any()) }
+        coVerify(exactly = 1) { moleRepository.getMoleWithAnalysis("user-1", "mole-1", "hist-1") }
     }
 
     @Test
     fun `con moleId se carga del repositorio y se mapean los campos`() = runTest {
-        coEvery { moleRepository.getMoleWithCurrentAnalysis("user-1", "mole-1") } returns Result.success(currentSnapshot())
+        coEvery { moleRepository.getMoleWithAnalysis("user-1", "mole-1", null) } returns Result.success(currentSnapshot())
 
         viewModel.initialize(args(moleId = "mole-1"))
 
@@ -161,7 +155,7 @@ class MoleViewerViewModelTest {
 
     @Test
     fun `un fallo del repositorio produce estado de error`() = runTest {
-        coEvery { moleRepository.getMoleWithCurrentAnalysis(any(), any()) } returns
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns
                 Result.failure(IllegalStateException("boom"))
 
         viewModel.initialize(args(moleId = "mole-1"))
@@ -178,17 +172,17 @@ class MoleViewerViewModelTest {
 
     @Test
     fun `initialize es idempotente`() = runTest {
-        coEvery { moleRepository.getMoleWithCurrentAnalysis(any(), any()) } returns Result.success(currentSnapshot())
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns Result.success(currentSnapshot())
 
         viewModel.initialize(args(moleId = "mole-1"))
         viewModel.initialize(args(moleId = "mole-1"))
 
-        coVerify(exactly = 1) { moleRepository.getMoleWithCurrentAnalysis("user-1", "mole-1") }
+        coVerify(exactly = 1) { moleRepository.getMoleWithAnalysis("user-1", "mole-1", null) }
     }
 
     @Test
     fun `guardar valores de usuario emite evento y recarga`() = runTest {
-        coEvery { moleRepository.getMoleWithCurrentAnalysis(any(), any()) } returns Result.success(currentSnapshot())
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns Result.success(currentSnapshot())
         coEvery { moleRepository.updateMoleAnalysisMetadata(any(), any(), any(), any()) } returns
                 Result.success(Unit)
         viewModel.initialize(args(moleId = "mole-1"))
@@ -205,7 +199,7 @@ class MoleViewerViewModelTest {
             )
         }
         // Recarga tras guardar: initialize + save = 2 lecturas
-        coVerify(exactly = 2) { moleRepository.getMoleWithCurrentAnalysis("user-1", "mole-1") }
+        coVerify(exactly = 2) { moleRepository.getMoleWithAnalysis("user-1", "mole-1", null) }
     }
 
     @Test
@@ -220,7 +214,7 @@ class MoleViewerViewModelTest {
 
     @Test
     fun `un fallo al guardar emite el evento de error`() = runTest {
-        coEvery { moleRepository.getMoleWithCurrentAnalysis(any(), any()) } returns Result.success(currentSnapshot())
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns Result.success(currentSnapshot())
         coEvery { moleRepository.updateMoleAnalysisMetadata(any(), any(), any(), any()) } returns
                 Result.failure(IllegalStateException("sin conexión"))
         viewModel.initialize(args(moleId = "mole-1"))

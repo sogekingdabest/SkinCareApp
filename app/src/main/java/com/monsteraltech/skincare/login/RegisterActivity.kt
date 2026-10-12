@@ -40,7 +40,6 @@ class RegisterActivity : AppCompatActivity() {
 
         bindViews()
         emailEditText.editText?.setText(intent.getStringExtra("email"))
-        passwordEditText.editText?.setText(intent.getStringExtra("password"))
 
         registerButton.setOnClickListener {
             viewModel.register(
@@ -78,6 +77,7 @@ class RegisterActivity : AppCompatActivity() {
     private fun observeViewModel() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { viewModel.requiresMain.collect { if (it) navigateToMain() } }
                 launch {
                     viewModel.isLoading.collect { loading ->
                         registerButton.isEnabled = !loading
@@ -86,7 +86,6 @@ class RegisterActivity : AppCompatActivity() {
                 launch {
                     viewModel.events.collect { event ->
                         when (event) {
-                            is RegisterViewModel.Event.NavigateToMain -> navigateToMain()
                             is RegisterViewModel.Event.ShowMessage ->
                                 UIUtils.showErrorToast(this@RegisterActivity, getString(event.messageRes))
                             is RegisterViewModel.Event.ShowMessageText ->
@@ -99,14 +98,15 @@ class RegisterActivity : AppCompatActivity() {
     }
 
     private fun navigateToMain() {
-        startActivity(Intent(this, MainActivity::class.java))
+        startActivity(Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        })
         finish()
     }
 
     private fun transitionBack() {
-        val intent = Intent(this, LoginActivity::class.java)
+        val intent = Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         intent.putExtra("email", emailEditText.editText?.text.toString())
-        intent.putExtra("password", passwordEditText.editText?.text.toString())
         val pairs = arrayOf(
             android.util.Pair<View, String>(logoImageView, "logoImageView"),
             android.util.Pair<View, String>(welcomeTextView, "textTrans"),
@@ -118,5 +118,6 @@ class RegisterActivity : AppCompatActivity() {
         )
         val options = ActivityOptions.makeSceneTransitionAnimation(this, *pairs)
         startActivity(intent, options.toBundle())
+        finish()
     }
 }
