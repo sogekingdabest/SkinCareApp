@@ -35,7 +35,7 @@ class NativeAnalysisEngines @Inject constructor(
         analyzer.value.analyzeMole(bitmap, previousBitmap, pixelDensity)
 
     override fun combine(ai: MelanomaAIDetector.AIInferenceResult, abcde: ABCDEAnalyzerOpenCV.ABCDEResult) =
-        detector.value.combineResults(ai.probability, ai.riskLevel, ai.confidence, abcde)
+        detector.value.combineResults(ai.probability, ai.riskLevel, ai.confidence, abcde, ai.modelIdentity)
 
     override fun close() {
         if (detector.isInitialized()) detector.value.close()

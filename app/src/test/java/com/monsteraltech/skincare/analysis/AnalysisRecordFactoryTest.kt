@@ -41,6 +41,15 @@ class AnalysisRecordFactoryTest {
     private val annotations = AnalysisAnnotations("Título", "Detalle", "Torso", null, null)
     private val records = AnalysisRecordFactory(AnalysisReportFormatter())
 
+    @Test fun `model provenance is saved only when present in the inference result`() {
+        val model = com.monsteraltech.skincare.analysis.model.ModelIdentity(
+            "test-model", "version-2", "a".repeat(64), "rgb-v2", "known")
+        val record = records.create(AnalysisOutcome.Complete(combinedResult().copy(modelIdentity = model)), "m-1", annotations)
+        model.observationMetadata().forEach { (key, value) -> assertEquals(value, record.analysisMetadata[key]) }
+        val historical = records.create(AnalysisOutcome.Complete(combinedResult()), "m-1", annotations)
+        assertFalse(historical.analysisMetadata.containsKey("aiModelVersion"))
+    }
+
     @Test fun `the persisted record retains all computed scores and complete status`() {
         val result = combinedResult()
         val date = Date(1234567890000L)

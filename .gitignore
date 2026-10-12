@@ -58,6 +58,7 @@ captures/
 *.pfx
 __pycache__/
 *.py[cod]
+/app/src/androidTest/assets/private-models/
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild

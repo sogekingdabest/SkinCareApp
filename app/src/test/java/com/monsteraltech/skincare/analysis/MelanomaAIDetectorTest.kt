@@ -22,6 +22,7 @@ class MelanomaAIDetectorTest {
         val context = mockk<Context>()
         val assets = mockk<AssetManager>()
         every { context.assets } returns assets
+        every { assets.open(any()) } throws FileNotFoundException("Test descriptor unavailable")
         every { assets.openFd(any()) } throws FileNotFoundException("Test model unavailable")
         detector = MelanomaAIDetector(context)
     }

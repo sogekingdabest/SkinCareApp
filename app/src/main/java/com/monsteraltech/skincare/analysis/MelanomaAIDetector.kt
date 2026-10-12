@@ -2,19 +2,14 @@ package com.monsteraltech.skincare.analysis
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
-import org.tensorflow.lite.Interpreter
-import java.io.FileInputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.MappedByteBuffer
-import java.nio.channels.FileChannel
+import com.monsteraltech.skincare.analysis.model.LesionClassifier
+import com.monsteraltech.skincare.analysis.model.LiteRtLesionClassifier
+import com.monsteraltech.skincare.analysis.model.ModelIdentity
 import kotlin.math.abs
 
 class MelanomaAIDetector(private val context: Context) {
     companion object {
         private const val TAG = "MelanomaAIDetector"
-        private const val MODEL_PATH = "melanoma_efficientnet_dynamic.tflite"
-        private const val IMAGE_SIZE = 224
         private const val AI_THRESHOLD_HIGH = 0.5f
         private const val OPTIMAL_THRESHOLD = 0.327f
         private const val AI_WEIGHT = 0.6f
@@ -22,7 +17,7 @@ class MelanomaAIDetector(private val context: Context) {
     }
 
     @Volatile
-    private var interpreter: Interpreter? = null
+    private var classifier: LesionClassifier? = null
     private val inferenceLock = Any()
     private val abcdeAnalyzer = ABCDEAnalyzerOpenCV(context)
 
@@ -40,14 +35,16 @@ class MelanomaAIDetector(private val context: Context) {
         val recommendation: String,
         val shouldMonitor: Boolean,
         val urgencyLevel: UrgencyLevel,
-        val explanations: List<String>
+        val explanations: List<String>,
+        val modelIdentity: ModelIdentity? = null
     )
 
     /** Resultado de la inferencia del modelo LiteRT, sin combinar con ABCDE. */
     data class AIInferenceResult(
         val probability: Float,
         val riskLevel: RiskLevel,
-        val confidence: Float
+        val confidence: Float,
+        val modelIdentity: ModelIdentity? = null
     )
 
     enum class RiskLevel {
@@ -73,7 +70,7 @@ class MelanomaAIDetector(private val context: Context) {
     ): CombinedAnalysisResult {
         val aiResult = runInference(bitmap)
         val abcdeResult = abcdeAnalyzer.analyzeMole(bitmap, previousBitmap, pixelDensity)
-        return combineResults(aiResult.probability, aiResult.riskLevel, aiResult.confidence, abcdeResult)
+        return combineResults(aiResult.probability, aiResult.riskLevel, aiResult.confidence, abcdeResult, aiResult.modelIdentity)
     }
 
     /**
@@ -83,61 +80,19 @@ class MelanomaAIDetector(private val context: Context) {
      * falla. Nunca devuelve valores inventados.
      */
     fun runInference(bitmap: Bitmap): AIInferenceResult {
-        val interpreter = this.interpreter
+        val active = this.classifier
             ?: throw AnalysisError.AIModelError("Modelo no disponible (no se pudo cargar)")
-
-        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, IMAGE_SIZE, IMAGE_SIZE, true)
         try {
-            val inputBuffer = ByteBuffer.allocateDirect(4 * IMAGE_SIZE * IMAGE_SIZE * 3)
-            inputBuffer.order(ByteOrder.nativeOrder())
-            val pixels = IntArray(IMAGE_SIZE * IMAGE_SIZE)
-            resizedBitmap.getPixels(pixels, 0, IMAGE_SIZE, 0, 0, IMAGE_SIZE, IMAGE_SIZE)
-            for (pixel in pixels) {
-                val r = (pixel shr 16) and 0xFF
-                val g = (pixel shr 8) and 0xFF
-                val b = pixel and 0xFF
-                // Normalización a [-1, 1], como en el entrenamiento (EfficientNetV2)
-                inputBuffer.putFloat((r / 127.5f) - 1.0f)
-                inputBuffer.putFloat((g / 127.5f) - 1.0f)
-                inputBuffer.putFloat((b / 127.5f) - 1.0f)
-            }
-            inputBuffer.rewind()
-
-            val probability = try {
-                synchronized(inferenceLock) {
-                    val outputTensor = interpreter.getOutputTensor(0)
-                    val outputBuffer = ByteBuffer
-                        .allocateDirect(outputTensor.numBytes())
-                        .order(ByteOrder.nativeOrder())
-                    interpreter.run(inputBuffer, outputBuffer)
-                    outputBuffer.rewind()
-                    val floatOutput = outputBuffer.asFloatBuffer()
-                    val outputArray = FloatArray(floatOutput.remaining())
-                    floatOutput.get(outputArray)
-                    when (outputArray.size) {
-                        1 -> outputArray[0]
-                        2 -> outputArray[1]
-                        else -> outputArray.last()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error durante la inferencia del modelo: ${e.message}", e)
-                throw AnalysisError.AIModelError("Fallo en la inferencia: ${e.message}")
-            }
-
-            if (!probability.isFinite() || probability < 0f || probability > 1f) {
-                throw AnalysisError.AIModelError("Salida del modelo fuera de rango: $probability")
-            }
-
+            val prediction = active.predict(bitmap)
             return AIInferenceResult(
-                probability = probability,
-                riskLevel = riskLevelForScore(probability),
-                confidence = calculateConfidence(probability)
+                probability = prediction.score,
+                riskLevel = riskLevelForScore(prediction.score),
+                confidence = calculateConfidence(prediction.score),
+                modelIdentity = prediction.model
             )
-        } finally {
-            if (resizedBitmap !== bitmap) {
-                resizedBitmap.recycle()
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error durante la inferencia del modelo", e)
+            throw AnalysisError.AIModelError("Fallo en la inferencia: ${e.message}")
         }
     }
 
@@ -145,7 +100,8 @@ class MelanomaAIDetector(private val context: Context) {
         probability: Float,
         riskLevel: RiskLevel,
         confidence: Float,
-        abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult
+        abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult,
+        modelIdentity: ModelIdentity? = null
     ): CombinedAnalysisResult {
         val aiResult = AIInferenceResult(probability, riskLevel, confidence)
         val combinedScore = calculateCombinedScore(aiResult, abcdeResult)
@@ -167,7 +123,8 @@ class MelanomaAIDetector(private val context: Context) {
             recommendation = recommendation,
             shouldMonitor = combinedScore > 0.2f || abcdeResult.evolutionScore != null,
             urgencyLevel = urgencyLevel,
-            explanations = explanations
+            explanations = explanations,
+            modelIdentity = modelIdentity
         )
     }
 
@@ -326,34 +283,18 @@ class MelanomaAIDetector(private val context: Context) {
 
     private fun loadModel() {
         try {
-            val model = loadMappedModel()
-            val options = Interpreter.Options().apply {
-                numThreads = 4
-                useNNAPI = false
-            }
-            interpreter = Interpreter(model, options)
+            val descriptor = LiteRtLesionClassifier.readDescriptor(context.assets, LiteRtLesionClassifier.DEPLOYED_DESCRIPTOR)
+            classifier = LiteRtLesionClassifier(context.assets, descriptor)
             Log.d(TAG, "Modelo cargado exitosamente")
         } catch (e: Exception) {
             Log.e(TAG, "Error cargando modelo: ${e.message}", e)
         }
     }
 
-    private fun loadMappedModel(): MappedByteBuffer {
-        return context.assets.openFd(MODEL_PATH).use { asset ->
-            FileInputStream(asset.fileDescriptor).channel.use { channel ->
-                channel.map(
-                    FileChannel.MapMode.READ_ONLY,
-                    asset.startOffset,
-                    asset.declaredLength
-                )
-            }
-        }
-    }
-
     fun close() {
         synchronized(inferenceLock) {
-            interpreter?.close()
-            interpreter = null
+            classifier?.close()
+            classifier = null
         }
     }
 }
