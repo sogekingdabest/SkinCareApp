@@ -43,6 +43,8 @@ jobs:
         run: cp app/google-services.json.example app/google-services.json
       - name: Check repository documentation
         run: python3 scripts/check-repository.py
+      - name: Test release automation
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
       - name: Build, test and lint
         run: >-
           ./gradlew --no-daemon --max-workers=2 --continue

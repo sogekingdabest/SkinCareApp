@@ -65,6 +65,22 @@ def complete(release: dict, tag: str) -> bool:
     return asset_names(tag) <= {asset["name"] for asset in release["assets"] if asset["size"] > 0}
 
 
+def release_by_tag(repository: str, tag: str) -> dict | None:
+    # GitHub's tag endpoint returns published releases. Drafts need the list/ID API.
+    found = api(f"repos/{repository}/releases/tags/{tag}", missing_ok=True)
+    if found is not None:
+        return found
+    page = 1
+    while True:
+        items = api(f"repos/{repository}/releases?per_page=100&page={page}")
+        found = next((item for item in items if item["tag_name"] == tag), None)
+        if found is not None:
+            return found
+        if len(items) < 100:
+            return None
+        page += 1
+
+
 def plan(repository: str, output: Path) -> None:
     commit = run("git", "rev-parse", "HEAD")
     tags = {tag: run("git", "rev-parse", f"refs/tags/{tag}^{{commit}}")
@@ -77,7 +93,7 @@ def plan(repository: str, output: Path) -> None:
             break
         page += 1
     version = select_version(tags, commit)
-    existing = api(f"repos/{repository}/releases/tags/{version['tag']}", missing_ok=True)
+    existing = release_by_tag(repository, version["tag"])
     published = existing is not None and not existing["draft"]
     if published and not complete(existing, version["tag"]):
         raise RuntimeError("Published release is incomplete; refusing to overwrite it")
@@ -149,7 +165,7 @@ def publish(repository: str, directory: Path) -> None:
         raise ValueError("Artifact does not belong to this commit")
     subprocess.run(["git", "merge-base", "--is-ancestor", commit, "origin/main"], check=True)
     tag = metadata["tag"]
-    release = api(f"repos/{repository}/releases/tags/{tag}", missing_ok=True)
+    release = release_by_tag(repository, tag)
     if release and not release["draft"]:
         if not complete(release, tag):
             raise RuntimeError("Published release is incomplete")
@@ -171,7 +187,7 @@ def publish(repository: str, directory: Path) -> None:
                       "body": body, "draft": True, "prerelease": False})
     run("gh", "release", "upload", tag, *[str(directory / name) for name in sorted(asset_names(tag))],
         "--repo", repository, "--clobber")
-    uploaded = api(f"repos/{repository}/releases/tags/{tag}")
+    uploaded = api(f"repos/{repository}/releases/{release['id']}")
     if not complete(uploaded, tag):
         raise RuntimeError("Draft does not contain every verified asset")
     result = subprocess.run(["gh", "api", f"repos/{repository}/releases/{release['id']}",
