@@ -6,15 +6,19 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.utils.RealTimeValidator
 import com.monsteraltech.skincare.utils.UIUtils
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import androidx.lifecycle.lifecycleScope
+import androidx.activity.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+@AndroidEntryPoint
 class PasswordChangeActivity : AppCompatActivity() {
+    private val viewModel: PasswordChangeViewModel by viewModels()
     private lateinit var currentPasswordLayout: TextInputLayout
     private lateinit var newPasswordLayout: TextInputLayout
     private lateinit var confirmPasswordLayout: TextInputLayout
@@ -25,28 +29,20 @@ class PasswordChangeActivity : AppCompatActivity() {
     private lateinit var cancelButton: MaterialButton
     private lateinit var loadingOverlay: View
     private lateinit var loadingProgressBar: View
-    private lateinit var passwordChangeManager: PasswordChangeManager
     private lateinit var validator: RealTimeValidator
-    private lateinit var auth: FirebaseAuth
-    private var currentUser: FirebaseUser? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_password_change)
         overridePendingTransition(R.anim.slide_in_right, R.anim.fade_out)
-        initializeFirebase()
-        initializeViews()
-        setupRealTimeValidation()
-        setupClickListeners()
-    }
-    private fun initializeFirebase() {
-        auth = FirebaseAuth.getInstance()
-        currentUser = auth.currentUser
-        passwordChangeManager = PasswordChangeManager()
-        if (currentUser == null) {
+        if (!viewModel.isAuthenticated) {
             Toast.makeText(this, "Error de autenticación", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
+        initializeViews()
+        setupRealTimeValidation()
+        setupClickListeners()
+        observeViewModel()
     }
     private fun initializeViews() {
         currentPasswordLayout = findViewById(R.id.currentPasswordLayout)
@@ -94,7 +90,7 @@ class PasswordChangeActivity : AppCompatActivity() {
         val hasCurrentPassword = !currentPasswordEditText.text.isNullOrBlank()
         val hasNewPassword = !newPasswordEditText.text.isNullOrBlank()
         val hasConfirmPassword = !confirmPasswordEditText.text.isNullOrBlank()
-        val shouldEnable = hasCurrentPassword && hasNewPassword && hasConfirmPassword
+        val shouldEnable = hasCurrentPassword && hasNewPassword && hasConfirmPassword && !viewModel.isSaving.value
         if (changePasswordButton.isEnabled != shouldEnable) {
             changePasswordButton.isEnabled = shouldEnable
             if (shouldEnable) {
@@ -134,25 +130,32 @@ class PasswordChangeActivity : AppCompatActivity() {
     private fun changePassword() {
         val currentPassword = currentPasswordEditText.text.toString().trim()
         val newPassword = newPasswordEditText.text.toString().trim()
-        showLoading(true)
-        CoroutineScope(Dispatchers.Main).launch {
-            val result = passwordChangeManager.changePassword(currentPassword, newPassword)
-            showLoading(false)
-            when (result) {
-                is AccountResult.Success -> {
-                    UIUtils.showSuccessToast(
-                        this@PasswordChangeActivity,
-                        getString(R.string.password_change_success)
-                    )
-                    setResult(RESULT_OK)
-                    findViewById<View>(android.R.id.content).postDelayed({
-                        finishWithAnimation()
-                    }, 1500)
+        viewModel.change(currentPassword, newPassword)
+    }
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.changed.collect { changed ->
+                        if (changed) {
+                            UIUtils.showSuccessToast(this@PasswordChangeActivity, getString(R.string.password_change_success))
+                            setResult(RESULT_OK)
+                            finishWithAnimation()
+                        }
+                    }
                 }
-                is AccountResult.Error -> {
-                    handlePasswordChangeError(result)
+                launch {
+                    viewModel.isSaving.collect {
+                        showLoading(it)
+                        updateButtonState()
+                    }
                 }
-                is AccountResult.Loading -> {
+                launch {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            is PasswordChangeViewModel.Event.Failed -> handlePasswordChangeError(event.error)
+                        }
+                    }
                 }
             }
         }
@@ -179,9 +182,10 @@ class PasswordChangeActivity : AppCompatActivity() {
                     this@PasswordChangeActivity,
                     getString(R.string.error_authentication)
                 )
-                findViewById<View>(android.R.id.content).postDelayed({
+                lifecycleScope.launch {
+                    delay(2000)
                     finishWithAnimation()
-                }, 2000)
+                }
             }
             AccountResult.ErrorType.FIREBASE_ERROR -> {
                 UIUtils.showErrorToast(

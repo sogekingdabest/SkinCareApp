@@ -49,7 +49,6 @@ class LoginActivity : AppCompatActivity() {
 
         bindViews()
         emailEditText.editText?.setText(intent.getStringExtra("email"))
-        passwordEditText.editText?.setText(intent.getStringExtra("password"))
 
         loginButton.setOnClickListener {
             viewModel.signInWithEmail(
@@ -82,6 +81,7 @@ class LoginActivity : AppCompatActivity() {
     private fun observeViewModel() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { viewModel.requiresMain.collect { if (it) navigateToMain() } }
                 launch {
                     viewModel.isLoading.collect { loading ->
                         viewModelLoading = loading
@@ -91,7 +91,6 @@ class LoginActivity : AppCompatActivity() {
                 launch {
                     viewModel.events.collect { event ->
                         when (event) {
-                            is LoginViewModel.Event.NavigateToMain -> navigateToMain()
                             is LoginViewModel.Event.ShowMessage ->
                                 UIUtils.showErrorToast(this@LoginActivity, getString(event.messageRes))
                         }
@@ -143,14 +142,15 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun navigateToMain() {
-        startActivity(Intent(this, MainActivity::class.java))
+        startActivity(Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        })
         finish()
     }
 
     private fun navigateToRegister() {
         val intent = Intent(this, RegisterActivity::class.java)
         intent.putExtra("email", emailEditText.editText?.text.toString())
-        intent.putExtra("password", passwordEditText.editText?.text.toString())
         val pairs = arrayOf(
             UtilPair<View, String>(logoImageView, "logoImageView"),
             UtilPair<View, String>(welcomeTextView, "textTrans"),

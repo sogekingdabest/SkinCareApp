@@ -5,6 +5,9 @@ import android.graphics.Bitmap
 import android.util.Log
 import com.monsteraltech.skincare.BuildConfig
 import com.monsteraltech.skincare.R
+import com.monsteraltech.skincare.camera.CaptureGuidanceEngine
+import com.monsteraltech.skincare.camera.DecodedCameraFrame
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.opencv.core.Mat
@@ -26,7 +29,7 @@ class SimplifiedGuidanceManager(
         } else {
             null
         }
-) {
+) : CaptureGuidanceEngine {
     companion object {
         private const val TAG = "SimplifiedGuidanceManager"
     }
@@ -47,6 +50,9 @@ class SimplifiedGuidanceManager(
         val moleConfidence: Float,
         val semanticPrediction: CaptureValidityContract.Prediction? = null
     )
+
+    override suspend fun analyze(frame: DecodedCameraFrame): GuidanceResult =
+        processFrame(frame.grayscale, frame.color)
 
     suspend fun processFrame(
         frame: Mat,
@@ -87,6 +93,8 @@ class SimplifiedGuidanceManager(
             )
 
             buildResult(verdict, detection, semanticPrediction)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
         } catch (e: Exception) {
             Log.e(TAG, "Error procesando frame", e)
             GuidanceResult(
@@ -122,11 +130,11 @@ class SimplifiedGuidanceManager(
     }
 
     /** Reinicia la estabilidad temporal (p. ej. al reanudar la cámara). */
-    fun reset() {
+    override fun reset() {
         decisionEngine.reset()
     }
 
-    fun close() {
+    override fun close() {
         semanticClassifier?.close()
     }
 

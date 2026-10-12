@@ -23,6 +23,9 @@
 # --- Modelos serializados (Gson y lectores de formatos legados) ---
 # Estas clases se (de)serializan por reflexión: conservar nombres de campos.
 -keep class com.monsteraltech.skincare.body.mole.model.** { *; }
+-keep class com.monsteraltech.skincare.body.mole.data.local.MoleEntity { *; }
+-keep class com.monsteraltech.skincare.body.mole.data.local.AnalysisEntity { *; }
+-keep class com.monsteraltech.skincare.backup.BackupPayload { *; }
 -keep class com.monsteraltech.skincare.data.SessionData { *; }
 -keep class com.monsteraltech.skincare.account.AccountSettings { *; }
 -keep class com.monsteraltech.skincare.account.UserInfo { *; }

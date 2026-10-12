@@ -9,9 +9,16 @@ import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
-import com.monsteraltech.skincare.data.FirebaseDataManager
+import com.monsteraltech.skincare.account.AccountSettingsRepository
 import com.monsteraltech.skincare.data.SessionManager
 import com.monsteraltech.skincare.data.identity.ActiveProfile
+import com.monsteraltech.skincare.login.PasswordResetRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,9 +33,9 @@ class AuthRepository @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val firebaseAuth: FirebaseAuth,
     private val sessionManager: SessionManager,
-    private val firebaseDataManager: FirebaseDataManager,
+    private val settingsRepository: AccountSettingsRepository,
     private val activeProfile: ActiveProfile
-) {
+) : PasswordResetRepository {
     companion object {
         private const val TAG = "AuthRepository"
     }
@@ -38,15 +45,14 @@ class AuthRepository @Inject constructor(
         class Unknown(cause: String?) : RegisterError(cause ?: "Error desconocido")
     }
 
-    val currentUser: FirebaseUser?
-        get() = firebaseAuth.currentUser
-
-    suspend fun signInWithEmail(email: String, password: String): Result<FirebaseUser> {
+    suspend fun signInWithEmail(email: String, password: String): Result<Unit> {
         return try {
             val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
             val user = result.user ?: return Result.failure(IllegalStateException("Usuario nulo tras autenticación"))
             finalizeSignIn(user)
-            Result.success(user)
+            Result.success(Unit)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w(TAG, "Error en login con email: ${e.message}")
             Result.failure(e)
@@ -54,31 +60,44 @@ class AuthRepository @Inject constructor(
     }
 
     /** Autentica en Firebase con el idToken obtenido de Credential Manager. */
-    suspend fun signInWithGoogleIdToken(idToken: String): Result<FirebaseUser> {
+    suspend fun signInWithGoogleIdToken(idToken: String): Result<Unit> {
         return try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             val result = firebaseAuth.signInWithCredential(credential).await()
             val user = result.user ?: return Result.failure(IllegalStateException("Usuario nulo tras autenticación"))
             finalizeSignIn(user)
-            Result.success(user)
+            Result.success(Unit)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w(TAG, "Error en login con Google: ${e.message}")
             Result.failure(e)
         }
     }
 
-    suspend fun registerWithEmail(email: String, password: String): Result<FirebaseUser> {
+    suspend fun registerWithEmail(email: String, password: String): Result<Unit> {
         return try {
             val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user ?: return Result.failure(RegisterError.Unknown("Usuario nulo tras registro"))
             finalizeSignIn(user)
-            Result.success(user)
+            Result.success(Unit)
         } catch (e: FirebaseAuthUserCollisionException) {
             Result.failure(RegisterError.EmailAlreadyInUse())
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w(TAG, "Error en registro: ${e.message}")
             Result.failure(RegisterError.Unknown(e.message))
         }
+    }
+
+    override suspend fun sendPasswordReset(email: String): Result<Unit> = try {
+        firebaseAuth.sendPasswordResetEmail(email).await()
+        Result.success(Unit)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Result.failure(error)
     }
 
     /**
@@ -90,51 +109,49 @@ class AuthRepository @Inject constructor(
         activeProfile.activateAccountProfile()
         try {
             sessionManager.saveSession(user)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w(TAG, "No se pudo persistir la sesión: ${e.message}")
         }
         try {
-            firebaseDataManager.initializeUserSettings(user.uid)
+            settingsRepository.initializeUserSettings(user.uid)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w(TAG, "No se pudo inicializar la configuración del usuario: ${e.message}")
         }
     }
 
-    /** Activa un perfil exclusivamente local y no requiere red ni cuenta. */
+    /** Completes a requested local-profile transition even if its screen is destroyed. */
     suspend fun continueWithoutAccount() {
-        runCatching { sessionManager.clearSession() }
-            .onFailure { Log.w(TAG, "No se pudo limpiar la sesión anterior: ${it.message}") }
-        runCatching { firebaseAuth.signOut() }
-            .onFailure { Log.w(TAG, "No se pudo cerrar la sesión anterior: ${it.message}") }
-        activeProfile.activateLocalProfile()
-        runCatching {
-            CredentialManager.create(appContext)
-                .clearCredentialState(ClearCredentialStateRequest())
+        withContext(NonCancellable) {
+            try { sessionManager.clearSession() } catch (error: Exception) { Log.w(TAG, "No se pudo limpiar la sesión anterior", error) }
+            try { firebaseAuth.signOut() } catch (error: Exception) { Log.w(TAG, "No se pudo cerrar la sesión anterior", error) }
+            activeProfile.activateLocalProfile()
+            clearCredentialState()
         }
+        currentCoroutineContext().ensureActive()
     }
 
-    /**
-     * Cierra la sesión por completo: sesión local, Firebase y estado de
-     * Credential Manager (sin esto, el selector de Google puede auto-elegir
-     * la última cuenta al volver a entrar).
-     */
+    /** Finishes local logout before returning cancellation to a destroyed caller. */
     suspend fun signOut() {
-        activeProfile.clear()
-        try {
-            sessionManager.clearSession()
-        } catch (e: Exception) {
-            Log.w(TAG, "Error limpiando sesión local: ${e.message}")
+        withContext(NonCancellable) {
+            activeProfile.clear()
+            try { sessionManager.clearSession() } catch (error: Exception) { Log.w(TAG, "Error limpiando sesión local", error) }
+            try { firebaseAuth.signOut() } catch (error: Exception) { Log.w(TAG, "Error cerrando sesión de Firebase", error) }
+            clearCredentialState()
         }
+        currentCoroutineContext().ensureActive()
+    }
+
+    private suspend fun clearCredentialState() {
         try {
-            firebaseAuth.signOut()
-        } catch (e: Exception) {
-            Log.w(TAG, "Error cerrando sesión de Firebase: ${e.message}")
-        }
-        try {
-            CredentialManager.create(appContext)
-                .clearCredentialState(ClearCredentialStateRequest())
-        } catch (e: Exception) {
-            Log.w(TAG, "Error limpiando estado de credenciales: ${e.message}")
-        }
+            withTimeoutOrNull(5000) {
+                CredentialManager.create(appContext).clearCredentialState(ClearCredentialStateRequest())
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) { Log.w(TAG, "Error limpiando estado de credenciales", error) }
     }
 }

@@ -1,11 +1,11 @@
 package com.monsteraltech.skincare.analysis
 
+import com.monsteraltech.skincare.body.domain.BodyRegionId
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
 import androidx.annotation.StringRes
 import androidx.annotation.VisibleForTesting
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.monsteraltech.skincare.data.identity.ActiveProfile
@@ -13,40 +13,43 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.analysis.comparison.ObservationComparisonPreparer
-import com.monsteraltech.skincare.body.mole.model.ABCDEScores
-import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import com.monsteraltech.skincare.body.mole.model.MoleData
 import com.monsteraltech.skincare.body.mole.model.UserAbcdeInput
 import com.monsteraltech.skincare.body.mole.domain.model.MoleObservation
 import com.monsteraltech.skincare.body.mole.domain.model.LesionRegistrationMetrics
 import com.monsteraltech.skincare.body.mole.domain.model.ObservationComparability
 import com.monsteraltech.skincare.body.mole.domain.usecase.GetBaselineObservationUseCase
-import com.monsteraltech.skincare.body.mole.repository.MoleRepository
+import com.monsteraltech.skincare.camera.CapturedPhotoDecoder
+import java.util.UUID
 import com.monsteraltech.skincare.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
 class AnalysisResultViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
-    private val moleRepository: MoleRepository,
+    private val saveCapture: SaveAnalyzedCapture,
     private val activeProfile: ActiveProfile,
     private val getBaselineObservation: GetBaselineObservationUseCase,
     private val comparisonPreparer: ObservationComparisonPreparer,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val imageAnalysisRunner: ImageAnalysisRunner,
+    private val photoDecoder: CapturedPhotoDecoder,
+    private val savedState: SavedStateHandle = SavedStateHandle()
 ) : ViewModel() {
 
     sealed interface AnalysisState {
@@ -57,13 +60,13 @@ class AnalysisResultViewModel @Inject constructor(
             val stage: ProcessingStage?
         ) : AnalysisState
         data class Ready(val result: MelanomaAIDetector.CombinedAnalysisResult) : AnalysisState
+        data class Partial(val result: AnalysisOutcome.Partial) : AnalysisState
         data class Failed(val message: String) : AnalysisState
+        object Cancelled : AnalysisState
     }
 
     sealed interface Event {
         data class ValidationFailed(@StringRes val messageRes: Int) : Event
-        /** Guardado correcto: la Activity notifica y navega atrás. */
-        data class SaveCompleted(val existingMoleTitle: String? = null) : Event
         data class SaveFailed(val detail: String?) : Event
         object AnalysisCancelled : Event
     }
@@ -122,7 +125,14 @@ class AnalysisResultViewModel @Inject constructor(
     private val _events = Channel<Event>(Channel.BUFFERED)
     val events: Flow<Event> = _events.receiveAsFlow()
 
-    private var asyncImageProcessor: AsyncImageProcessor? = null
+    data class SavedCapture(val moleId: String, val regionId: BodyRegionId, val existingMoleTitle: String? = null)
+    private val _savedCapture = MutableStateFlow<SavedCapture?>(null)
+    val savedCapture = _savedCapture.asStateFlow()
+    private val _targetMole = MutableStateFlow<MoleData?>(null)
+    val targetMole = _targetMole.asStateFlow()
+    private var captureId = UUID.randomUUID().toString()
+    private var captureOwner: String? = null
+    private var analysisJob: Job? = null
     private var photoFile: File? = null
     private var comparisonBaselineBitmap: Bitmap? = null
     private var analysisStarted = false
@@ -130,45 +140,15 @@ class AnalysisResultViewModel @Inject constructor(
     val isProcessing: Boolean
         get() = _analysisState.value is AnalysisState.Processing
 
-    /**
-     * Puente entre los callbacks del procesador asíncrono y los StateFlows.
-     * El resultado sobrevive a rotaciones: el análisis no se relanza.
-     */
-    private val progressBridge = object : ProgressCallback {
-        override fun onProgressUpdate(progress: Int, message: String) {
-            val stage = (_analysisState.value as? AnalysisState.Processing)?.stage
-            _analysisState.value = AnalysisState.Processing(progress, message, stage)
-        }
-
-        override fun onProgressUpdateWithTimeEstimate(progress: Int, message: String, estimatedTotalTimeMs: Long) {
-            onProgressUpdate(progress, message)
-        }
-
-        override fun onStageChanged(stage: ProcessingStage) {
-            val current = _analysisState.value as? AnalysisState.Processing
-            _analysisState.value = AnalysisState.Processing(
-                progress = current?.progress ?: 0,
-                message = current?.message ?: stage.message,
-                stage = stage
-            )
-        }
-
-        override fun onError(error: String) {
-            _analysisState.value = AnalysisState.Failed(error)
-        }
-
-        override fun onCompleted(result: MelanomaAIDetector.CombinedAnalysisResult) {
-            handleAnalysisCompleted(result)
-        }
-
-        override fun onCancelled() {
-            _events.trySend(Event.AnalysisCancelled)
-        }
-    }
-
     @VisibleForTesting
-    internal fun handleAnalysisCompleted(result: MelanomaAIDetector.CombinedAnalysisResult) {
-        _analysisState.value = AnalysisState.Ready(result)
+    internal fun handleAnalysisCompleted(outcome: AnalysisOutcome) {
+        _analysisState.update { current ->
+            if (current is AnalysisState.Cancelled) current else when (outcome) {
+                is AnalysisOutcome.Complete -> AnalysisState.Ready(outcome.result)
+                is AnalysisOutcome.Partial -> AnalysisState.Partial(outcome)
+                is AnalysisOutcome.Failed -> AnalysisState.Failed(outcome.error.getUserFriendlyMessage())
+            }
+        }
     }
 
     /** Lanza el análisis una única vez (idempotente frente a recreaciones de la Activity). */
@@ -176,40 +156,70 @@ class AnalysisResultViewModel @Inject constructor(
         photoPath: String,
         isFrontCamera: Boolean,
         pixelDensity: Float,
-        targetMoleId: String? = null
+        targetMoleId: String? = null,
+        captureId: String = this.captureId
     ) {
         if (analysisStarted) return
         analysisStarted = true
+        this.captureId = captureId
+        captureOwner = activeProfile.ownerId
+        val cancelledOnRestore = savedState.get<Boolean>("analysisCancelled") == true
         photoFile = File(photoPath)
+        _analysisState.value = AnalysisState.Processing(0, "Cargando imagen", null)
 
-        viewModelScope.launch(ioDispatcher) {
-            resolveBaselineObservation(targetMoleId)
-            val bitmap = decodeBitmap(photoPath, isFrontCamera)
-            if (bitmap == null) {
-                _analysisState.value = AnalysisState.Failed(
-                    appContext.getString(R.string.analysis_image_load_error)
-                )
-                return@launch
-            }
-            _capturedBitmap.value = bitmap
-            prepareComparison(bitmap, targetMoleId)
-            _analysisState.value = AnalysisState.Processing(0, "", null)
+        analysisJob = viewModelScope.launch(ioDispatcher, start = CoroutineStart.LAZY) {
             try {
-                obtainProcessor().processImage(
+                // A process may die after the transaction commits but before the UI receives success.
+                if (recoverSavedCapture()) return@launch
+                if (cancelledOnRestore) {
+                    _analysisState.value = AnalysisState.Cancelled
+                    return@launch
+                }
+                if (targetMoleId != null) {
+                    _targetMole.value = saveCapture.getMole(targetMoleId, activeProfile.requireOwnerId()).getOrThrow()
+                }
+                resolveBaselineObservation(targetMoleId)
+                val bitmap = photoDecoder.decode(photoPath, isFrontCamera)
+                if (bitmap == null) {
+                    failAnalysis(appContext.getString(R.string.analysis_image_load_error))
+                    return@launch
+                }
+                try {
+                    currentCoroutineContext().ensureActive()
+                } catch (cancellation: CancellationException) {
+                    bitmap.recycle()
+                    throw cancellation
+                }
+                _capturedBitmap.value = bitmap
+                prepareComparison(bitmap, targetMoleId)
+                val outcome = imageAnalysisRunner.processImage(
                     bitmap = bitmap,
                     previousBitmap = null,
                     pixelDensity = pixelDensity,
-                    config = AnalysisConfiguration.default()
+                    config = AnalysisConfiguration.default(),
+                    onProgress = { progress ->
+                        _analysisState.update { current ->
+                            if (current is AnalysisState.Processing) {
+                                AnalysisState.Processing(progress.progress, progress.message, progress.stage)
+                            } else current
+                        }
+                    }
                 )
-                // El resultado (o el error) llega por el ProgressCallback.
+                currentCoroutineContext().ensureActive()
+                handleAnalysisCompleted(outcome)
             } catch (cancellation: CancellationException) {
+                _analysisState.value = AnalysisState.Cancelled
                 throw cancellation
             } catch (e: Exception) {
-                // Cancelaciones y fallos totales ya se notificaron vía onError/onCancelled.
-                if (_analysisState.value is AnalysisState.Processing) {
-                    _analysisState.value = AnalysisState.Failed(e.message ?: "")
-                }
+                failAnalysis(e.message ?: "")
             }
+        }
+        analysisJob?.start()
+    }
+
+    private fun failAnalysis(message: String) {
+        _analysisState.update { current ->
+            if (current is AnalysisState.Processing) AnalysisState.Failed(message) else current
         }
     }
 
@@ -363,7 +373,11 @@ class AnalysisResultViewModel @Inject constructor(
     }
 
     fun cancelAnalysis() {
-        asyncImageProcessor?.cancelProcessing()
+        if (!isProcessing) return
+        savedState["analysisCancelled"] = true
+        _analysisState.value = AnalysisState.Cancelled
+        analysisJob?.cancel()
+        _events.trySend(Event.AnalysisCancelled)
     }
 
     fun saveAsNewMole(
@@ -371,34 +385,31 @@ class AnalysisResultViewModel @Inject constructor(
         description: String,
         bodyPart: String,
         bodyPartColorCode: String?,
-        userInput: UserAbcdeInput?
+        userInput: UserAbcdeInput?,
+        bodyRegionId: BodyRegionId? = null
     ) {
+        if (_isSaving.value || _savedCapture.value != null) return
         val result = validateForSave(requireTitle = true, title = title, bodyPart = bodyPart) ?: return
         val imageFile = photoFile ?: run {
             _events.trySend(Event.SaveFailed(null))
             return
         }
-        if (_isSaving.value) return
+        _isSaving.value = true
 
         viewModelScope.launch {
-            _isSaving.value = true
             try {
-                val moleId = UUID.randomUUID().toString()
-                val analysisData = buildAnalysisData(result, moleId, title, description, bodyPart, bodyPartColorCode, userInput)
-                val saveResult = moleRepository.saveMoleWithAnalysis(
-                    context = appContext,
-                    imageFile = imageFile,
-                    title = title,
-                    description = description,
-                    bodyPart = bodyPart,
-                    bodyPartColorCode = bodyPartColorCode ?: "",
-                    analysisData = analysisData
+                val saveResult = saveCapture.saveNew(
+                    imageFile, AnalysisOutcome.Complete(result),
+                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId),
+                    captureId = captureId
                 )
                 if (saveResult.isSuccess) {
-                    _events.send(Event.SaveCompleted())
+                    check(recoverSavedCapture()) { "El guardado no tiene observación confirmada" }
                 } else {
                     _events.send(Event.SaveFailed(saveResult.exceptionOrNull()?.message))
                 }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
             } catch (e: Exception) {
                 _events.send(Event.SaveFailed(e.message))
             } finally {
@@ -413,47 +424,49 @@ class AnalysisResultViewModel @Inject constructor(
         description: String,
         bodyPart: String,
         bodyPartColorCode: String?,
-        userInput: UserAbcdeInput?
+        userInput: UserAbcdeInput?,
+        bodyRegionId: BodyRegionId? = null
     ) = saveToExistingMole(
         moleId = mole.id,
-        existingMoleTitle = mole.title,
         title = title,
         description = description,
         bodyPart = bodyPart,
         bodyPartColorCode = bodyPartColorCode,
-        userInput = userInput
+        userInput = userInput,
+        bodyRegionId = bodyRegionId
     )
 
     fun saveToExistingMole(
         moleId: String,
-        existingMoleTitle: String?,
         title: String,
         description: String,
         bodyPart: String,
         bodyPartColorCode: String?,
-        userInput: UserAbcdeInput?
+        userInput: UserAbcdeInput?,
+        bodyRegionId: BodyRegionId? = null
     ) {
+        if (_isSaving.value || _savedCapture.value != null) return
         val result = validateForSave(requireTitle = false, title = title, bodyPart = bodyPart) ?: return
         val imageFile = photoFile ?: run {
             _events.trySend(Event.SaveFailed(null))
             return
         }
-        if (_isSaving.value) return
+        _isSaving.value = true
 
         viewModelScope.launch {
-            _isSaving.value = true
             try {
-                val analysisData = buildAnalysisData(result, moleId, title, description, bodyPart, bodyPartColorCode, userInput)
-                val saveResult = moleRepository.saveAnalysisToMole(appContext, moleId, analysisData, imageFile)
+                val saveResult = saveCapture.append(
+                    moleId, imageFile, AnalysisOutcome.Complete(result),
+                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId),
+                    captureId = captureId
+                )
                 if (saveResult.isSuccess) {
-                    _events.send(
-                        Event.SaveCompleted(
-                            existingMoleTitle = existingMoleTitle
-                        )
-                    )
+                    check(recoverSavedCapture()) { "El guardado no tiene observación confirmada" }
                 } else {
                     _events.send(Event.SaveFailed(saveResult.exceptionOrNull()?.message))
                 }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
             } catch (e: Exception) {
                 _events.send(Event.SaveFailed(e.message))
             } finally {
@@ -462,13 +475,22 @@ class AnalysisResultViewModel @Inject constructor(
         }
     }
 
+    private suspend fun recoverSavedCapture(): Boolean {
+        check(activeProfile.ownerId == captureOwner) { "El perfil de la captura ha cambiado" }
+        val saved = saveCapture.findSaved(captureId) ?: return false
+        _savedCapture.value = SavedCapture(saved.mole.id, saved.mole.bodyRegionId ?: BodyRegionId.UNKNOWN,
+            saved.mole.title.takeIf { saved.mole.id != captureId })
+        _analysisState.value = AnalysisState.Idle
+        return true
+    }
+
     /** Devuelve el resultado listo para guardar, o null si la validación falla (evento emitido). */
     private fun validateForSave(
         requireTitle: Boolean,
         title: String,
         bodyPart: String
     ): MelanomaAIDetector.CombinedAnalysisResult? {
-        if (activeProfile.ownerId == null) {
+        if (activeProfile.ownerId == null || (captureOwner != null && activeProfile.ownerId != captureOwner)) {
             _events.trySend(Event.ValidationFailed(R.string.save_validation_login))
             return null
         }
@@ -482,119 +504,22 @@ class AnalysisResultViewModel @Inject constructor(
         }
         val state = _analysisState.value
         if (state !is AnalysisState.Ready) {
-            _events.trySend(Event.SaveFailed(null))
+            _events.trySend(Event.ValidationFailed(R.string.analysis_complete_required))
             return null
         }
         return state.result
     }
 
-    private fun decodeBitmap(photoPath: String, isFrontCamera: Boolean): Bitmap? {
-        val decoded = BitmapFactory.decodeFile(photoPath) ?: return null
-        if (!isFrontCamera) return decoded
-        val matrix = Matrix().apply { preScale(-1.0f, 1.0f) }
-        val flipped = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
-        if (flipped !== decoded) decoded.recycle()
-        return flipped
-    }
-
-    private fun obtainProcessor(): AsyncImageProcessor {
-        return asyncImageProcessor ?: AsyncImageProcessor(appContext, progressBridge)
-            .also { asyncImageProcessor = it }
-    }
-
-    private fun buildAnalysisData(
-        result: MelanomaAIDetector.CombinedAnalysisResult,
-        moleId: String,
-        title: String,
-        description: String,
-        bodyPart: String,
-        bodyPartColorCode: String?,
-        userInput: UserAbcdeInput?
-    ): AnalysisData {
-        val abcdeScores = ABCDEScores(
-            asymmetryScore = result.abcdeResult.asymmetryScore,
-            borderScore = result.abcdeResult.borderScore,
-            colorScore = result.abcdeResult.colorScore,
-            diameterScore = result.abcdeResult.diameterScore,
-            evolutionScore = result.abcdeResult.evolutionScore,
-            totalScore = result.abcdeResult.totalScore
-        )
-        val metadata = mapOf(
-            "title" to title,
-            "description" to description,
-            "bodyPart" to bodyPart,
-            "bodyPartColorCode" to (bodyPartColorCode ?: ""),
-            "urgencyLevel" to result.urgencyLevel.name,
-            "explanations" to result.explanations
-        ) + (userInput?.toMetadataMap() ?: emptyMap())
-
-        return AnalysisData(
-            moleId = moleId,
-            description = description,
-            analysisResult = buildAnalysisSummary(result, userInput),
-            aiProbability = result.aiProbability,
-            aiConfidence = result.aiConfidence,
-            abcdeScores = abcdeScores,
-            combinedScore = result.combinedScore,
-            riskLevel = result.combinedRiskLevel.name,
-            recommendation = result.recommendation,
-            imageData = photoFile,
-            analysisMetadata = metadata
-        )
-    }
-
-    private fun buildAnalysisSummary(
-        result: MelanomaAIDetector.CombinedAnalysisResult,
-        userInput: UserAbcdeInput?
-    ): String {
-        val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-        return buildString {
-            appendLine("=== ANÁLISIS COMBINADO IA + ABCDE ===")
-            appendLine("Fecha: ${dateFormat.format(Date())}")
-            appendLine()
-            appendLine("RESULTADO IA:")
-            appendLine("- Probabilidad: ${(result.aiProbability * 100).toInt()}%")
-            appendLine("- Confianza: ${(result.aiConfidence * 100).toInt()}%")
-            appendLine()
-            appendLine("ANÁLISIS ABCDE (IA):")
-            appendLine("- Asimetría: ${result.abcdeResult.asymmetryScore}/2")
-            appendLine("- Bordes: ${result.abcdeResult.borderScore}/8")
-            appendLine("- Color: ${result.abcdeResult.colorScore}/6")
-            appendLine("- Diámetro: ${result.abcdeResult.diameterScore}/5")
-            result.abcdeResult.evolutionScore?.let {
-                appendLine("- Evolución: $it/3")
-            }
-            appendLine("- Score Total ABCDE (IA): ${result.abcdeResult.totalScore}")
-            appendLine()
-            if (userInput != null) {
-                appendLine("ANÁLISIS ABCDE (USUARIO):")
-                appendLine("- Asimetría: ${String.format("%.1f", userInput.asymmetry)}/2")
-                appendLine("- Bordes: ${String.format("%.1f", userInput.border)}/8")
-                appendLine("- Color: ${String.format("%.1f", userInput.color)}/6")
-                appendLine("- Diámetro: ${String.format("%.1f", userInput.diameter)}/5")
-                appendLine("- Evolución: ${String.format("%.1f", userInput.evolution)}/3")
-                val userTotal = userInput.total()
-                appendLine("- Score Total ABCDE (Usuario): ${String.format("%.1f", userTotal)}")
-                appendLine()
-                val difference = UserAbcdeInput.difference(result.abcdeResult.totalScore, userTotal)
-                appendLine("COMPARACIÓN:")
-                appendLine("- Diferencia entre IA y Usuario: ${String.format("%.1f", difference)} puntos")
-                appendLine()
-            }
-            appendLine("RESULTADO COMBINADO:")
-            appendLine("- Score: ${(result.combinedScore * 100).toInt()}%")
-            appendLine("- Nivel de Riesgo: ${result.combinedRiskLevel}")
-            appendLine("- Urgencia: ${result.urgencyLevel}")
-            appendLine()
-            appendLine("RECOMENDACIÓN:")
-            appendLine(result.recommendation)
-        }
-    }
-
     override fun onCleared() {
         super.onCleared()
-        comparisonBaselineBitmap?.recycle()
-        comparisonBaselineBitmap = null
-        asyncImageProcessor?.cleanup()
+        // Native operations finish before their interpreter and comparison image are released.
+        val release = {
+            _capturedBitmap.value?.recycle()
+            _capturedBitmap.value = null
+            comparisonBaselineBitmap?.recycle()
+            comparisonBaselineBitmap = null
+            imageAnalysisRunner.close()
+        }
+        analysisJob?.invokeOnCompletion { release() } ?: release()
     }
 }

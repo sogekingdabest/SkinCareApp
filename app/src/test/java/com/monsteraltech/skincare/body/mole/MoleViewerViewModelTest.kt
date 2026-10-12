@@ -1,7 +1,7 @@
 package com.monsteraltech.skincare.body.mole
 
 import android.content.Context
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import com.monsteraltech.skincare.body.mole.error.ErrorHandler
 import com.monsteraltech.skincare.body.mole.model.ABCDEScores
@@ -51,18 +51,8 @@ class MoleViewerViewModelTest {
 
     private fun args(
         moleId: String = "",
-        aiResult: String = "",
-        historical: AnalysisData? = null,
-        analysisCount: Int = 0
-    ) = MoleViewerArgs(
-        moleId = moleId,
-        title = "Lunar test",
-        description = "",
-        imageUrl = "",
-        aiResult = aiResult,
-        analysisCount = analysisCount,
-        historicalAnalysis = historical
-    )
+        historical: AnalysisData? = null
+    ) = MoleViewerArgs(moleId = moleId, analysisId = historical?.id)
 
     private fun historicalAnalysis() = AnalysisData(
         id = "hist-1",
@@ -71,7 +61,7 @@ class MoleViewerViewModelTest {
         riskLevel = "MEDIUM",
         recommendation = "test",
         abcdeScores = ABCDEScores(totalScore = 5f),
-        createdAt = Timestamp.now()
+        createdAt = Instant.ofEpochMilli(System.currentTimeMillis())
     )
 
     private fun moleData() = MoleData(
@@ -87,19 +77,56 @@ class MoleViewerViewModelTest {
         recommendation = "vigilar"
     )
 
+    private fun currentSnapshot() = MoleRepository.CurrentAnalysis(
+        moleData(), historicalAnalysis().copy(id = "capture-3", aiProbability = 0.35f,
+            riskLevel = "LOW", abcdeScores = ABCDEScores(totalScore = 4.2f, evolutionScore = 1f))
+    )
+
     @Test
-    fun `un analisis historico se muestra directamente`() = runTest {
-        viewModel.initialize(args(moleId = "mole-1", historical = historicalAnalysis(), analysisCount = 1))
+    fun `el detalle actual conserva identidad y evolucion de la observacion`() = runTest {
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns Result.success(currentSnapshot())
+        viewModel.initialize(args(moleId = "mole-1"))
+        val state = viewModel.uiState.value as MoleViewerViewModel.UiState.Analysis
+        assertEquals("capture-3", state.data.id)
+        assertEquals(1f, state.data.abcdeScores.evolutionScore)
+    }
+
+    @Test
+    fun `un lunar sin observacion no inventa un analisis`() = runTest {
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns Result.success(
+            MoleRepository.CurrentAnalysis(moleData().copy(analysisCount = 0), null))
+        viewModel.initialize(args(moleId = "mole-1"))
+        assertEquals(MoleViewerViewModel.UiState.NoAnalysis, viewModel.uiState.value)
+    }
+
+    @Test
+    fun `la valoracion historica se vincula al id mostrado sin cambiar al actual`() = runTest {
+        coEvery { moleRepository.updateMoleAnalysisMetadata(any(), any(), any(), any()) } returns Result.success(Unit)
+        coEvery { moleRepository.getMoleWithAnalysis("user-1", "mole-1", "hist-1") } returns
+            Result.success(MoleRepository.CurrentAnalysis(moleData(), historicalAnalysis()))
+        viewModel.initialize(args(moleId = "mole-1", historical = historicalAnalysis()))
+        viewModel.saveUserValues(UserAbcdeInput(asymmetry = 1f))
+        assertEquals(MoleViewerViewModel.Event.UserValuesSaved, viewModel.events.first())
+        coVerify { moleRepository.updateMoleAnalysisMetadata("user-1", "mole-1", any(), "hist-1") }
+        assertEquals("hist-1", (viewModel.uiState.value as MoleViewerViewModel.UiState.Analysis).data.id)
+        coVerify(exactly = 0) { moleRepository.getMoleWithAnalysis(any(), any(), null) }
+    }
+
+    @Test
+    fun `un analisis historico se carga por su identidad desde el repositorio`() = runTest {
+        coEvery { moleRepository.getMoleWithAnalysis("user-1", "mole-1", "hist-1") } returns
+            Result.success(MoleRepository.CurrentAnalysis(moleData(), historicalAnalysis()))
+        viewModel.initialize(args(moleId = "mole-1", historical = historicalAnalysis()))
 
         val state = viewModel.uiState.value
         assertTrue(state is MoleViewerViewModel.UiState.Analysis)
         assertEquals("hist-1", (state as MoleViewerViewModel.UiState.Analysis).data.id)
-        coVerify(exactly = 0) { moleRepository.getMoleById(any(), any()) }
+        coVerify(exactly = 1) { moleRepository.getMoleWithAnalysis("user-1", "mole-1", "hist-1") }
     }
 
     @Test
     fun `con moleId se carga del repositorio y se mapean los campos`() = runTest {
-        coEvery { moleRepository.getMoleById("user-1", "mole-1") } returns Result.success(moleData())
+        coEvery { moleRepository.getMoleWithAnalysis("user-1", "mole-1", null) } returns Result.success(currentSnapshot())
 
         viewModel.initialize(args(moleId = "mole-1"))
 
@@ -128,7 +155,7 @@ class MoleViewerViewModelTest {
 
     @Test
     fun `un fallo del repositorio produce estado de error`() = runTest {
-        coEvery { moleRepository.getMoleById(any(), any()) } returns
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns
                 Result.failure(IllegalStateException("boom"))
 
         viewModel.initialize(args(moleId = "mole-1"))
@@ -145,18 +172,18 @@ class MoleViewerViewModelTest {
 
     @Test
     fun `initialize es idempotente`() = runTest {
-        coEvery { moleRepository.getMoleById(any(), any()) } returns Result.success(moleData())
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns Result.success(currentSnapshot())
 
         viewModel.initialize(args(moleId = "mole-1"))
         viewModel.initialize(args(moleId = "mole-1"))
 
-        coVerify(exactly = 1) { moleRepository.getMoleById("user-1", "mole-1") }
+        coVerify(exactly = 1) { moleRepository.getMoleWithAnalysis("user-1", "mole-1", null) }
     }
 
     @Test
     fun `guardar valores de usuario emite evento y recarga`() = runTest {
-        coEvery { moleRepository.getMoleById(any(), any()) } returns Result.success(moleData())
-        coEvery { moleRepository.updateMoleAnalysisMetadata(any(), any(), any()) } returns
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns Result.success(currentSnapshot())
+        coEvery { moleRepository.updateMoleAnalysisMetadata(any(), any(), any(), any()) } returns
                 Result.success(Unit)
         viewModel.initialize(args(moleId = "mole-1"))
 
@@ -167,11 +194,12 @@ class MoleViewerViewModelTest {
             moleRepository.updateMoleAnalysisMetadata(
                 "user-1",
                 "mole-1",
-                match { it["userAsymmetry"] == 1f && it.containsKey("userTotal") }
+                match { it["userAsymmetry"] == 1f && it.containsKey("userTotal") },
+                "capture-3"
             )
         }
         // Recarga tras guardar: initialize + save = 2 lecturas
-        coVerify(exactly = 2) { moleRepository.getMoleById("user-1", "mole-1") }
+        coVerify(exactly = 2) { moleRepository.getMoleWithAnalysis("user-1", "mole-1", null) }
     }
 
     @Test
@@ -181,13 +209,13 @@ class MoleViewerViewModelTest {
         viewModel.saveUserValues(UserAbcdeInput(asymmetry = 1f))
 
         assertEquals(MoleViewerViewModel.Event.UserValuesSaveFailed, viewModel.events.first())
-        coVerify(exactly = 0) { moleRepository.updateMoleAnalysisMetadata(any(), any(), any()) }
+        coVerify(exactly = 0) { moleRepository.updateMoleAnalysisMetadata(any(), any(), any(), any()) }
     }
 
     @Test
     fun `un fallo al guardar emite el evento de error`() = runTest {
-        coEvery { moleRepository.getMoleById(any(), any()) } returns Result.success(moleData())
-        coEvery { moleRepository.updateMoleAnalysisMetadata(any(), any(), any()) } returns
+        coEvery { moleRepository.getMoleWithAnalysis(any(), any(), null) } returns Result.success(currentSnapshot())
+        coEvery { moleRepository.updateMoleAnalysisMetadata(any(), any(), any(), any()) } returns
                 Result.failure(IllegalStateException("sin conexión"))
         viewModel.initialize(args(moleId = "mole-1"))
 

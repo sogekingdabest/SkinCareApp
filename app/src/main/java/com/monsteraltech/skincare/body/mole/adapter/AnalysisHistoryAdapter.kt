@@ -9,20 +9,19 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.monsteraltech.skincare.R
+import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import com.monsteraltech.skincare.body.mole.performance.LazyImageLoader
 import com.monsteraltech.skincare.body.mole.util.RiskLevelTranslator
-import com.monsteraltech.skincare.data.FirebaseDataManager
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 class AnalysisHistoryAdapter(
     private val context: Context,
     private var analysisList: List<AnalysisData>,
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
     private val onItemClick: (AnalysisData) -> Unit
 ) : RecyclerView.Adapter<AnalysisHistoryAdapter.ViewHolder>() {
-    private val firebaseDataManager = FirebaseDataManager()
-    private val lazyImageLoader = LazyImageLoader(context)
+    private val lazyImageLoader = LazyImageLoader(context, coroutineScope)
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val analysisImageView: ImageView = view.findViewById(R.id.analysisImageView)
         val riskIndicator: View = view.findViewById(R.id.riskIndicator)
@@ -56,7 +55,7 @@ class AnalysisHistoryAdapter(
     }
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val analysis = analysisList[position]
-        val date = analysis.createdAt.toDate()
+        val date = java.util.Date.from(analysis.createdAt)
         val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
         holder.dateText.text = dateFormat.format(date)
         val recyclerView = holder.itemView.parent as? RecyclerView
@@ -64,7 +63,6 @@ class AnalysisHistoryAdapter(
             lazyImageLoader.loadImageLazy(
                 imageView = holder.analysisImageView,
                 imageUrl = analysis.imageUrl,
-                position = position,
                 recyclerView = recyclerView,
                 config = LazyImageLoader.Configs.forAnalysisHistory()
             )
@@ -76,9 +74,9 @@ class AnalysisHistoryAdapter(
                         .placeholder(R.drawable.ic_image_placeholder)
                         .into(holder.analysisImageView)
                 } else {
-                    val fullPath = firebaseDataManager.getFullImagePath(context, analysis.imageUrl)
+                    val imageSource = ImageLoadingUtil.getImageSource(context, analysis.imageUrl)
                     Glide.with(context)
-                        .load(File(fullPath))
+                        .load(imageSource)
                         .placeholder(R.drawable.ic_image_placeholder)
                         .into(holder.analysisImageView)
                 }
@@ -181,6 +179,14 @@ class AnalysisHistoryAdapter(
             holder.evolutionLayout.visibility = View.GONE
             holder.abcdeTotalScore.text = "Score ABCDE Total: --"
         }
+    }
+    override fun onViewRecycled(holder: ViewHolder) {
+        lazyImageLoader.cancelLoad(holder.analysisImageView)
+        super.onViewRecycled(holder)
+    }
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        lazyImageLoader.cancelAllLoads()
+        super.onDetachedFromRecyclerView(recyclerView)
     }
     override fun getItemCount() = analysisList.size
     fun updateData(newList: List<AnalysisData>) {

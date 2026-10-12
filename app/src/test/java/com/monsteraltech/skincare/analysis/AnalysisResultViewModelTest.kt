@@ -2,6 +2,8 @@ package com.monsteraltech.skincare.analysis
 
 import android.content.Context
 import android.graphics.Bitmap
+import com.monsteraltech.skincare.camera.CapturedPhotoDecoder
+import androidx.lifecycle.ViewModelStore
 import com.monsteraltech.skincare.data.identity.ActiveProfile
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.analysis.comparison.ObservationComparisonPreparer
@@ -18,6 +20,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -34,6 +39,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnalysisResultViewModelTest {
 
+    private var savedReceipt: MoleRepository.CurrentAnalysis? = null
     private lateinit var context: Context
     private lateinit var moleRepository: MoleRepository
     private lateinit var activeProfile: ActiveProfile
@@ -42,6 +48,8 @@ class AnalysisResultViewModelTest {
     private lateinit var comparisonPreparer:
         ObservationComparisonPreparer
     private lateinit var viewModel: AnalysisResultViewModel
+    private lateinit var decoder: CapturedPhotoDecoder
+    private lateinit var runner: ImageAnalysisRunner
 
     @Before
     fun setUp() {
@@ -52,14 +60,23 @@ class AnalysisResultViewModelTest {
         activeProfile = mockk()
         getBaselineObservation = mockk()
         comparisonPreparer = mockk()
+        runner = mockk(relaxed = true)
+        decoder = mockk()
+        coEvery { decoder.decode(any(), any()) } returns null
         every { activeProfile.ownerId } returns "user-1"
+        every { activeProfile.requireOwnerId() } returns "user-1"
+        savedReceipt = null
+        coEvery { moleRepository.findSavedCapture(any()) } coAnswers { savedReceipt }
+        coEvery { moleRepository.getMoleById(any(), any()) } coAnswers { Result.success(MoleData(id = arg(1))) }
         viewModel = AnalysisResultViewModel(
             context,
-            moleRepository,
+            SaveAnalyzedCapture(context, moleRepository, AnalysisRecordFactory(AnalysisReportFormatter())),
             activeProfile,
             getBaselineObservation,
             comparisonPreparer,
-            dispatcher
+            dispatcher,
+            runner,
+            decoder
         )
     }
 
@@ -98,10 +115,10 @@ class AnalysisResultViewModelTest {
         explanations = listOf("explicación")
     )
 
-    /** Fija photoFile (el decode falla en JVM y no llega a crear el procesador) y siembra el resultado. */
+    /** Fija photoFile con una decodificación ausente y siembra un resultado completo. */
     private fun seedReadyState() {
         viewModel.startAnalysis("foto-inexistente.jpg", isFrontCamera = false, pixelDensity = 1f)
-        viewModel.handleAnalysisCompleted(combinedResult())
+        viewModel.handleAnalysisCompleted(AnalysisOutcome.Complete(combinedResult()))
     }
 
     @Test
@@ -147,19 +164,156 @@ class AnalysisResultViewModelTest {
         // Sin seedReadyState: el estado no es Ready.
         viewModel.saveAsNewMole("Título", "", "Torso", "#FFFFC90E", null)
 
-        assertTrue(viewModel.events.first() is AnalysisResultViewModel.Event.SaveFailed)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
     }
 
     @Test
-    fun `guardado correcto como lunar nuevo emite SaveCompleted`() = runTest {
+    fun `un parcial conserva el componente real y bloquea ambos tipos de guardado`() = runTest {
+        seedReadyState()
+        val partial = AnalysisOutcome.Partial(
+            AnalysisSignal.Unavailable(AnalysisSignal.Reason.ERROR, "IA no disponible"),
+            AnalysisSignal.Available(abcdeResult())
+        )
+        viewModel.handleAnalysisCompleted(partial)
+        assertEquals(AnalysisResultViewModel.AnalysisState.Partial(partial), viewModel.analysisState.value)
+
+        viewModel.saveAsNewMole("Título", "", "Torso", null, null)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
+        viewModel.saveToExistingMole("m-1", "", "", "Torso", null, null)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
+        coVerify(exactly = 0) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { moleRepository.saveAnalysisToMole(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `un fallo total sustituye el resultado y no permite guardar`() = runTest {
+        seedReadyState()
+        viewModel.handleAnalysisCompleted(AnalysisOutcome.Failed(AnalysisError.Timeout))
+        assertTrue(viewModel.analysisState.value is AnalysisResultViewModel.AnalysisState.Failed)
+        viewModel.saveAsNewMole("Título", "", "Torso", null, null)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
+        coVerify(exactly = 0) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `el resultado del runner inyectado llega a Ready una sola vez`() = runTest {
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", false) } returns bitmap
+        val outcome = AnalysisOutcome.Complete(combinedResult())
+        coEvery { runner.processImage(any(), any(), any(), any(), any()) } returns outcome
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        assertEquals(AnalysisResultViewModel.AnalysisState.Ready(outcome.result), viewModel.analysisState.value)
+        coVerify(exactly = 1) { runner.processImage(bitmap, null, 1f, any(), any()) }
+        coVerify(exactly = 1) { decoder.decode("foto.jpg", false) }
+    }
+
+    @Test
+    fun `una foto entregada despues de cancelar se libera sin ejecutar los motores`() = runTest {
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", true) } coAnswers {
+            viewModel.cancelAnalysis()
+            bitmap
+        }
+        viewModel.startAnalysis("foto.jpg", true, 1f)
+        assertEquals(AnalysisResultViewModel.AnalysisState.Cancelled, viewModel.analysisState.value)
+        assertEquals(null, viewModel.capturedBitmap.value)
+        verify(exactly = 1) { bitmap.recycle() }
+        coVerify(exactly = 0) { runner.processImage(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `la foto se conserva para la UI y se libera al destruir el ViewModel`() = runTest {
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", false) } returns bitmap
+        coEvery { runner.processImage(any(), any(), any(), any(), any()) } returns AnalysisOutcome.Complete(combinedResult())
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        assertEquals(bitmap, viewModel.capturedBitmap.value)
+        verify(exactly = 0) { bitmap.recycle() }
+        ViewModelStore().apply { put("analysis", viewModel); clear() }
+        assertEquals(null, viewModel.capturedBitmap.value)
+        verify(exactly = 1) { bitmap.recycle() }
+        verify(exactly = 1) { runner.close() }
+    }
+
+    @Test
+    fun `cancelar detiene el trabajo y descarta progreso y resultados tardios`() = runTest {
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", false) } returns bitmap
+        var stopped = false
+        lateinit var progress: (AnalysisProgress) -> Unit
+        coEvery { runner.processImage(any(), any(), any(), any(), any()) } coAnswers {
+            progress = arg(4)
+            try { awaitCancellation() } finally { stopped = true }
+        }
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        assertTrue(viewModel.isProcessing)
+        viewModel.cancelAnalysis()
+        assertTrue(stopped)
+        assertEquals(AnalysisResultViewModel.Event.AnalysisCancelled, viewModel.events.first())
+        progress(AnalysisProgress(ProcessingStage.FINALIZING, 100, "finalizado"))
+        viewModel.handleAnalysisCompleted(AnalysisOutcome.Complete(combinedResult()))
+        assertEquals(AnalysisResultViewModel.AnalysisState.Cancelled, viewModel.analysisState.value)
+        viewModel.saveAsNewMole("Título", "", "Torso", null, null)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.analysis_complete_required), viewModel.events.first())
+    }
+
+    @Test
+    fun `cancelar durante la carga de observacion tambien cancela el trabajo`() = runTest {
+        var stopped = false
+        coEvery { getBaselineObservation("m-1") } coAnswers {
+            try { awaitCancellation() } finally { stopped = true }
+        }
+        viewModel.startAnalysis("foto.jpg", false, 1f, "m-1")
+        viewModel.cancelAnalysis()
+        assertTrue(stopped)
+        assertEquals(AnalysisResultViewModel.AnalysisState.Cancelled, viewModel.analysisState.value)
+        coVerify(exactly = 0) { runner.processImage(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `un motor que transforma cancelacion en error no cambia el estado cancelado`() = runTest {
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", false) } returns bitmap
+        coEvery { runner.processImage(any(), any(), any(), any(), any()) } coAnswers {
+            try { awaitCancellation() } catch (_: CancellationException) { throw IllegalStateException("late failure") }
+        }
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        viewModel.cancelAnalysis()
+        assertEquals(AnalysisResultViewModel.AnalysisState.Cancelled, viewModel.analysisState.value)
+    }
+
+    @Test
+    fun `al destruir el ViewModel se cancela antes de cerrar el motor`() = runTest {
+        val bitmap = mockk<Bitmap>(relaxed = true)
+        coEvery { decoder.decode("foto.jpg", false) } returns bitmap
+        var stopped = false
+        coEvery { runner.processImage(any(), any(), any(), any(), any()) } coAnswers {
+            try { awaitCancellation() } finally { stopped = true }
+        }
+        every { runner.close() } answers { assertTrue(stopped) }
+        val store = ViewModelStore()
+        store.put("analysis", viewModel)
+        viewModel.startAnalysis("foto.jpg", false, 1f)
+        store.clear()
+        verify(exactly = 1) { runner.close() }
+    }
+
+    @Test
+    fun `guardado correcto permanece observable sin consumidor de eventos`() = runTest {
         seedReadyState()
         coEvery {
             moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any())
-        } returns Result.success(MoleData(id = "nuevo"))
+        } coAnswers {
+            val record = arg<com.monsteraltech.skincare.body.mole.model.AnalysisData>(6)
+            val mole = MoleData(id = record.moleId)
+            savedReceipt = MoleRepository.CurrentAnalysis(mole, record)
+            Result.success(mole)
+        }
 
         viewModel.saveAsNewMole("Título", "desc", "Torso", "#FFFFC90E", null)
 
-        assertEquals(AnalysisResultViewModel.Event.SaveCompleted(), viewModel.events.first())
+        assertEquals(savedReceipt!!.mole.id, viewModel.savedCapture.value!!.moleId)
         assertEquals(false, viewModel.isSaving.value)
     }
 
@@ -168,13 +322,18 @@ class AnalysisResultViewModelTest {
         seedReadyState()
         coEvery {
             moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any())
-        } returns Result.success(MoleData(id = "nuevo"))
+        } coAnswers {
+            val record = arg<com.monsteraltech.skincare.body.mole.model.AnalysisData>(6)
+            val mole = MoleData(id = record.moleId)
+            savedReceipt = MoleRepository.CurrentAnalysis(mole, record)
+            Result.success(mole)
+        }
 
         viewModel.saveAsNewMole(
             "Título", "", "Torso", "#FFFFC90E",
             userInput = UserAbcdeInput(asymmetry = 1.5f, border = 3f)
         )
-        viewModel.events.first()
+        assertTrue(viewModel.savedCapture.value != null)
 
         coVerify {
             moleRepository.saveMoleWithAnalysis(
@@ -182,6 +341,9 @@ class AnalysisResultViewModelTest {
                 match { analysisData ->
                     analysisData.analysisMetadata["userAsymmetry"] == 1.5f &&
                             analysisData.analysisMetadata.containsKey("userTotal") &&
+                            analysisData.analysisMetadata["analysisStatus"] == "COMPLETE" &&
+                            analysisData.analysisMetadata["aiAvailable"] == true &&
+                            analysisData.analysisMetadata["abcdeAvailable"] == true &&
                             analysisData.riskLevel == "LOW"
                 }
             )
@@ -189,21 +351,22 @@ class AnalysisResultViewModelTest {
     }
 
     @Test
-    fun `asociar a un lunar existente emite SaveCompleted con su titulo`() = runTest {
+    fun `asociar a un lunar existente expone el destino confirmado por Room`() = runTest {
         seedReadyState()
         coEvery {
             moleRepository.saveAnalysisToMole(any(), any(), any(), any())
-        } returns Result.success(Unit)
+        } coAnswers {
+            val record = arg<com.monsteraltech.skincare.body.mole.model.AnalysisData>(2)
+            savedReceipt = MoleRepository.CurrentAnalysis(MoleData(id = record.moleId), record)
+            Result.success(Unit)
+        }
 
         viewModel.saveToExistingMole(
             mole = MoleData(id = "m-1", title = "Lunar hombro"),
             title = "", description = "", bodyPart = "Torso", bodyPartColorCode = null, userInput = null
         )
 
-        assertEquals(
-            AnalysisResultViewModel.Event.SaveCompleted(existingMoleTitle = "Lunar hombro"),
-            viewModel.events.first()
-        )
+        assertEquals("m-1", viewModel.savedCapture.value!!.moleId)
     }
 
     @Test
@@ -447,4 +610,53 @@ class AnalysisResultViewModelTest {
                     ).assessment.reason
             )
         }
+    @Test fun `un proceso nuevo recupera el recibo aunque ya no exista la imagen`() = runTest {
+        val id = "6e465812-dd0a-47da-b4cb-bb945cc40119"
+        savedReceipt = MoleRepository.CurrentAnalysis(MoleData(id = "already-saved"),
+            com.monsteraltech.skincare.body.mole.model.AnalysisData(id = id, moleId = "already-saved"))
+        viewModel.startAnalysis("missing.jpg", false, 1f, captureId = id)
+        assertEquals("already-saved", viewModel.savedCapture.value!!.moleId)
+        coVerify(exactly = 0) { decoder.decode(any(), any()) }
+        coVerify(exactly = 0) { runner.processImage(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `cambiar el perfil invalida el guardado de la captura cargada`() = runTest {
+        seedReadyState()
+        every { activeProfile.ownerId } returns "another"
+        viewModel.saveAsNewMole("Fixture", "", "Torso", null, null)
+        assertEquals(AnalysisResultViewModel.Event.ValidationFailed(R.string.save_validation_login), viewModel.events.first())
+        coVerify(exactly = 0) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `un doble click y un reintento despues del exito no duplican el guardado`() = runTest {
+        seedReadyState()
+        val response = kotlinx.coroutines.CompletableDeferred<Result<MoleData>>()
+        coEvery { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) } coAnswers {
+            val record = arg<com.monsteraltech.skincare.body.mole.model.AnalysisData>(6)
+            val result = response.await()
+            savedReceipt = MoleRepository.CurrentAnalysis(result.getOrThrow(), record)
+            result
+        }
+        repeat(2) { viewModel.saveAsNewMole("Fixture", "", "Torso", null, null) }
+        coVerify(exactly = 1) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+        response.complete(Result.success(MoleData(id = "saved")))
+        viewModel.saveAsNewMole("Fixture", "", "Torso", null, null)
+        coVerify(exactly = 1) { moleRepository.saveMoleWithAnalysis(any(), any(), any(), any(), any(), any(), any()) }
+        assertEquals("saved", viewModel.savedCapture.value!!.moleId)
+    }
+
+    @Test fun `un recibo confirmado precede a una cancelacion antigua al restaurar`() = runTest {
+        val id = "8933e667-b2e0-4e4d-9d3c-59b229af7b25"
+        savedReceipt = MoleRepository.CurrentAnalysis(MoleData(id = "committed"),
+            com.monsteraltech.skincare.body.mole.model.AnalysisData(id = id, moleId = "committed"))
+        val restored = AnalysisResultViewModel(context,
+            SaveAnalyzedCapture(context, moleRepository, AnalysisRecordFactory(AnalysisReportFormatter())),
+            activeProfile, getBaselineObservation, comparisonPreparer, UnconfinedTestDispatcher(), runner, decoder,
+            androidx.lifecycle.SavedStateHandle(mapOf("analysisCancelled" to true)))
+        restored.startAnalysis("missing.jpg", false, 1f, captureId = id)
+        assertEquals("committed", restored.savedCapture.value!!.moleId)
+        coVerify(exactly = 0) { decoder.decode(any(), any()) }
+    }
+
 }

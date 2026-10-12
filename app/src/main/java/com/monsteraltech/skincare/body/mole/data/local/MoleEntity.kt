@@ -1,5 +1,6 @@
 package com.monsteraltech.skincare.body.mole.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -8,7 +9,7 @@ import androidx.room.PrimaryKey
     tableName = "moles",
     indices = [
         Index(value = ["userId", "updatedAtEpochMillis"]),
-        Index(value = ["userId", "bodyPartColorCode"])
+        Index(value = ["userId", "bodyRegionId"])
     ]
 )
 data class MoleEntity(
@@ -36,5 +37,7 @@ data class MoleEntity(
     val abcdeTotalScore: Double?,
     val recommendation: String,
     val urgency: String,
-    val analysisMetadataJson: String
+    val analysisMetadataJson: String,
+    val currentAnalysisId: String? = null,
+    @ColumnInfo(defaultValue = "'unknown'") val bodyRegionId: String = "unknown"
 )

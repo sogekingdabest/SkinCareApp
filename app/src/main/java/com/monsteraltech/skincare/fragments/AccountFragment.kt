@@ -1,39 +1,40 @@
 package com.monsteraltech.skincare.fragments
 import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.Manifest
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.ViewModelProvider
+import com.monsteraltech.skincare.account.AccountViewModel
 import com.monsteraltech.skincare.BuildConfig
 import com.monsteraltech.skincare.MainActivity
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.account.AccountResult
-import com.monsteraltech.skincare.account.AccountSettings
 import com.monsteraltech.skincare.account.PasswordChangeActivity
 import com.monsteraltech.skincare.account.UserInfo
 import com.monsteraltech.skincare.backup.BackupActivity
 import com.monsteraltech.skincare.camera.guidance.ExperimentalCapturePreferences
 import dagger.hilt.android.AndroidEntryPoint
-import com.monsteraltech.skincare.account.UserProfileManager
 import com.monsteraltech.skincare.databinding.FragmentAccountBinding
 import com.monsteraltech.skincare.notifications.NotificationPermissionManager
 import com.monsteraltech.skincare.utils.UIUtils
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 @AndroidEntryPoint
 class AccountFragment : Fragment() {
     private var _binding: FragmentAccountBinding? = null
     private val binding get() = _binding!!
-    @Inject
-    lateinit var userProfileManager: UserProfileManager
+    private val viewModel by lazy { ViewModelProvider(this)[AccountViewModel::class.java] }
+    private var lastRenderedInfo: AccountResult<UserInfo>? = null
+    private var permissionDialog: AlertDialog? = null
     private lateinit var permissionManager: NotificationPermissionManager
     private lateinit var experimentalCapturePreferences: ExperimentalCapturePreferences
     private val TAG = "AccountFragment"
@@ -56,11 +57,11 @@ class AccountFragment : Fragment() {
         permissionManager = NotificationPermissionManager(requireContext())
         experimentalCapturePreferences = ExperimentalCapturePreferences(requireContext())
         animateUIElements()
-        loadUserInformation()
-        loadUserSettings()
         setupAccountOptions()
         setupSettingsListeners()
         setupExperimentalFeatures()
+        observeAccount()
+        viewModel.refresh()
     }
 
     private fun setupExperimentalFeatures() {
@@ -85,25 +86,6 @@ class AccountFragment : Fragment() {
             UIUtils.animateListItem(cardSettings, 1)
             UIUtils.animateListItem(cardBackup, 2)
             UIUtils.animateListItem(cardLogout, 3)
-        }
-    }
-    private fun loadUserInformation() {
-        lifecycleScope.launch {
-            Log.d(TAG, "Iniciando carga de información de usuario")
-            showLoadingState()
-            val result = userProfileManager.getCurrentUserInfo()
-            result.onSuccess { userInfo ->
-                Log.d(TAG, "Información de usuario cargada exitosamente: ${userInfo.email}")
-                showUserInformation(userInfo)
-            }.onError { error ->
-                Log.e(TAG, "Error al cargar información del usuario: ${error.message}", error.exception)
-                showErrorState(error.message)
-                if (error.errorType == AccountResult.ErrorType.AUTHENTICATION_ERROR) {
-                }
-            }.onLoading { loading ->
-                Log.d(TAG, "Cargando información de usuario: ${loading.message}")
-                showLoadingState()
-            }
         }
     }
     private fun showLoadingState() {
@@ -157,175 +139,60 @@ class AccountFragment : Fragment() {
         }
         Log.d(TAG, "Estado de error mostrado: $errorMessage")
     }
-    private fun loadUserSettings() {
-        lifecycleScope.launch {
-            Log.d(TAG, "Cargando configuraciones de usuario")
-            val result = userProfileManager.getUserSettings()
-            result.onSuccess { settings ->
-                Log.d(TAG, "Configuraciones de usuario cargadas exitosamente")
-                applySettingsToUI(settings)
-            }.onError { error ->
-                Log.e(TAG, "Error al cargar configuraciones de usuario: ${error.message}", error.exception)
-                if (error.message.contains("PERMISSION_DENIED") == true) {
-                    Log.d(TAG, "Intentando crear configuraciones iniciales para el usuario")
-                    createInitialUserSettings()
-                } else {
-                    applySettingsToUI(AccountSettings())
-                }
-            }
-        }
-    }
-    private fun createInitialUserSettings() {
-        lifecycleScope.launch {
-            try {
-                val userId = userProfileManager.getCurrentUserId()
-                if (userId != null) {
-                    val defaultSettings = AccountSettings(userId = userId)
-                    val updateResult = userProfileManager.updateUserSettings(defaultSettings)
-                    updateResult.onSuccess {
-                        Log.d(TAG, "Configuraciones iniciales creadas exitosamente")
-                        applySettingsToUI(defaultSettings)
-                    }.onError { error ->
-                        Log.e(TAG, "Error al crear configuraciones iniciales: ${error.message}")
-                        applySettingsToUI(AccountSettings())
+    private fun observeAccount() {
+        renderAccount(viewModel.uiState.value)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { viewModel.uiState.collect { renderAccount(it) } }
+                launch { viewModel.events.collect { event ->
+                    when (event) {
+                        AccountViewModel.Event.SettingsSaved -> UIUtils.showSuccessToast(requireContext(), getString(R.string.settings_saved))
+                        is AccountViewModel.Event.Error -> UIUtils.showErrorToast(requireContext(), getString(event.message))
                     }
-                } else {
-                    Log.w(TAG, "No se pudo obtener el ID del usuario para crear configuraciones")
-                    applySettingsToUI(AccountSettings())
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Excepción al crear configuraciones iniciales: ${e.message}", e)
-                applySettingsToUI(AccountSettings())
+                } }
             }
         }
     }
-    private fun applySettingsToUI(settings: AccountSettings) {
+    private fun renderAccount(state: AccountViewModel.UiState) {
+        if (state.userInfo != lastRenderedInfo) {
+            lastRenderedInfo = state.userInfo
+            when (val info = state.userInfo) {
+                is AccountResult.Loading -> showLoadingState()
+                is AccountResult.Success -> showUserInformation(info.data)
+                is AccountResult.Error -> showErrorState(info.message)
+            }
+        }
+        binding.layoutChangePassword.isEnabled = state.userInfo is AccountResult.Success
         isLoadingSettings = true
-        binding.apply {
-            switchNotifications.isChecked = settings.notificationsEnabled
-            switchDarkMode.isChecked = settings.darkModeEnabled
-        }
-        binding.root.post {
-            isLoadingSettings = false
-        }
-        Log.d(TAG, "Configuraciones aplicadas a la UI: notifications=${settings.notificationsEnabled}, darkMode=${settings.darkModeEnabled}")
+        try {
+            state.settings?.let { settings ->
+                binding.switchNotifications.isChecked = settings.notificationsEnabled
+                binding.switchDarkMode.isChecked = settings.darkModeEnabled
+            }
+        } finally { isLoadingSettings = false }
+        val editable = state.settings != null && !state.isSaving
+        binding.switchNotifications.isEnabled = editable
+        binding.switchDarkMode.isEnabled = editable
     }
     private fun setupSettingsListeners() {
-        binding.apply {
-            switchNotifications.setOnCheckedChangeListener { _, isChecked ->
-                if (!isLoadingSettings) {
-                    Log.d(TAG, "Configuración de notificaciones cambiada por el usuario: $isChecked")
-                    if (isChecked) {
-                        if (!permissionManager.hasNotificationPermission()) {
-                            showPermissionDialog { granted ->
-                                if (granted) {
-                                    saveSettingChange("notifications", true)
-                                } else {
-                                    isLoadingSettings = true
-                                    switchNotifications.isChecked = false
-                                    isLoadingSettings = false
-                                }
-                            }
-                        } else {
-                            saveSettingChange("notifications", isChecked)
-                        }
-                    } else {
-                        saveSettingChange("notifications", isChecked)
-                        try {
-                            val notificationManager = com.monsteraltech.skincare.notifications.NotificationManager(requireContext())
-                            notificationManager.cancelAllNotifications()
-                            Log.d(TAG, "Notificaciones programadas canceladas")
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error al cancelar notificaciones: ${e.message}", e)
-                        }
+        binding.switchNotifications.setOnCheckedChangeListener { _, enabled ->
+            if (isLoadingSettings) return@setOnCheckedChangeListener
+            if (enabled && !permissionManager.hasNotificationPermission()) {
+                showPermissionDialog { granted ->
+                    if (granted) viewModel.changeSetting(AccountViewModel.Setting.NOTIFICATIONS, true)
+                    else {
+                        isLoadingSettings = true
+                        try { _binding?.switchNotifications?.isChecked = false }
+                        finally { isLoadingSettings = false }
                     }
-                } else {
-                    Log.d(TAG, "Configuración de notificaciones aplicada desde carga inicial: $isChecked")
                 }
-            }
-            switchDarkMode.setOnCheckedChangeListener { _, isChecked ->
-                if (!isLoadingSettings) {
-                    Log.d(TAG, "Configuración de modo oscuro cambiada por el usuario: $isChecked")
-                    saveSettingChange("darkMode", isChecked)
-                } else {
-                    Log.d(TAG, "Configuración de modo oscuro aplicada desde carga inicial: $isChecked")
-                }
+            } else {
+                viewModel.changeSetting(AccountViewModel.Setting.NOTIFICATIONS, enabled)
+                if (!enabled) com.monsteraltech.skincare.notifications.NotificationManager(requireContext()).cancelAllNotifications()
             }
         }
-    }
-    private fun saveSettingChange(settingName: String, value: Boolean) {
-        lifecycleScope.launch {
-            Log.d(TAG, "Guardando configuración '$settingName': $value")
-            if (!userProfileManager.isUserAuthenticated()) {
-                Log.w(TAG, "Usuario no autenticado, no se puede guardar configuración")
-                UIUtils.showErrorToast(
-                    requireContext(),
-                    getString(R.string.error_authentication)
-                )
-                return@launch
-            }
-            val currentSettingsResult = userProfileManager.getUserSettings()
-            currentSettingsResult.onSuccess { currentSettings ->
-                val newSettings = when (settingName) {
-                    "notifications" -> currentSettings.copy(notificationsEnabled = value)
-                    "darkMode" -> currentSettings.copy(darkModeEnabled = value)
-                    else -> currentSettings
-                }
-                val updateResult = userProfileManager.updateUserSettings(newSettings)
-                updateResult.onSuccess {
-                    Log.d(TAG, "Configuración '$settingName' guardada exitosamente: $value")
-                    if (settingName == "darkMode") {
-                        updateAppTheme(value)
-                    }
-                    _binding?.let { binding ->
-                        UIUtils.showSuccessToast(
-                            requireContext(),
-                            getString(R.string.settings_saved)
-                        )
-                    } ?: run {
-                        Log.w(TAG, "Binding es null, no se puede mostrar toast de éxito")
-                    }
-                }.onError { error ->
-                    Log.e(TAG, "Error al guardar configuración '$settingName': ${error.message}", error.exception)
-                    _binding?.let { binding ->
-                        UIUtils.showErrorToast(
-                            requireContext(),
-                            getString(R.string.settings_error)
-                        )
-                        revertSettingInUI(settingName, !value)
-                    } ?: run {
-                        Log.w(TAG, "Binding es null, no se puede mostrar toast de error ni revertir UI")
-                    }
-                }
-            }.onError { error ->
-                Log.e(TAG, "Error al obtener configuraciones actuales: ${error.message}", error.exception)
-                _binding?.let { binding ->
-                    UIUtils.showErrorToast(
-                        requireContext(),
-                        getString(R.string.settings_error)
-                    )
-                    revertSettingInUI(settingName, !value)
-                } ?: run {
-                    Log.w(TAG, "Binding es null, no se puede mostrar toast de error ni revertir UI")
-                }
-            }
-        }
-    }
-    private fun revertSettingInUI(settingName: String, originalValue: Boolean) {
-        _binding?.let { binding ->
-            isLoadingSettings = true
-            binding.apply {
-                when (settingName) {
-                    "notifications" -> switchNotifications.isChecked = originalValue
-                    "darkMode" -> switchDarkMode.isChecked = originalValue
-                }
-            }
-            binding.root.post {
-                isLoadingSettings = false
-            }
-            Log.d(TAG, "Configuración '$settingName' revertida en UI a: $originalValue")
-        } ?: run {
-            Log.w(TAG, "Binding es null, no se puede revertir configuración '$settingName'")
+        binding.switchDarkMode.setOnCheckedChangeListener { _, enabled ->
+            if (!isLoadingSettings) viewModel.changeSetting(AccountViewModel.Setting.DARK_MODE, enabled)
         }
     }
     private fun configurePasswordChangeVisibility(isGoogleUser: Boolean) {
@@ -370,7 +237,7 @@ class AccountFragment : Fragment() {
     }
     private fun showPermissionDialog(onResult: (Boolean) -> Unit) {
         if (permissionManager.shouldShowRequestPermissionRationale(requireActivity())) {
-            AlertDialog.Builder(requireContext())
+            permissionDialog = AlertDialog.Builder(requireContext())
                 .setTitle(getString(R.string.notification_permission_title))
                 .setMessage(getString(R.string.notification_permission_message))
                 .setPositiveButton("Activar") { _, _ ->
@@ -386,9 +253,17 @@ class AccountFragment : Fragment() {
     }
     private fun requestNotificationPermission(onResult: (Boolean) -> Unit) {
         permissionCallback = onResult
-        permissionManager.requestNotificationPermission(requireActivity())
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
     private var permissionCallback: ((Boolean) -> Unit)? = null
+    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val callback = permissionCallback
+        permissionCallback = null
+        if (_binding != null) {
+            if (!granted) UIUtils.showErrorToast(requireContext(), getString(R.string.notification_permission_denied))
+            callback?.invoke(granted)
+        }
+    }
     private fun navigateToNotificationSettings() {
         try {
             Log.d(TAG, "Iniciando navegación a NotificationSettingsActivity")
@@ -406,45 +281,12 @@ class AccountFragment : Fragment() {
         }
     }
     private fun navigateToPasswordChange() {
-        try {
-            Log.d(TAG, "Iniciando navegación a PasswordChangeActivity")
-            if (!userProfileManager.isUserAuthenticated()) {
-                Log.w(TAG, "Usuario no autenticado, no se puede cambiar contraseña")
-                UIUtils.showErrorToast(
-                    requireContext(),
-                    getString(R.string.error_authentication)
-                )
-                return
-            }
-            lifecycleScope.launch {
-                val userInfoResult = userProfileManager.getCurrentUserInfo()
-                userInfoResult.onSuccess { userInfo ->
-                    if (userInfo.isGoogleUser || userInfo.isLocalProfile) {
-                        Log.w(TAG, "Usuario de Google intentando cambiar contraseña")
-                        UIUtils.showInfoToast(
-                            requireContext(),
-                            getString(R.string.account_google_user_info)
-                        )
-                        return@onSuccess
-                    }
-                    val intent = Intent(requireContext(), PasswordChangeActivity::class.java)
-                    passwordChangeResultLauncher.launch(intent)
-                    Log.d(TAG, "PasswordChangeActivity lanzada exitosamente")
-                }.onError { error ->
-                    Log.e(TAG, "Error al verificar tipo de usuario: ${error.message}")
-                    UIUtils.showErrorToast(
-                        requireContext(),
-                        getString(R.string.error_unknown)
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al navegar a cambio de contraseña: ${e.message}", e)
-            UIUtils.showErrorToast(
-                requireContext(),
-                getString(R.string.error_unknown)
-            )
+        val info = viewModel.uiState.value.userInfo.getDataOrNull() ?: return
+        if (info.isGoogleUser || info.isLocalProfile) {
+            UIUtils.showInfoToast(requireContext(), getString(R.string.account_google_user_info))
+            return
         }
+        passwordChangeResultLauncher.launch(Intent(requireContext(), PasswordChangeActivity::class.java))
     }
     private fun handlePasswordChangeResult(resultCode: Int) {
         Log.d(TAG, "Resultado de cambio de contraseña recibido: $resultCode")
@@ -504,44 +346,12 @@ class AccountFragment : Fragment() {
         }
         mainActivity.logoutWithProgress()
     }
-    private fun updateAppTheme(darkModeEnabled: Boolean) {
-        try {
-            val mainActivity = activity as? MainActivity
-            mainActivity?.let { activity ->
-                val themeManager = activity.getThemeManager()
-                themeManager.updateThemeFromSettings(activity, darkModeEnabled)
-                Log.d(
-                    TAG,
-                    "Tema de la aplicación actualizado: ${if (darkModeEnabled) "OSCURO" else "SISTEMA"}"
-                )
-            } ?: run {
-                Log.w(TAG, "No se pudo obtener MainActivity para actualizar el tema")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al actualizar el tema de la aplicación: ${e.message}", e)
-        }
-    }
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        when (requestCode) {
-            NotificationPermissionManager.NOTIFICATION_PERMISSION_REQUEST_CODE -> {
-                val granted = grantResults.isNotEmpty() &&
-                    grantResults[0] == PackageManager.PERMISSION_GRANTED
-                Log.d(TAG, "Resultado de permisos de notificaciones: $granted")
-                if (!granted) {
-                    UIUtils.showErrorToast(requireContext(),
-                        getString(R.string.notification_permission_denied))
-                }
-                permissionCallback?.invoke(granted)
-                permissionCallback = null
-            }
-        }
-    }
     override fun onDestroyView() {
+        permissionDialog?.dismiss()
+        permissionDialog = null
+        permissionCallback = null
+        lastRenderedInfo = null
+        isLoadingSettings = false
         super.onDestroyView()
         _binding = null
     }

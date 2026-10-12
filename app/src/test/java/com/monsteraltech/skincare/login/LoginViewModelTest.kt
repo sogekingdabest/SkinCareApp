@@ -1,6 +1,5 @@
 package com.monsteraltech.skincare.login
 
-import com.google.firebase.auth.FirebaseUser
 import com.monsteraltech.skincare.R
 import com.monsteraltech.skincare.data.auth.AuthRepository
 import io.mockk.coEvery
@@ -48,12 +47,11 @@ class LoginViewModelTest {
 
     @Test
     fun `login con email correcto navega a main`() = runTest {
-        val user = mockk<FirebaseUser>(relaxed = true)
-        coEvery { authRepository.signInWithEmail("a@b.com", "1234") } returns Result.success(user)
+        coEvery { authRepository.signInWithEmail("a@b.com", "1234") } returns Result.success(Unit)
 
         viewModel.signInWithEmail("a@b.com", "1234")
 
-        assertEquals(LoginViewModel.Event.NavigateToMain, viewModel.events.first())
+        assertEquals(true, viewModel.requiresMain.value)
         assertFalse(viewModel.isLoading.value)
     }
 
@@ -73,8 +71,7 @@ class LoginViewModelTest {
 
     @Test
     fun `el email se normaliza con trim antes de autenticar`() = runTest {
-        val user = mockk<FirebaseUser>(relaxed = true)
-        coEvery { authRepository.signInWithEmail("a@b.com", "1234") } returns Result.success(user)
+        coEvery { authRepository.signInWithEmail("a@b.com", "1234") } returns Result.success(Unit)
 
         viewModel.signInWithEmail("  a@b.com  ", "1234")
 
@@ -83,12 +80,11 @@ class LoginViewModelTest {
 
     @Test
     fun `login con google exitoso navega a main`() = runTest {
-        val user = mockk<FirebaseUser>(relaxed = true)
-        coEvery { authRepository.signInWithGoogleIdToken("token-123") } returns Result.success(user)
+        coEvery { authRepository.signInWithGoogleIdToken("token-123") } returns Result.success(Unit)
 
         viewModel.signInWithGoogleToken("token-123")
 
-        assertEquals(LoginViewModel.Event.NavigateToMain, viewModel.events.first())
+        assertEquals(true, viewModel.requiresMain.value)
     }
 
     @Test
@@ -111,7 +107,7 @@ class LoginViewModelTest {
         viewModel.continueWithoutAccount()
 
         coVerify(exactly = 1) { authRepository.continueWithoutAccount() }
-        assertEquals(LoginViewModel.Event.NavigateToMain, viewModel.events.first())
+        assertEquals(true, viewModel.requiresMain.value)
         assertFalse(viewModel.isLoading.value)
     }
 }

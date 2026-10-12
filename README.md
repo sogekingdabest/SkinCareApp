@@ -29,6 +29,16 @@ ni fotografías de lesiones.
 
 Kotlin · CameraX · OpenCV · LiteRT · Room · Hilt · Material Components · Firebase Authentication
 
+## Descargar
+
+Las APK instalables se publican en [GitHub Releases](https://github.com/sogekingdabest/SkinCareApp/releases).
+Requieren Android 10 o posterior. El modo local funciona sin cuenta.
+
+Cada integración en `main` que supera las comprobaciones genera una versión
+`1.0.N`, con una firma estable para poder actualizar las siguientes APK.
+Las builds de desarrollo tienen otra firma. Para cambiar a una APK de Releases
+puede ser necesario desinstalarlas; exporta antes una copia de tus datos.
+
 ## Compilar
 
 Se necesita Android Studio compatible con AGP 8.6, JDK 17 o compatible con Gradle

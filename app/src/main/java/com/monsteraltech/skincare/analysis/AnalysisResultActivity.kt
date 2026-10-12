@@ -1,4 +1,7 @@
 package com.monsteraltech.skincare.analysis
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.presentation.BodyRegionContract
+import com.monsteraltech.skincare.body.presentation.BodyRegions
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -20,9 +23,13 @@ import com.monsteraltech.skincare.body.mole.dialog.MoleSelectorDialog
 import com.monsteraltech.skincare.body.mole.model.UserAbcdeInput
 import com.monsteraltech.skincare.body.mole.util.RiskLevelTranslator
 import com.monsteraltech.skincare.camera.MoleCaptureContract
+import com.monsteraltech.skincare.camera.CaptureArgs
+import com.monsteraltech.skincare.camera.CaptureDraftStore
+import javax.inject.Inject
 import com.monsteraltech.skincare.databinding.ActivityAnalysisResultEnhancedBinding
 import com.monsteraltech.skincare.utils.MedicalDisclaimerHelper
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /**
  * Pantalla de resultado del análisis de una captura. La orquestación del
@@ -32,6 +39,11 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class AnalysisResultActivity : AppCompatActivity() {
 
+    @Inject lateinit var drafts: CaptureDraftStore
+    private var captureArgs: CaptureArgs? = null
+    private var hasNavigated = false
+    private var savedInstanceStateForForm: Bundle? = null
+    private var targetHeaderLoaded = false
     private val viewModel: AnalysisResultViewModel by viewModels()
     private lateinit var binding: ActivityAnalysisResultEnhancedBinding
     private lateinit var explanationAdapter: ExplanationAdapter
@@ -39,26 +51,17 @@ class AnalysisResultActivity : AppCompatActivity() {
     private lateinit var disclaimerHelper: MedicalDisclaimerHelper
     private var bodyPartColorCode: String? = null
     private var selectedBodyPart: String = ""
+    private var selectedBodyRegionId: BodyRegionId? = null
     private var overlayShown = false
     private var targetMoleId: String? = null
-    private var targetMoleTitle: String? = null
-    private var targetMoleDescription: String? = null
-
-    private val bodyPartToColorMap = mapOf(
-        "Cabeza" to "#FF000000",
-        "Brazo derecho" to "#FFED1C24",
-        "Torso" to "#FFFFC90E",
-        "Brazo izquierdo" to "#FF22B14C",
-        "Pierna derecha" to "#FF3F48CC",
-        "Pierna izquierda" to "#FFED00FF"
-    )
-    private val colorToBodyPartMap = bodyPartToColorMap.entries.associate { (k, v) -> v to k }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        savedInstanceStateForForm = savedInstanceState
         binding = ActivityAnalysisResultEnhancedBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        selectedBodyRegionId = BodyRegionContract.read(intent)
         bodyPartColorCode =
             intent.getStringExtra(
                 MoleCaptureContract.EXTRA_BODY_PART_COLOR
@@ -66,33 +69,32 @@ class AnalysisResultActivity : AppCompatActivity() {
         targetMoleId =
             intent.getStringExtra(MoleCaptureContract.EXTRA_MOLE_ID)
                 ?.takeIf(String::isNotBlank)
-        targetMoleTitle =
-            intent.getStringExtra(MoleCaptureContract.EXTRA_MOLE_TITLE)
-        targetMoleDescription =
-            intent.getStringExtra(
-                MoleCaptureContract.EXTRA_MOLE_DESCRIPTION
-            )
         setupUI()
+        selectedBodyRegionId = savedInstanceState?.getString("selectedRegion")?.let(BodyRegionId::fromValue)
+            ?: selectedBodyRegionId
         setupBodyPart()
+        if (savedInstanceState?.getBoolean("manualInputVisible") == true) {
+            binding.userInputContainer.isVisible = true
+            binding.toggleUserInputButton.setText(R.string.user_abcde_hide_button)
+        }
         setupBackNavigation()
         observeViewModel()
 
-        val photoPath =
-            intent.getStringExtra(MoleCaptureContract.EXTRA_PHOTO_PATH)
-        if (photoPath != null) {
-            viewModel.startAnalysis(
-                photoPath = photoPath,
-                isFrontCamera =
-                    intent.getBooleanExtra(
-                        MoleCaptureContract.EXTRA_IS_FRONT_CAMERA,
-                        false
-                    ),
-                pixelDensity = resources.displayMetrics.density,
-                targetMoleId = targetMoleId
-            )
-        } else {
+        try {
+            captureArgs = CaptureArgs.read(intent, savedInstanceState, drafts)
+            val args = requireNotNull(captureArgs)
+            viewModel.startAnalysis(drafts.file(args.captureId).absolutePath, args.isFrontCamera,
+                resources.displayMetrics.density, args.moleId, args.captureId)
+        } catch (error: Exception) {
             showError(getString(R.string.analysis_image_load_error))
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        captureArgs?.save(outState)
+        outState.putString("selectedRegion", selectedBodyRegionId?.value)
+        outState.putBoolean("manualInputVisible", binding.userInputContainer.isVisible)
+        super.onSaveInstanceState(outState)
     }
 
     private fun setupUI() {
@@ -117,10 +119,6 @@ class AnalysisResultActivity : AppCompatActivity() {
         if (targetMoleId != null) {
             binding.saveButton.setText(R.string.save_follow_up)
             binding.assignToExistingMoleButton.visibility = View.GONE
-            binding.titleEditText.setText(targetMoleTitle.orEmpty())
-            binding.descriptionEditText.setText(
-                targetMoleDescription.orEmpty()
-            )
         }
         binding.historyButton.setOnClickListener { showHistoryDialog() }
         binding.infoButton.setOnClickListener { showABCDEInfo() }
@@ -142,11 +140,37 @@ class AnalysisResultActivity : AppCompatActivity() {
                 }
                 launch { viewModel.isSaving.collect { renderSaving(it) } }
                 launch { viewModel.events.collect { handleEvent(it) } }
+                launch {
+                    viewModel.savedCapture.collect { saved ->
+                        if (saved != null && !hasNavigated) {
+                            hasNavigated = true
+                            val message = saved.existingMoleTitle?.let { getString(R.string.save_associated_success, it) }
+                                ?: getString(R.string.save_success)
+                            Toast.makeText(this@AnalysisResultActivity, message, Toast.LENGTH_SHORT).show()
+                            navigateBack(saved.regionId)
+                            captureArgs?.let { drafts.discard(it.captureId) }
+                        }
+                    }
+                }
+                launch {
+                    viewModel.targetMole.collect { mole ->
+                        if (mole != null) {
+                            selectedBodyRegionId = mole.bodyRegionId
+                            setupBodyPart()
+                            if (!targetHeaderLoaded && savedInstanceStateForForm == null) {
+                                binding.titleEditText.setText(mole.title)
+                                binding.descriptionEditText.setText(mole.description)
+                            }
+                            targetHeaderLoaded = true
+                        }
+                    }
+                }
             }
         }
     }
 
     private fun renderAnalysisState(state: AnalysisResultViewModel.AnalysisState) {
+        renderSaving(viewModel.isSaving.value)
         when (state) {
             is AnalysisResultViewModel.AnalysisState.Idle -> Unit
             is AnalysisResultViewModel.AnalysisState.Processing -> {
@@ -170,6 +194,14 @@ class AnalysisResultActivity : AppCompatActivity() {
                 displayResults(state.result)
                 binding.processingOverlay.postDelayed({ hideProcessingOverlay() }, 1500)
             }
+            is AnalysisResultViewModel.AnalysisState.Partial -> {
+                hideProcessingOverlay()
+                displayPartialResult(state.result)
+            }
+            is AnalysisResultViewModel.AnalysisState.Cancelled -> {
+                hideProcessingOverlay()
+                displayUnavailable(getString(R.string.analysis_cancelled))
+            }
             is AnalysisResultViewModel.AnalysisState.Failed -> {
                 progressManager.showErrorWithAccessibility(state.message)
                 hideProcessingOverlay()
@@ -182,13 +214,6 @@ class AnalysisResultActivity : AppCompatActivity() {
         when (event) {
             is AnalysisResultViewModel.Event.ValidationFailed ->
                 Toast.makeText(this, getString(event.messageRes), Toast.LENGTH_SHORT).show()
-            is AnalysisResultViewModel.Event.SaveCompleted -> {
-                val message = event.existingMoleTitle?.let {
-                    getString(R.string.save_associated_success, it)
-                } ?: getString(R.string.save_success)
-                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-                navigateBack()
-            }
             is AnalysisResultViewModel.Event.SaveFailed ->
                 Toast.makeText(
                     this,
@@ -204,31 +229,38 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun renderSaving(isSaving: Boolean) {
-        binding.saveButton.isEnabled = !isSaving
-        binding.assignToExistingMoleButton.isEnabled = !isSaving
+        val canSave = viewModel.analysisState.value is AnalysisResultViewModel.AnalysisState.Ready && !isSaving
+        binding.saveButton.isEnabled = canSave
+        binding.assignToExistingMoleButton.isEnabled = canSave
         binding.saveButton.text = getString(
-            if (isSaving) R.string.user_abcde_saving else R.string.save_as_new_mole
+            if (isSaving) R.string.user_abcde_saving else if (targetMoleId != null) R.string.save_follow_up else R.string.save_as_new_mole
         )
     }
 
     private fun setupBackNavigation() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (viewModel.isSaving.value) return
                 if (viewModel.isProcessing) {
                     AlertDialog.Builder(this@AnalysisResultActivity)
                         .setTitle("Cancelar análisis")
                         .setMessage("¿Deseas cancelar el análisis en curso?")
                         .setPositiveButton("Sí") { _, _ ->
                             viewModel.cancelAnalysis()
-                            finish()
+                            discardAndFinish()
                         }
                         .setNegativeButton("No", null)
                         .show()
                 } else {
-                    finish()
+                    discardAndFinish()
                 }
             }
         })
+    }
+
+    private fun discardAndFinish() {
+        captureArgs?.let { drafts.discard(it.captureId) }
+        finish()
     }
 
     private fun showProcessingOverlay() {
@@ -244,8 +276,10 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun setupBodyPart() {
-        if (bodyPartColorCode != null && colorToBodyPartMap.containsKey(bodyPartColorCode)) {
-            selectedBodyPart = colorToBodyPartMap[bodyPartColorCode] ?: ""
+        val region = BodyRegions.item(selectedBodyRegionId)
+        if (region != null) {
+            selectedBodyPart = getString(region.nameRes)
+            bodyPartColorCode = region.legacyColor
             binding.bodyPartTextView.text = selectedBodyPart
             binding.bodyPartTextView.visibility = View.VISIBLE
             binding.bodyPartInputLayout.visibility = View.GONE
@@ -256,17 +290,14 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun setupBodyPartSpinner() {
-        val bodyPartsList = arrayListOf("Seleccionar parte del cuerpo") + bodyPartToColorMap.keys.toList()
-        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, bodyPartsList)
+        val choices = listOf(getString(R.string.body_region_prompt)) + BodyRegions.selectable.map { getString(it.nameRes) }
+        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, choices)
         binding.bodyPartSpinner.setAdapter(adapter)
         binding.bodyPartSpinner.setOnItemClickListener { _, _, position, _ ->
-            if (position > 0) {
-                selectedBodyPart = bodyPartsList[position]
-                bodyPartColorCode = bodyPartToColorMap[selectedBodyPart]
-            } else {
-                selectedBodyPart = ""
-                bodyPartColorCode = null
-            }
+            val region = BodyRegions.selectable.getOrNull(position - 1)
+            selectedBodyRegionId = region?.id
+            selectedBodyPart = region?.let { getString(it.nameRes) }.orEmpty()
+            bodyPartColorCode = region?.legacyColor
         }
     }
 
@@ -315,9 +346,15 @@ class AnalysisResultActivity : AppCompatActivity() {
         val userTotal = currentUserInput().total()
         binding.userTotalScore.text = String.format("%.1f", userTotal)
 
-        val result = (viewModel.analysisState.value as? AnalysisResultViewModel.AnalysisState.Ready)?.result
-            ?: return
-        val aiTotal = result.abcdeResult.totalScore
+        val aiTotal = when (val state = viewModel.analysisState.value) {
+            is AnalysisResultViewModel.AnalysisState.Ready -> state.result.abcdeResult.totalScore
+            is AnalysisResultViewModel.AnalysisState.Partial -> (state.result.abcde as? AnalysisSignal.Available)?.value?.totalScore
+            else -> null
+        }
+        if (aiTotal == null) {
+            binding.comparisonText.setText(R.string.analysis_abcde_unavailable)
+            return
+        }
         val difference = UserAbcdeInput.difference(aiTotal, userTotal)
         val messageRes = when (UserAbcdeInput.comparisonBucket(aiTotal, userTotal)) {
             UserAbcdeInput.Companion.ComparisonBucket.SIMILAR -> R.string.user_abcde_comparison_similar
@@ -373,6 +410,8 @@ class AnalysisResultActivity : AppCompatActivity() {
     // --- Presentación de resultados ---
 
     private fun displayResults(result: MelanomaAIDetector.CombinedAnalysisResult) {
+        binding.abcdeCard.isVisible = true
+        binding.riskIndicator.isVisible = true
         val scorePercentage = (result.combinedScore * 100).toInt()
         binding.combinedScoreText.text = "$scorePercentage%"
         updateRiskIndicator(result.combinedRiskLevel)
@@ -386,6 +425,43 @@ class AnalysisResultActivity : AppCompatActivity() {
             if (result.abcdeResult.evolutionScore != null) View.VISIBLE else View.GONE
         binding.aiTotalScore.text = String.format("%.1f", result.abcdeResult.totalScore)
         updateUserTotalAndComparison()
+    }
+
+    private fun displayPartialResult(result: AnalysisOutcome.Partial) {
+        clearCombinedResult(getString(R.string.analysis_partial))
+        binding.recommendationText.setText(R.string.analysis_partial_guidance)
+        binding.aiProbabilityText.text = when (val ai = result.ai) {
+            is AnalysisSignal.Available -> getString(R.string.analysis_ai_values, (ai.value.probability * 100).toInt(), (ai.value.confidence * 100).toInt())
+            is AnalysisSignal.Unavailable -> ai.message
+        }
+        val abcde = (result.abcde as? AnalysisSignal.Available)?.value
+        binding.abcdeCard.isVisible = abcde != null
+        if (abcde != null) displayABCDEScores(abcde)
+        binding.aiTotalScore.text = abcde?.let { String.format(Locale.getDefault(), "%.1f", it.totalScore) } ?: getString(R.string.analysis_unavailable)
+        explanationAdapter.setExplanations(listOfNotNull(
+            (result.ai as? AnalysisSignal.Unavailable)?.message,
+            (result.abcde as? AnalysisSignal.Unavailable)?.message
+        ))
+        updateUserTotalAndComparison()
+    }
+
+    private fun clearCombinedResult(status: String) {
+        binding.combinedScoreText.setText(R.string.analysis_unavailable)
+        binding.riskLevelText.text = status
+        binding.riskLevelText.setTextColor(binding.recommendationText.currentTextColor)
+        binding.riskIndicator.isVisible = false
+        binding.analysisCard.setCardBackgroundColor(com.google.android.material.color.MaterialColors.getColor(binding.analysisCard, com.google.android.material.R.attr.colorSurface))
+        binding.historyButton.isVisible = false
+    }
+
+    private fun displayUnavailable(status: String) {
+        clearCombinedResult(status)
+        binding.abcdeCard.isVisible = false
+        binding.aiProbabilityText.setText(R.string.analysis_unavailable)
+        binding.aiTotalScore.setText(R.string.analysis_unavailable)
+        binding.comparisonText.setText(R.string.analysis_abcde_unavailable)
+        binding.recommendationText.text = status
+        explanationAdapter.setExplanations(emptyList())
     }
 
     private fun updateRiskIndicator(riskLevel: MelanomaAIDetector.RiskLevel) {
@@ -434,11 +510,12 @@ class AnalysisResultActivity : AppCompatActivity() {
             val description = binding.descriptionEditText.text.toString()
             if (selectedMole != null) {
                 viewModel.saveToExistingMole(
-                    mole = selectedMole,
+                    moleId = selectedMole.id,
                     title = title,
                     description = description,
                     bodyPart = selectedBodyPart,
                     bodyPartColorCode = bodyPartColorCode,
+                    bodyRegionId = selectedBodyRegionId,
                     userInput = currentUserInputIfVisible()
                 )
             } else {
@@ -447,6 +524,7 @@ class AnalysisResultActivity : AppCompatActivity() {
                     description = description,
                     bodyPart = selectedBodyPart,
                     bodyPartColorCode = bodyPartColorCode,
+                    bodyRegionId = selectedBodyRegionId,
                     userInput = currentUserInputIfVisible()
                 )
             }
@@ -462,6 +540,7 @@ class AnalysisResultActivity : AppCompatActivity() {
                 description = binding.descriptionEditText.text.toString(),
                 bodyPart = selectedBodyPart,
                 bodyPartColorCode = bodyPartColorCode,
+                bodyRegionId = selectedBodyRegionId,
                 userInput = currentUserInputIfVisible()
             )
             return
@@ -469,19 +548,19 @@ class AnalysisResultActivity : AppCompatActivity() {
 
         viewModel.saveToExistingMole(
             moleId = moleId,
-            existingMoleTitle = targetMoleTitle,
             title = binding.titleEditText.text.toString(),
             description = binding.descriptionEditText.text.toString(),
             bodyPart = selectedBodyPart,
             bodyPartColorCode = bodyPartColorCode,
+            bodyRegionId = selectedBodyRegionId,
             userInput = currentUserInputIfVisible()
         )
     }
 
-    private fun navigateBack() {
-        val intent = if (bodyPartColorCode != null) {
+    private fun navigateBack(regionId: BodyRegionId) {
+        val intent = if (regionId != BodyRegionId.UNKNOWN) {
             Intent(this, BodyPartActivity::class.java).apply {
-                putExtra("COLOR_VALUE", bodyPartColorCode)
+                putExtra(BodyRegionContract.EXTRA_REGION_ID, regionId.value)
             }
         } else {
             Intent(this, MainActivity::class.java)
@@ -518,8 +597,14 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun showError(message: String) {
-        binding.resultImageView.setImageResource(R.drawable.cat)
+        displayUnavailable(message)
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
+    override fun onDestroy() {
+        // Detach the drawable before the ViewModel releases its bitmap on final destruction.
+        if (::binding.isInitialized) binding.resultImageView.setImageDrawable(null)
+        super.onDestroy()
     }
 }
 

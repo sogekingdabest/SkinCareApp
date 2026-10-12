@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity android:name=".testing.LifecycleTestActivity" android:exported="false" />
+        <activity android:name=".testing.ProcessRestorationLaunchActivity" android:exported="true" />
+    </application>
+    <instrumentation
+        android:name=".testing.ProcessRestorationProbe"
+        android:targetPackage="com.monsteraltech.skincare"
+        android:label="Synthetic process restoration probe" />
+</manifest>

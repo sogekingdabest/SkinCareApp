@@ -1,6 +1,6 @@
 package com.monsteraltech.skincare.body.mole.data.local
 
-import com.google.firebase.Timestamp
+import java.time.Instant
 import com.monsteraltech.skincare.body.mole.model.ABCDEScores
 import com.monsteraltech.skincare.body.mole.model.AnalysisData
 import com.monsteraltech.skincare.body.mole.model.MoleData
@@ -14,9 +14,10 @@ class LocalMoleMapperTest {
 
     @Test
     fun `mole keeps health fields after local round trip`() {
-        val timestamp = Timestamp(Date(1_700_000_000_000L))
+        val timestamp = Instant.ofEpochMilli(1_700_000_000_000L)
         val mole = MoleData(
             id = "mole-1",
+            currentAnalysisId = "observation-2",
             userId = "user-1",
             title = "Seguimiento",
             description = "Cambio reciente",
@@ -45,10 +46,11 @@ class LocalMoleMapperTest {
         val restored = mapper.toModel(mapper.toEntity(mole))
 
         assertEquals(mole.id, restored.id)
+        assertEquals(mole.currentAnalysisId, restored.currentAnalysisId)
         assertEquals(mole.imageUrl, restored.imageUrl)
         assertEquals(mole.aiProbability, restored.aiProbability)
         assertEquals(mole.abcdeTotalScore, restored.abcdeTotalScore)
-        assertEquals(mole.createdAt.toDate(), restored.createdAt.toDate())
+        assertEquals(mole.createdAt.toEpochMilli(), restored.createdAt.toEpochMilli())
         assertEquals("on-device", restored.analysisMetadata["source"])
         assertNotNull(restored.analysisMetadata["userEvolution"])
     }
@@ -83,5 +85,16 @@ class LocalMoleMapperTest {
         assertEquals(analysis.abcdeScores, restored.abcdeScores)
         assertEquals(analysis.combinedScore, restored.combinedScore)
         assertEquals(true, restored.analysisMetadata["validCapture"])
+    }
+    @Test fun `region identity roundtrips without depending on stored name or color`() {
+        val original = com.monsteraltech.skincare.body.mole.model.MoleData(id = "m", userId = "owner",
+            bodyPart = "Changed label", bodyPartColorCode = "#AABBCC",
+            bodyRegionId = com.monsteraltech.skincare.body.domain.BodyRegionId.RIGHT_ARM)
+        val entity = LocalMoleMapper().toEntity(original)
+        assertEquals("right_arm", entity.bodyRegionId)
+        val restored = LocalMoleMapper().toModel(entity)
+        assertEquals(original.bodyRegionId, restored.bodyRegionId)
+        assertEquals(original.bodyPartColorCode, restored.bodyPartColorCode)
+        assertEquals(original.bodyPart, restored.bodyPart)
     }
 }

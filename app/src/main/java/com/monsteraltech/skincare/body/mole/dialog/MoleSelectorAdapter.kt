@@ -1,4 +1,5 @@
 package com.monsteraltech.skincare.body.mole.dialog
+import com.monsteraltech.skincare.body.presentation.BodyRegions
 import android.graphics.Typeface
 import android.text.SpannableString
 import android.text.Spanned
@@ -11,20 +12,15 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CircleCrop
 import com.monsteraltech.skincare.R
-import com.monsteraltech.skincare.body.mole.model.MoleData
+import com.monsteraltech.skincare.body.mole.domain.model.MoleListEntry
 import com.monsteraltech.skincare.body.mole.util.ImageLoadingUtil
-import com.monsteraltech.skincare.data.FirebaseDataManager
 import com.monsteraltech.skincare.databinding.ItemMoleSelectorBinding
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 class MoleSelectorAdapter(
-    private val onMoleClick: (MoleData) -> Unit
-) : ListAdapter<MoleData, MoleSelectorAdapter.MoleViewHolder>(MoleDiffCallback()) {
+    private val onMoleClick: (MoleListEntry) -> Unit
+) : ListAdapter<MoleListEntry, MoleSelectorAdapter.MoleViewHolder>(MoleDiffCallback()) {
     private var searchQuery: String = ""
-    private val firebaseDataManager = FirebaseDataManager()
     fun updateSearchQuery(query: String) {
         searchQuery = query.lowercase()
     }
@@ -34,21 +30,20 @@ class MoleSelectorAdapter(
             parent,
             false
         )
-        return MoleViewHolder(binding, onMoleClick, firebaseDataManager)
+        return MoleViewHolder(binding, onMoleClick)
     }
     override fun onBindViewHolder(holder: MoleViewHolder, position: Int) {
         holder.bind(getItem(position), searchQuery)
     }
     class MoleViewHolder(
         private val binding: ItemMoleSelectorBinding,
-        private val onMoleClick: (MoleData) -> Unit,
-        private val firebaseDataManager: FirebaseDataManager
+        private val onMoleClick: (MoleListEntry) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
         private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        fun bind(mole: MoleData, searchQuery: String = "") {
+        fun bind(mole: MoleListEntry, searchQuery: String = "") {
             binding.apply {
                 moleTitle.text = highlightSearchTerm(mole.title, searchQuery)
-                moleBodyPart.text = highlightSearchTerm(mole.bodyPart, searchQuery)
+                moleBodyPart.text = highlightSearchTerm(BodyRegions.label(root.context, mole.bodyRegionId, mole.bodyPart), searchQuery)
                 moleDescription.text = if (mole.description.isNotEmpty()) {
                     highlightSearchTerm(mole.description, searchQuery)
                 } else {
@@ -59,7 +54,7 @@ class MoleSelectorAdapter(
                 root.setOnClickListener {
                     onMoleClick(mole)
                 }
-                root.contentDescription = "Lunar ${mole.title} en ${mole.bodyPart}, " +
+                root.contentDescription = "Lunar ${mole.title} en ${BodyRegions.label(root.context, mole.bodyRegionId, mole.bodyPart)}, " +
                         "${mole.analysisCount} análisis, " +
                         "último análisis ${formatLastAnalysisDate(mole)}"
             }
@@ -83,40 +78,28 @@ class MoleSelectorAdapter(
             }
             return spannableString
         }
-        private fun setupMetadata(mole: MoleData) {
+        private fun setupMetadata(mole: MoleListEntry) {
             binding.apply {
                 analysisCountText.text = binding.root.context.getString(R.string.mole_analysis_count, mole.analysisCount)
                 lastAnalysisText.text = formatLastAnalysisDate(mole)
-                createdDateText.text = binding.root.context.getString(R.string.mole_created_date, dateFormat.format(mole.createdAt.toDate()))
+                createdDateText.text = binding.root.context.getString(R.string.mole_created_date, dateFormat.format(java.util.Date(mole.createdAtEpochMillis)))
             }
         }
-        private fun formatLastAnalysisDate(mole: MoleData): String {
-            return if (mole.lastAnalysisDate != null) {
-                binding.root.context.getString(R.string.mole_last_analysis, dateFormat.format(mole.lastAnalysisDate.toDate()))
+        private fun formatLastAnalysisDate(mole: MoleListEntry): String {
+            return if (mole.lastAnalysisAtEpochMillis != null) {
+                binding.root.context.getString(R.string.mole_last_analysis, dateFormat.format(java.util.Date(mole.lastAnalysisAtEpochMillis)))
             } else {
                 binding.root.context.getString(R.string.mole_no_previous_analysis)
             }
         }
-        private fun loadMoleImage(mole: MoleData) {
-            if (mole.imageUrl.isNotEmpty()) {
-                ImageLoadingUtil.loadImageWithFallback(
-                    context = binding.root.context,
-                    imageView = binding.moleImage,
-                    imageUrl = mole.imageUrl,
-                    config = ImageLoadingUtil.Configs.thumbnail().copy(
-                        placeholderRes = R.drawable.ic_image_placeholder,
-                        errorPlaceholderRes = R.drawable.ic_image_error,
-                        onLoadError = { exception ->
-                            android.util.Log.w("MoleSelectorAdapter", "Error cargando imagen miniatura", exception)
-                        }
-                    ),
-                    coroutineScope = CoroutineScope(Dispatchers.Main)
-                )
-                Glide.with(binding.root.context)
-                    .load(if (mole.imageUrl.startsWith("http")) {
-                        mole.imageUrl
+        private fun loadMoleImage(mole: MoleListEntry) {
+            Glide.with(binding.moleImage).clear(binding.moleImage)
+            if (mole.imageReference.isNotEmpty()) {
+                Glide.with(binding.moleImage)
+                    .load(if (mole.imageReference.startsWith("http")) {
+                        mole.imageReference
                     } else {
-                        File(firebaseDataManager.getFullImagePath(binding.root.context, mole.imageUrl))
+                        ImageLoadingUtil.getImageSource(binding.root.context, mole.imageReference)
                     })
                     .transform(CircleCrop())
                     .placeholder(R.drawable.ic_image_placeholder)
@@ -127,11 +110,11 @@ class MoleSelectorAdapter(
             }
         }
     }
-    private class MoleDiffCallback : DiffUtil.ItemCallback<MoleData>() {
-        override fun areItemsTheSame(oldItem: MoleData, newItem: MoleData): Boolean {
+    private class MoleDiffCallback : DiffUtil.ItemCallback<MoleListEntry>() {
+        override fun areItemsTheSame(oldItem: MoleListEntry, newItem: MoleListEntry): Boolean {
             return oldItem.id == newItem.id
         }
-        override fun areContentsTheSame(oldItem: MoleData, newItem: MoleData): Boolean {
+        override fun areContentsTheSame(oldItem: MoleListEntry, newItem: MoleListEntry): Boolean {
             return oldItem == newItem
         }
     }

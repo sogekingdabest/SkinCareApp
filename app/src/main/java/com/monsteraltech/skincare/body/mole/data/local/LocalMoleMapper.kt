@@ -1,6 +1,8 @@
 package com.monsteraltech.skincare.body.mole.data.local
 
-import com.google.firebase.Timestamp
+import java.time.Instant
+import com.monsteraltech.skincare.body.domain.BodyRegionId
+import com.monsteraltech.skincare.body.data.LegacyBodyRegionMapping
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.monsteraltech.skincare.body.mole.model.ABCDEScores
@@ -22,11 +24,11 @@ internal class LocalMoleMapper(
         bodyPartColorCode = mole.bodyPartColorCode,
         imagePath = mole.imageUrl,
         analysisResult = mole.aiResult,
-        createdAtEpochMillis = mole.createdAt.toDate().time,
-        updatedAtEpochMillis = mole.updatedAt.toDate().time,
+        createdAtEpochMillis = mole.createdAt.toEpochMilli(),
+        updatedAtEpochMillis = mole.updatedAt.toEpochMilli(),
         analysisCount = mole.analysisCount,
-        lastAnalysisAtEpochMillis = mole.lastAnalysisDate?.toDate()?.time,
-        firstAnalysisAtEpochMillis = mole.firstAnalysisDate?.toDate()?.time,
+        lastAnalysisAtEpochMillis = mole.lastAnalysisDate?.toEpochMilli(),
+        firstAnalysisAtEpochMillis = mole.firstAnalysisDate?.toEpochMilli(),
         aiProbability = mole.aiProbability,
         aiConfidence = mole.aiConfidence,
         riskLevel = mole.riskLevel,
@@ -38,7 +40,9 @@ internal class LocalMoleMapper(
         abcdeTotalScore = mole.abcdeTotalScore,
         recommendation = mole.recommendation,
         urgency = mole.urgency,
-        analysisMetadataJson = gson.toJson(mole.analysisMetadata)
+        analysisMetadataJson = gson.toJson(mole.analysisMetadata),
+        currentAnalysisId = mole.currentAnalysisId,
+        bodyRegionId = LegacyBodyRegionMapping.resolve(mole.bodyRegionId, mole.bodyPartColorCode, mole.bodyPart).value
     )
 
     fun toModel(entity: MoleEntity): MoleData = MoleData(
@@ -66,7 +70,9 @@ internal class LocalMoleMapper(
         abcdeTotalScore = entity.abcdeTotalScore,
         recommendation = entity.recommendation,
         urgency = entity.urgency,
-        analysisMetadata = metadataFromJson(entity.analysisMetadataJson)
+        analysisMetadata = metadataFromJson(entity.analysisMetadataJson),
+        currentAnalysisId = entity.currentAnalysisId,
+        bodyRegionId = BodyRegionId.fromValue(entity.bodyRegionId) ?: BodyRegionId.UNKNOWN
     )
 
     fun toEntity(analysis: AnalysisData, userId: String): AnalysisEntity = AnalysisEntity(
@@ -87,7 +93,7 @@ internal class LocalMoleMapper(
         riskLevel = analysis.riskLevel,
         recommendation = analysis.recommendation,
         imagePath = analysis.imageUrl,
-        createdAtEpochMillis = analysis.createdAt.toDate().time,
+        createdAtEpochMillis = analysis.createdAt.toEpochMilli(),
         analysisMetadataJson = gson.toJson(analysis.analysisMetadata)
     )
 
@@ -114,29 +120,7 @@ internal class LocalMoleMapper(
         analysisMetadata = metadataFromJson(entity.analysisMetadataJson)
     )
 
-    fun currentAnalysis(mole: MoleEntity): AnalysisData = AnalysisData(
-        id = "${mole.id}_current",
-        moleId = mole.id,
-        description = mole.description,
-        analysisResult = mole.analysisResult,
-        aiProbability = mole.aiProbability?.toFloat() ?: 0f,
-        aiConfidence = mole.aiConfidence?.toFloat() ?: 0f,
-        abcdeScores = ABCDEScores(
-            asymmetryScore = mole.abcdeAsymmetry?.toFloat() ?: 0f,
-            borderScore = mole.abcdeBorder?.toFloat() ?: 0f,
-            colorScore = mole.abcdeColor?.toFloat() ?: 0f,
-            diameterScore = mole.abcdeDiameter?.toFloat() ?: 0f,
-            totalScore = mole.abcdeTotalScore?.toFloat() ?: 0f
-        ),
-        combinedScore = mole.combinedScore?.toFloat() ?: 0f,
-        riskLevel = mole.riskLevel,
-        recommendation = mole.recommendation,
-        imageUrl = mole.imagePath,
-        createdAt = timestamp(mole.lastAnalysisAtEpochMillis ?: mole.updatedAtEpochMillis),
-        analysisMetadata = metadataFromJson(mole.analysisMetadataJson)
-    )
-
-    private fun timestamp(epochMillis: Long): Timestamp = Timestamp(Date(epochMillis))
+    private fun timestamp(epochMillis: Long): Instant = Instant.ofEpochMilli(epochMillis)
 
     private fun metadataFromJson(json: String): Map<String, Any> =
         runCatching { gson.fromJson<Map<String, Any>>(json, metadataType) }
