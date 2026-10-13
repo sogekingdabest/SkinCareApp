@@ -230,7 +230,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="IA: -- (Confianza: --)"
+                        android:text="@string/analysis_ai_placeholder"
                         android:textSize="14sp"
                         android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -999,6 +999,9 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
             </LinearLayout>
+
+            <include android:id="@+id/capture_context" layout="@layout/capture_context_fields"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
 
             <!-- Campos de entrada -->
             <com.google.android.material.textfield.TextInputLayout

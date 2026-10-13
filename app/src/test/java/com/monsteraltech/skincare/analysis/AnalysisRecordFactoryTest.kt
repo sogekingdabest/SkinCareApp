@@ -41,6 +41,16 @@ class AnalysisRecordFactoryTest {
     private val annotations = AnalysisAnnotations("Título", "Detalle", "Torso", null, null)
     private val records = AnalysisRecordFactory(AnalysisReportFormatter())
 
+    @Test fun `capture context is an annotation and never changes the computed model score`() {
+        val context = com.monsteraltech.skincare.analysis.model.LesionMetadata(45,
+            com.monsteraltech.skincare.analysis.model.AnalysisSex.FEMALE,
+            com.monsteraltech.skincare.analysis.model.AnatomicalSite.PALMS_SOLES)
+        val record = records.create(AnalysisOutcome.Complete(combinedResult()), "m", annotations.copy(recordedContext = context))
+        assertEquals(0.3f, record.aiProbability)
+        assertEquals(45, record.analysisMetadata["recordedAgeYears"])
+        assertEquals("annotation", record.analysisMetadata["recordedContextRole"])
+    }
+
     @Test fun `model provenance is saved only when present in the inference result`() {
         val model = com.monsteraltech.skincare.analysis.model.ModelIdentity(
             "test-model", "version-2", "a".repeat(64), "rgb-v2", "known")
@@ -89,8 +99,9 @@ class AnalysisRecordFactoryTest {
         val report = formatter.format(result, null, Date(0), Locale.US)
         assertFalse(report.contains("- Evolución:"))
         assertFalse(report.contains("ANÁLISIS ABCDE (USUARIO)"))
-        assertTrue(report.contains("- Probabilidad: 30%"))
-        assertTrue(report.contains("- Confianza: 80%"))
+        assertTrue(report.contains("Puntuación experimental IA: 30.0/100"))
+        assertFalse(report.contains("Confianza:"))
+        assertFalse(report.contains("Probabilidad:"))
         assertTrue(report.endsWith("vigilar\n"))
         val withEvolution = result.copy(abcdeResult = result.abcdeResult.copy(evolutionScore = 2f))
         val spanish = formatter.format(withEvolution, UserAbcdeInput(asymmetry = 1.5f), Date(0), Locale("es", "ES"))

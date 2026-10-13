@@ -45,6 +45,7 @@ class AnalysisResultActivity : AppCompatActivity() {
     private var savedInstanceStateForForm: Bundle? = null
     private var targetHeaderLoaded = false
     private val viewModel: AnalysisResultViewModel by viewModels()
+    private val contextViewModel: AnalysisContextViewModel by viewModels()
     private lateinit var binding: ActivityAnalysisResultEnhancedBinding
     private lateinit var explanationAdapter: ExplanationAdapter
     private lateinit var progressManager: ProgressManager
@@ -73,6 +74,7 @@ class AnalysisResultActivity : AppCompatActivity() {
         selectedBodyRegionId = savedInstanceState?.getString("selectedRegion")?.let(BodyRegionId::fromValue)
             ?: selectedBodyRegionId
         setupBodyPart()
+        setupRecordedContext()
         if (savedInstanceState?.getBoolean("manualInputVisible") == true) {
             binding.userInputContainer.isVisible = true
             binding.toggleUserInputButton.setText(R.string.user_abcde_hide_button)
@@ -298,7 +300,55 @@ class AnalysisResultActivity : AppCompatActivity() {
             selectedBodyRegionId = region?.id
             selectedBodyPart = region?.let { getString(it.nameRes) }.orEmpty()
             bodyPartColorCode = region?.legacyColor
+            renderSiteSuggestion()
         }
+    }
+
+    private fun setupRecordedContext() {
+        val form = binding.captureContext
+        val sexes = listOf(null, com.monsteraltech.skincare.analysis.model.AnalysisSex.MALE,
+            com.monsteraltech.skincare.analysis.model.AnalysisSex.FEMALE)
+        val sites = listOf(null) + com.monsteraltech.skincare.analysis.model.AnatomicalSite.entries
+        val sexNames = resources.getStringArray(R.array.analysis_sex_choices)
+        val siteNames = resources.getStringArray(R.array.analysis_site_choices)
+        form.contextSexInput.setAdapter(android.widget.ArrayAdapter(this, android.R.layout.simple_list_item_1, sexNames))
+        form.contextSiteInput.setAdapter(android.widget.ArrayAdapter(this, android.R.layout.simple_list_item_1, siteNames))
+        form.contextSexInput.setOnItemClickListener { _, _, position, _ -> contextViewModel.setSex(sexes[position]) }
+        form.contextSiteInput.setOnItemClickListener { _, _, position, _ -> contextViewModel.setSite(sites[position]) }
+        form.contextAgeInput.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                contextViewModel.setAge(s?.toString().orEmpty())
+                form.contextAgeLayout.error = null
+            }
+            override fun afterTextChanged(s: android.text.Editable?) = Unit
+        })
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                contextViewModel.draft.collect { draft ->
+                    if (form.contextAgeInput.text.toString() != draft.ageText) form.contextAgeInput.setText(draft.ageText)
+                    form.contextSexInput.setText(sexNames[sexes.indexOf(draft.sex)], false)
+                    form.contextSiteInput.setText(siteNames[sites.indexOf(draft.site)], false)
+                }
+            }
+        }
+        renderSiteSuggestion()
+    }
+
+    private fun renderSiteSuggestion() {
+        val suggested = com.monsteraltech.skincare.analysis.model.AnatomicalSite.suggestion(selectedBodyRegionId)
+        binding.captureContext.contextSiteLayout.helperText = suggested?.let {
+            getString(R.string.analysis_site_suggestion, resources.getStringArray(R.array.analysis_site_choices)[it.ordinal + 1])
+        }
+    }
+
+    private fun recordedContextOrError(): com.monsteraltech.skincare.analysis.model.LesionMetadata? {
+        val context = contextViewModel.context()
+        if (context == null) {
+            if (contextViewModel.hasValidOwner) binding.captureContext.contextAgeLayout.error = getString(R.string.analysis_profile_invalid_age)
+            else Toast.makeText(this, R.string.save_validation_login, Toast.LENGTH_SHORT).show()
+        }
+        return context
     }
 
     // --- Valoración ABCDE manual del usuario ---
@@ -419,7 +469,7 @@ class AnalysisResultActivity : AppCompatActivity() {
         updateCardColor(result.urgencyLevel)
         displayABCDEScores(result.abcdeResult)
         binding.aiProbabilityText.text =
-            "IA: ${(result.aiProbability * 100).toInt()}% (Confianza: ${(result.aiConfidence * 100).toInt()}%)"
+            ExperimentalScorePresentation.ai(result.aiProbability)
         explanationAdapter.setExplanations(result.explanations)
         binding.historyButton.visibility =
             if (result.abcdeResult.evolutionScore != null) View.VISIBLE else View.GONE
@@ -431,7 +481,7 @@ class AnalysisResultActivity : AppCompatActivity() {
         clearCombinedResult(getString(R.string.analysis_partial))
         binding.recommendationText.setText(R.string.analysis_partial_guidance)
         binding.aiProbabilityText.text = when (val ai = result.ai) {
-            is AnalysisSignal.Available -> getString(R.string.analysis_ai_values, (ai.value.probability * 100).toInt(), (ai.value.confidence * 100).toInt())
+            is AnalysisSignal.Available -> ExperimentalScorePresentation.ai(ai.value.probability)
             is AnalysisSignal.Unavailable -> ai.message
         }
         val abcde = (result.abcde as? AnalysisSignal.Available)?.value
@@ -504,8 +554,10 @@ class AnalysisResultActivity : AppCompatActivity() {
     // --- Guardado y navegación ---
 
     private fun showMoleSelectorDialog() {
+        if (recordedContextOrError() == null) return
         val dialog = MoleSelectorDialog.newInstance()
         dialog.setOnMoleSelectedListener { selectedMole ->
+            val recordedContext = recordedContextOrError() ?: return@setOnMoleSelectedListener
             val title = binding.titleEditText.text.toString()
             val description = binding.descriptionEditText.text.toString()
             if (selectedMole != null) {
@@ -516,7 +568,8 @@ class AnalysisResultActivity : AppCompatActivity() {
                     bodyPart = selectedBodyPart,
                     bodyPartColorCode = bodyPartColorCode,
                     bodyRegionId = selectedBodyRegionId,
-                    userInput = currentUserInputIfVisible()
+                    userInput = currentUserInputIfVisible(),
+                    recordedContext = recordedContext
                 )
             } else {
                 viewModel.saveAsNewMole(
@@ -525,7 +578,8 @@ class AnalysisResultActivity : AppCompatActivity() {
                     bodyPart = selectedBodyPart,
                     bodyPartColorCode = bodyPartColorCode,
                     bodyRegionId = selectedBodyRegionId,
-                    userInput = currentUserInputIfVisible()
+                    userInput = currentUserInputIfVisible(),
+                    recordedContext = recordedContext
                 )
             }
         }
@@ -533,6 +587,7 @@ class AnalysisResultActivity : AppCompatActivity() {
     }
 
     private fun saveCurrentObservation() {
+        val recordedContext = recordedContextOrError() ?: return
         val moleId = targetMoleId
         if (moleId == null) {
             viewModel.saveAsNewMole(
@@ -541,7 +596,8 @@ class AnalysisResultActivity : AppCompatActivity() {
                 bodyPart = selectedBodyPart,
                 bodyPartColorCode = bodyPartColorCode,
                 bodyRegionId = selectedBodyRegionId,
-                userInput = currentUserInputIfVisible()
+                userInput = currentUserInputIfVisible(),
+                recordedContext = recordedContext
             )
             return
         }
@@ -553,7 +609,8 @@ class AnalysisResultActivity : AppCompatActivity() {
             bodyPart = selectedBodyPart,
             bodyPartColorCode = bodyPartColorCode,
             bodyRegionId = selectedBodyRegionId,
-            userInput = currentUserInputIfVisible()
+            userInput = currentUserInputIfVisible(),
+            recordedContext = recordedContext
         )
     }
 

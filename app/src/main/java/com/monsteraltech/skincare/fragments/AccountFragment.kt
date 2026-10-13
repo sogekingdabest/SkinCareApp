@@ -58,6 +58,9 @@ class AccountFragment : Fragment() {
         experimentalCapturePreferences = ExperimentalCapturePreferences(requireContext())
         animateUIElements()
         setupAccountOptions()
+        binding.analysisProfileButton.setOnClickListener {
+            startActivity(Intent(requireContext(), com.monsteraltech.skincare.account.AnalysisProfileActivity::class.java))
+        }
         setupSettingsListeners()
         setupExperimentalFeatures()
         observeAccount()

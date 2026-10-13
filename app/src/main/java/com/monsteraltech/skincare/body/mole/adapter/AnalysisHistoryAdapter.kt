@@ -89,7 +89,7 @@ class AnalysisHistoryAdapter(
             holder.combinedScoreText.text = "--"
         }
         if (analysis.aiProbability > 0f && analysis.aiConfidence > 0f) {
-            holder.aiProbabilityText.text = "IA: ${String.format("%.1f%%", analysis.aiProbability * 100)} (Confianza: ${String.format("%.1f%%", analysis.aiConfidence * 100)})"
+            holder.aiProbabilityText.text = com.monsteraltech.skincare.analysis.ExperimentalScorePresentation.ai(analysis.aiProbability)
             holder.aiProbabilityText.visibility = View.VISIBLE
         } else {
             holder.aiProbabilityText.visibility = View.GONE

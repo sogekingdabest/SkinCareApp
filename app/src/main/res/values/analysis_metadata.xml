@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="analysis_profile_title">Datos opcionales del registro</string>
+    <string name="analysis_profile_description">Estos datos se guardan solo en el móvil y sirven como valores iniciales para tus registros. Puedes corregirlos o dejarlos vacíos en cada captura. La puntuación de IA actual utiliza solo la fotografía.</string>
+    <string name="analysis_profile_age_review">Revisa la edad aproximada: el valor guardado corresponde a otro año.</string>
+    <string name="analysis_profile_invalid_age">Introduce una edad entre 0 y 120 años, o deja el campo vacío.</string>
+    <string name="analysis_age_optional">Edad aproximada (opcional)</string>
+    <string name="analysis_sex_optional">Sexo (opcional)</string>
+    <string name="analysis_site_optional">Localización de la captura (opcional)</string>
+    <string name="analysis_profile_save">Guardar datos opcionales</string>
+    <string name="analysis_profile_clear">Vaciar los campos</string>
+    <string name="analysis_profile_back">Volver</string>
+    <string name="analysis_context_title">Datos de esta captura</string>
+    <string name="analysis_context_description">Opcionales. Se guardan con este registro y no cambian los datos de tu perfil ni la puntuación de IA actual.</string>
+    <string name="analysis_site_suggestion">Zona sugerida: %1$s. Selecciónala si corresponde.</string>
+    <string name="analysis_ai_placeholder">Puntuación experimental IA: --</string>
+    <string-array name="analysis_sex_choices"><item>Sin especificar</item><item>Masculino</item><item>Femenino</item></string-array>
+    <string-array name="analysis_site_choices"><item>Sin especificar</item><item>Cabeza o cuello</item><item>Brazo o mano (excepto palma)</item><item>Pierna o pie (excepto planta)</item><item>Tronco</item><item>Palma o planta del pie</item><item>Zona oral o genital</item></string-array>
+</resources>

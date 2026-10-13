@@ -9,5 +9,6 @@ data class AnalysisAnnotations(
     val bodyPart: String,
     val bodyPartColorCode: String?,
     val userInput: UserAbcdeInput?,
-    val bodyRegionId: BodyRegionId? = null
+    val bodyRegionId: BodyRegionId? = null,
+    val recordedContext: com.monsteraltech.skincare.analysis.model.LesionMetadata? = null
 )

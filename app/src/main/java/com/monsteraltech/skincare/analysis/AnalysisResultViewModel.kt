@@ -386,7 +386,8 @@ class AnalysisResultViewModel @Inject constructor(
         bodyPart: String,
         bodyPartColorCode: String?,
         userInput: UserAbcdeInput?,
-        bodyRegionId: BodyRegionId? = null
+        bodyRegionId: BodyRegionId? = null,
+        recordedContext: com.monsteraltech.skincare.analysis.model.LesionMetadata? = null
     ) {
         if (_isSaving.value || _savedCapture.value != null) return
         val result = validateForSave(requireTitle = true, title = title, bodyPart = bodyPart) ?: return
@@ -400,7 +401,7 @@ class AnalysisResultViewModel @Inject constructor(
             try {
                 val saveResult = saveCapture.saveNew(
                     imageFile, AnalysisOutcome.Complete(result),
-                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId),
+                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId, recordedContext),
                     captureId = captureId
                 )
                 if (saveResult.isSuccess) {
@@ -425,7 +426,8 @@ class AnalysisResultViewModel @Inject constructor(
         bodyPart: String,
         bodyPartColorCode: String?,
         userInput: UserAbcdeInput?,
-        bodyRegionId: BodyRegionId? = null
+        bodyRegionId: BodyRegionId? = null,
+        recordedContext: com.monsteraltech.skincare.analysis.model.LesionMetadata? = null
     ) = saveToExistingMole(
         moleId = mole.id,
         title = title,
@@ -433,7 +435,8 @@ class AnalysisResultViewModel @Inject constructor(
         bodyPart = bodyPart,
         bodyPartColorCode = bodyPartColorCode,
         userInput = userInput,
-        bodyRegionId = bodyRegionId
+        bodyRegionId = bodyRegionId,
+        recordedContext = recordedContext
     )
 
     fun saveToExistingMole(
@@ -443,7 +446,8 @@ class AnalysisResultViewModel @Inject constructor(
         bodyPart: String,
         bodyPartColorCode: String?,
         userInput: UserAbcdeInput?,
-        bodyRegionId: BodyRegionId? = null
+        bodyRegionId: BodyRegionId? = null,
+        recordedContext: com.monsteraltech.skincare.analysis.model.LesionMetadata? = null
     ) {
         if (_isSaving.value || _savedCapture.value != null) return
         val result = validateForSave(requireTitle = false, title = title, bodyPart = bodyPart) ?: return
@@ -457,7 +461,7 @@ class AnalysisResultViewModel @Inject constructor(
             try {
                 val saveResult = saveCapture.append(
                     moleId, imageFile, AnalysisOutcome.Complete(result),
-                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId),
+                    AnalysisAnnotations(title, description, bodyPart, bodyPartColorCode, userInput, bodyRegionId, recordedContext),
                     captureId = captureId
                 )
                 if (saveResult.isSuccess) {

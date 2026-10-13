@@ -170,8 +170,7 @@ class MoleViewerActivity : AppCompatActivity() {
         }
 
         if (analysisData.aiProbability > 0f && analysisData.aiConfidence > 0f) {
-            binding.aiProbabilityText.text = "IA: ${String.format("%.1f%%", analysisData.aiProbability * 100)} " +
-                    "(Confianza: ${String.format("%.1f%%", analysisData.aiConfidence * 100)})"
+            binding.aiProbabilityText.text = com.monsteraltech.skincare.analysis.ExperimentalScorePresentation.ai(analysisData.aiProbability)
             binding.aiProbabilityText.visibility = View.VISIBLE
         } else {
             binding.aiProbabilityText.visibility = View.GONE

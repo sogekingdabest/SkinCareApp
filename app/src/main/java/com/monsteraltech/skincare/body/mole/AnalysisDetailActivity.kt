@@ -56,7 +56,7 @@ class AnalysisDetailActivity : AppCompatActivity() {
             binding.combinedScoreText.text = "--"
         }
         if (analysis.aiProbability > 0f && analysis.aiConfidence > 0f) {
-            binding.aiProbabilityText.text = "IA: ${String.format("%.1f%%", analysis.aiProbability * 100)} (Confianza: ${String.format("%.1f%%", analysis.aiConfidence * 100)})"
+            binding.aiProbabilityText.text = com.monsteraltech.skincare.analysis.ExperimentalScorePresentation.ai(analysis.aiProbability)
             binding.aiProbabilityText.visibility = View.VISIBLE
         } else {
             binding.aiProbabilityText.visibility = View.GONE

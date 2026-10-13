@@ -397,6 +397,12 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/analysis_profile_button"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp" android:text="@string/analysis_profile_title" />
+
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_backup"
                     style="@style/Widget.SkinCare_TFM.Card"

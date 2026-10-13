@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="16dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/analysis_context_title" android:textAppearance="?attr/textAppearanceTitleMedium" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" android:text="@string/analysis_context_description" />
+    <com.google.android.material.textfield.TextInputLayout android:id="@+id/context_age_layout"
+        android:saveEnabled="false"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp"
+        android:hint="@string/analysis_age_optional">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/context_age_input"
+            android:saveEnabled="false"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:inputType="number" android:maxLength="3" android:importantForAutofill="no" />
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout
+        android:saveEnabled="false"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp"
+        android:hint="@string/analysis_sex_optional">
+        <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/context_sex_input"
+            android:saveEnabled="false"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="none" />
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout android:id="@+id/context_site_layout"
+        android:saveEnabled="false"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp"
+        android:hint="@string/analysis_site_optional">
+        <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/context_site_input"
+            android:saveEnabled="false"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="none" />
+    </com.google.android.material.textfield.TextInputLayout>
+</LinearLayout>

@@ -155,10 +155,7 @@ class MelanomaAIDetector(private val context: Context) {
         abcdeResult: ABCDEAnalyzerOpenCV.ABCDEResult
     ): List<String> {
         val explanations = mutableListOf<String>()
-        explanations.add(
-            "IA: Probabilidad de melanoma del ${(aiResult.probability * 100).toInt()}% " +
-                    "(confianza: ${(aiResult.confidence * 100).toInt()}%)"
-        )
+        explanations.add(ExperimentalScorePresentation.ai(aiResult.probability))
         val asymmetryIcon = when {
             abcdeResult.asymmetryScore == 0f -> "✅"
             abcdeResult.asymmetryScore <= 1f -> "✓"
