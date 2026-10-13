@@ -8,7 +8,9 @@ data class AccountSettingsPatch(
     val moleCheckupTime: String? = null,
     val moleCheckupFrequency: Int? = null,
     val notificationVibration: Boolean? = null,
-    val notificationSound: Boolean? = null
+    val notificationSound: Boolean? = null,
+    /** null leaves the profile alone; an empty profile explicitly clears its values. */
+    val analysisProfile: AnalysisProfile? = null
 ) {
     fun applyTo(settings: AccountSettings) = settings.copy(
         notificationsEnabled = notificationsEnabled ?: settings.notificationsEnabled,
@@ -17,6 +19,7 @@ data class AccountSettingsPatch(
         moleCheckupTime = moleCheckupTime ?: settings.moleCheckupTime,
         moleCheckupFrequency = moleCheckupFrequency ?: settings.moleCheckupFrequency,
         notificationVibration = notificationVibration ?: settings.notificationVibration,
-        notificationSound = notificationSound ?: settings.notificationSound
+        notificationSound = notificationSound ?: settings.notificationSound,
+        analysisProfile = analysisProfile ?: settings.analysisProfile
     )
 }

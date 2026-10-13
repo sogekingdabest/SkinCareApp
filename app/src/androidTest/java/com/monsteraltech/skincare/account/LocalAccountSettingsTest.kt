@@ -15,6 +15,21 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class LocalAccountSettingsTest {
+    @Test fun optionalAnalysisProfilesAreLocalOwnerScopedAndSurviveJsonRoundTrips() = runBlocking {
+        val owner = "profile-${UUID.randomUUID()}"
+        val other = "profile-other-${UUID.randomUUID()}"
+        val repository = LocalAccountSettingsRepository(context, Dispatchers.IO)
+        try {
+            val profile = AnalysisProfile(45, 2026, com.monsteraltech.skincare.analysis.model.AnalysisSex.FEMALE)
+            assertNotNull(repository.applyPatch(AccountSettingsPatch(analysisProfile = profile), owner))
+            assertEquals(profile, repository.getUserSettings(owner).analysisProfile)
+            assertNull(repository.getUserSettings(other).analysisProfile)
+            repository.applyPatch(AccountSettingsPatch(darkModeEnabled = true), owner)
+            assertEquals(profile, repository.getUserSettings(owner).analysisProfile)
+            repository.applyPatch(AccountSettingsPatch(analysisProfile = AnalysisProfile()), owner)
+            assertEquals(AnalysisProfile(), repository.getUserSettings(owner).analysisProfile)
+        } finally { remove(owner, other) }
+    }
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
     private val preferences get() = context.getSharedPreferences("private_account_settings", 0)
     private suspend fun remove(vararg owners: String) = withContext(Dispatchers.IO) {

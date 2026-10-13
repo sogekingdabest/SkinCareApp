@@ -423,7 +423,7 @@
     <string name="analysis_partial_guidance">Uno de los componentes no pudo completarse. Se muestran únicamente los datos disponibles. Repite el análisis para obtener un resultado completo y poder guardarlo.</string>
     <string name="analysis_abcde_unavailable">ABCDE no disponible para la comparación.</string>
     <string name="analysis_unavailable">No disponible</string>
-    <string name="analysis_ai_values">IA: %1$d%% (Confianza: %2$d%%)</string>
+    <string name="analysis_ai_values">Puntuación experimental IA: %1$d/100</string>
     <plurals name="mole_observation_history">
         <item quantity="one">Ver historial (%d observación)</item>
         <item quantity="other">Ver historial (%d observaciones)</item>

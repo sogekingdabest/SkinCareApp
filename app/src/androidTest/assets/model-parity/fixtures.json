@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "purpose": "synthetic integration parity; not accuracy evaluation",
+  "cases": [
+    {
+      "model": "legacy",
+      "image": "legacy-gray.png",
+      "imageInputSha256": "5b2850baf8ccc427d6560850cda052d9c07ee8143f5fba13a1ace4a5a1b86908",
+      "metadata": null,
+      "expectedScore": 0.43732720613479614,
+      "absoluteTolerance": 0.002,
+      "modelSha256": "7a72d18c8ffc829d724b38f1c81a27914806a8020489f22d7bbab458435c11e7"
+    },
+    {
+      "model": "legacy",
+      "image": "legacy-rgb.png",
+      "imageInputSha256": "1206434e8b633ee6aa785d9bd6a671ae9ff94e7fa6c7838729dd6b992859edf9",
+      "metadata": null,
+      "expectedScore": 0.3762657344341278,
+      "absoluteTolerance": 0.002,
+      "modelSha256": "7a72d18c8ffc829d724b38f1c81a27914806a8020489f22d7bbab458435c11e7"
+    },
+    {
+      "model": "legacy",
+      "image": "legacy-shape.png",
+      "imageInputSha256": "9c059d949a706de0cf75c2a7ba9c0c1f0e5fd17882917d58b487c10fabe36069",
+      "metadata": null,
+      "expectedScore": 0.4201624393463135,
+      "absoluteTolerance": 0.002,
+      "modelSha256": "7a72d18c8ffc829d724b38f1c81a27914806a8020489f22d7bbab458435c11e7"
+    },
+    {
+      "model": "candidate",
+      "image": "candidate-gray.png",
+      "imageInputSha256": "246634704be74a29109e91fef6783c94b72fc9ebe9ae7a32160c1df19bebeb9d",
+      "metadata": [
+        0.45,
+        1.0,
+        0.5714285714285714
+      ],
+      "expectedScore": 0.3483421802520752,
+      "absoluteTolerance": 0.002,
+      "modelSha256": "38cb33cdae2620cc282f2798b280f1c582e02d410c35503f498023ae1acb2073"
+    },
+    {
+      "model": "candidate",
+      "image": "candidate-rgb.png",
+      "imageInputSha256": "778304d8b56355eb83651c88fb0a48be834a09e9439520b3e03611e13647c846",
+      "metadata": [
+        0.45,
+        1.0,
+        0.5714285714285714
+      ],
+      "expectedScore": 0.1450607031583786,
+      "absoluteTolerance": 0.002,
+      "modelSha256": "38cb33cdae2620cc282f2798b280f1c582e02d410c35503f498023ae1acb2073"
+    },
+    {
+      "model": "candidate",
+      "image": "candidate-shape.png",
+      "imageInputSha256": "6034190c6c0c0d08abd5ca631590f244bf7e26dea0434c7136c3d2fa3ab9e90e",
+      "metadata": [
+        0.45,
+        1.0,
+        0.5714285714285714
+      ],
+      "expectedScore": 0.264945924282074,
+      "absoluteTolerance": 0.002,
+      "modelSha256": "38cb33cdae2620cc282f2798b280f1c582e02d410c35503f498023ae1acb2073"
+    }
+  ]
+}

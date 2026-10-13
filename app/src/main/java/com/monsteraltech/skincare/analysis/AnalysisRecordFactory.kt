@@ -37,7 +37,9 @@ class AnalysisRecordFactory @Inject constructor(private val reports: AnalysisRep
             "bodyPartColorCode" to (bodyPartColorCode ?: ""),
             "urgencyLevel" to result.urgencyLevel.name,
             "explanations" to result.explanations
-        ) + (userInput?.toMetadataMap() ?: emptyMap())
+        ) + (userInput?.toMetadataMap() ?: emptyMap()) +
+            (result.modelIdentity?.observationMetadata() ?: emptyMap()) +
+            (annotations.recordedContext?.recordMetadata() ?: emptyMap())
 
         return AnalysisData(
             moleId = moleId,

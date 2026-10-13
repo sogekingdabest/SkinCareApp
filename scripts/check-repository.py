@@ -1,7 +1,8 @@
-"""Check public documentation links and build-only Firebase configuration."""
+"""Check public links, build-only configuration and deployed model identity."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -11,6 +12,23 @@ from urllib.parse import unquote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def check_model_artifact(assets: Path) -> list[str]:
+    try:
+        descriptor = json.loads((assets / "lesion_classifier.json").read_text(encoding="utf-8"))
+        if descriptor["schemaVersion"] != 1:
+            raise ValueError("Unsupported model descriptor version")
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+\.tflite", descriptor["filename"]):
+            raise ValueError("Invalid model filename")
+        if not re.fullmatch(r"[a-f0-9]{64}", descriptor["sha256"]):
+            raise ValueError("Invalid model SHA-256")
+        actual = hashlib.sha256((assets / descriptor["filename"]).read_bytes()).hexdigest()
+        if actual != descriptor["sha256"]:
+            raise ValueError("Deployed model does not match its descriptor SHA-256")
+    except (OSError, KeyError, ValueError, TypeError) as error:
+        return [f"Model artifact check: {error}"]
+    return []
 
 
 def markdown_links(path: Path):
@@ -29,6 +47,7 @@ def markdown_links(path: Path):
 
 def main() -> int:
     errors: list[str] = []
+    errors.extend(check_model_artifact(ROOT / "app/src/main/assets"))
     tracked = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines()
     documents = [ROOT / path for path in tracked if path.endswith(".md") and (ROOT / path).is_file()]
     checked = 0

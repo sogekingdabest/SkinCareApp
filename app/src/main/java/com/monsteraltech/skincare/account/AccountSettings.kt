@@ -9,5 +9,6 @@ data class AccountSettings(
     val moleCheckupFrequency: Int = 7,
     val notificationVibration: Boolean = true,
     val notificationSound: Boolean = true,
-    val autoBackup: Boolean = false
+    val autoBackup: Boolean = false,
+    val analysisProfile: AnalysisProfile? = null
 )

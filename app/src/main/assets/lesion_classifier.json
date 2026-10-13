@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "modelId": "skincare-lesion-legacy",
+  "modelVersion": "legacy-7a72d18c8ffc",
+  "filename": "melanoma_efficientnet_dynamic.tflite",
+  "sha256": "7a72d18c8ffc829d724b38f1c81a27914806a8020489f22d7bbab458435c11e7",
+  "sourceStatus": "checkpoint-unresolved",
+  "preprocessingVersion": "android-rgb-stretch-v1",
+  "imageNormalization": "NEGATIVE_ONE_TO_ONE",
+  "inputs": [
+    {"index": 0, "name": "serving_default_input:0", "shape": [1, 224, 224, 3], "dtype": "FLOAT32", "role": "image"}
+  ],
+  "outputs": [
+    {"index": 0, "name": "StatefulPartitionedCall_1:0", "shape": [1, 1], "dtype": "FLOAT32", "role": "score"}
+  ]
+}
